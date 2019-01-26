@@ -1,18 +1,19 @@
 ROOTINC = -I/opt/fairsoft/include/root 
-DIGIINC = -I/home/itep/alekseev/igor/digi.v2
+DIGI_V2 = lib_v2.1
+DIGI_V3 = lib_v3.0
 CLIB = -L/opt/gcc-5.3/lib64 -lgcc -lstdc++
 ROOTLIB = -L/opt/fairsoft/lib/root -lCint -lCore -lRIO -lNet -lHist -lMinuit -lGraf -lGraf3d -lGpad -lTree -lRint \
     -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lSpectrum -lpthread -lm -ldl -rdynamic
-DIGILIB = -L/home/itep/alekseev/igor/digi.v2 -lReadDigiData
+DIGILIB = -lReadDigiData
 
-All: digi_evtbuilder6 pairbuilder7 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
+All: digi_evtbuilder6_v2 digi_evtbuilder6_v3 pairbuilder7 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
     run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi
 
-digi_evtbuilder5: digi_evtbuilder5.cpp
-	gcc -o $@ $^ ${ROOTINC} ${DIGIINC} ${CLIB} ${ROOTLIB} ${DIGILIB}
+digi_evtbuilder6_v2: digi_evtbuilder6.cpp
+	gcc -o $@ $^ ${ROOTINC} -I${DIGI_V2} ${CLIB} ${ROOTLIB} -L${DIGI_V2} ${DIGILIB}
 
-digi_evtbuilder6: digi_evtbuilder6.cpp
-	gcc -o $@ $^ ${ROOTINC} ${DIGIINC} ${CLIB} ${ROOTLIB} ${DIGILIB}
+digi_evtbuilder6_v3: digi_evtbuilder6.cpp
+	gcc -o $@ $^ ${ROOTINC} -I${DIGI_V3} ${CLIB} ${ROOTLIB} -L${DIGI_V3} ${DIGILIB}
 
 run_digi_mpi: run_digi_mpi.c
 	mpicc -o $@ $^

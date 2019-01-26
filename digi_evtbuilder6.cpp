@@ -44,7 +44,7 @@
 #include "evtbuilder.h"
 
 /***********************	Definitions	****************************/
-#define MYVERSION	"4.01"
+#define MYVERSION	"4.10"
 //	Initial clean parameters
 #define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit
 #define MINSIPMPIXELS2	2			// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
@@ -64,7 +64,7 @@
 //	Flags
 #define FLG_PRINTALL		       1	// do large debuggging printout
 #define FLG_DTHIST		       2	// create time delta histogramms
-#define FLG_EAMPLITUDE		       4	// put amplitude instead of energy to XXCleanEnergy cells
+//#define FLG_EAMPLITUDE		       4	// put amplitude instead of energy to XXCleanEnergy cells - abandoned
 #define FLG_POSECORRECTIONA	   0x100	// do positron energy correction based on MC and NHITS
 #define FLG_POSECORRECTIONB	   0x200	// do positron energy correction based on average MC
 #define FLG_SIMLONGCORR		  0x1000	// simulate "neutron" correction for MC events
@@ -140,7 +140,6 @@ int IsInModule(int SiPm, int Pmt, ReadDigiDataUser *user)
 	if (SiPmXY / 5 != PmtXY || SiPmZ / 20 != PmtZ) return false;
 	return true;
 }
-
 
 //	int hitA, hitB - hits in SiPM
 //	ReadDigiDataUser *user - event reader
@@ -695,15 +694,18 @@ void SumClean(ReadDigiDataUser *user)
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0) switch (user->type(i)) {
 	case bSiPm:
 		DanssEvent.SiPmCleanHits++;
-		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
+		DanssEvent.SiPmCleanEnergy += user->e(i);
+//		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
 		break;
 	case bPmt:
 		DanssEvent.PmtCleanHits++;
-		DanssEvent.PmtCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->pmtAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
+		DanssEvent.PmtCleanEnergy += user->e(i);
+//		DanssEvent.PmtCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->pmtAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
 		break;
 	case bVeto:
 		DanssEvent.VetoCleanHits++;
-		DanssEvent.VetoCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->vetoAmp(user->indexByHit(i)) : user->e(i);
+		DanssEvent.VetoCleanEnergy += user->e(i);
+//		DanssEvent.VetoCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->vetoAmp(user->indexByHit(i)) : user->e(i);
 		break;
 	}
 
