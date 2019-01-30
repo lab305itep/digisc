@@ -5,6 +5,8 @@
 #include <mpi.h>
 #include <unistd.h>
 
+#define TMPDIR "/home/clusters/rrcmpi/alekseev/igor/tmp/"
+
 //	argv[1] - the first digi file number
 int main(int argc, char *argv[]) 
 {
@@ -15,10 +17,10 @@ int main(int argc, char *argv[])
 	FILE *flist;
 	int fnum;
 	time_t t0, t1;
-	int irc;
-	int WasZipped;
+	int irc, iver;
 	char *suffix;
 	char *tdir;
+	char *tcalib;
 	
 	t0 = time(NULL);
 //		Get our run number
@@ -30,38 +32,31 @@ int main(int argc, char *argv[])
 	fnum = strtol(argv[1], NULL, 0);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	fnum += serial;
-//		check that file exists
-	WasZipped = 0;
-	
-	suffix = getenv("DIGI_SUFFIX");
-	if (!suffix) {
-		sprintf(str, "v2.1/%3.3dxxx", fnum/1000);
-		suffix = str;
-	} 
-	
 	tdir = getenv("DIGI_TARGETDIR");
 	if (!tdir) tdir = "root6n";
-
-	sprintf(fname, "/home/clusters/rrcmpi/alekseev/igor/digi/%s/danss_data_%6.6d_phys_rawrec.digi", suffix, fnum);
+//		Try possible file names:
+//		V3
+	iver = 3;
+	sprintf(fname, "digi_v3.0/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
 	irc = access(fname, R_OK);
-	if (irc) {
-		sprintf(str, "%s.bz2", fname);
-		irc = access(str, R_OK);
-		if (irc) {
-			printf("Run %6.6d not found at %s(%s)\n", fnum, fname, str);
-			goto fin;
-		}
-		sprintf(str, "bzcat %s.bz2 > /home/clusters/rrcmpi/alekseev/igor/tmp/danss_data_%6.6d_phys_rawrec.digi", fname, fnum);
-		irc = system(str);
-		if (irc) {
-			printf("Run %d decompression error: %d - %m\n", fnum, irc);
-			goto fin;
-		}
-		sprintf(fname, "/home/clusters/rrcmpi/alekseev/igor/tmp/danss_data_%6.6d_phys_rawrec.digi", fnum);
-		WasZipped = 1;
-	}
+	if (!irc) goto found;
+	strcat(fname, ".bz2");
+	irc = access(fname, R_OK);
+	if (!irc) goto found;
+//		V2
+	iver = 2;
+	sprintf(fname, "digi_v2.1/%3.3dxxx/danss_data_%6.6d_phys_rawrec.digi", fnum/1000, fnum);
+	irc = access(fname, R_OK);
+	if (!irc) goto found;
+	strcat(fname, ".bz2");
+	irc = access(fname, R_OK);
+	if (!irc) goto found;
+//		No digi file
+	printf("Run %6.6d not found.\n", fnum);
+	goto fin;
+found:
 //		create the list file
-	sprintf(clist, "/home/clusters/rrcmpi/alekseev/igor/tmp/%6.6d.list", fnum);
+	sprintf(clist, "%s/%6.6d.list", TMPDIR, fnum);
 	flist = fopen(clist, "wt");
 	if (!flist) {
 		printf("Can not open list file %s: %m\n", clist);
@@ -70,16 +65,23 @@ int main(int argc, char *argv[])
 	fprintf(flist, "%s\n", fname);
 	fclose(flist);
 //		The run itself
-	sprintf(str, "/home/itep/alekseev/igor/digi_evtbuilder6 -no_hit_tables -file %s -output /home/clusters/rrcmpi/alekseev/igor/%s/%3.3dxxx/danss_%6.6d.root "
-		"-flag 0x50002 -tcalib tcalib_5512_ss-d.calib", clist, tdir, fnum/1000, fnum);
+	if (iver == 3) {
+		setenv("DANSSRAWREC_HOME", "lib_v3.0", 1);
+	} else {
+		setenv("DANSSRAWREC_HOME", "lib_v2.1", 1);
+	}
+	tcalib = (fnum < 5469) ? "tcalib_cmnew_ss-d.calib" : "tcalib_5512_ss-d.calib";
+	
+	sprintf(str, "./digi_evtbuilder6_v%d -no_hit_tables -file %s -output %s/%3.3dxxx/danss_%6.6d.root "
+		"-flag 0x50002 -tcalib %s", iver, clist, tdir, fnum/1000, fnum, tcalib);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		delete list file
 	unlink(clist);
-	if (WasZipped) unlink(fname);
 //		time and print
 	t1 = time(NULL);
 	printf("Run %d: elapsed time %d s:\n", fnum, t1 - t0);
 fin:
 	MPI_Finalize();
+	return 0;
 }

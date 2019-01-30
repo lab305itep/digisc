@@ -56,10 +56,11 @@
 #define MAXCLUSTITER		10		// Maximum number of iterations in cluster search
 #define EDGEPMARK		1.0		// Minimum energy to flag event with edge hits
 #define MCNEUTRONSIGGMA		20.0		// Sigma for neutron based longitudinal correction for MC
+#define NBOTTOMLAYERS		2		// Use two bottom SiPM layers as additional VETO
 //	fine time
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
-#define TCUT		15			// fine time cut, ns
+#define TCUT		10			// fine time cut, ns
 #define NOFINETIME	10000			// something out of range
 //	Flags
 #define FLG_PRINTALL		       1	// do large debuggging printout
@@ -97,7 +98,7 @@ TRandom2 *				Random;
 TFile *					OutputFile;
 TTree *					OutputTree;
 TTree *					InfoTree;
-struct DanssEventStruct6		DanssEvent;
+struct DanssEventStruct7		DanssEvent;
 struct DanssInfoStruct4			DanssInfo;
 struct DanssMcStruct			DanssMc;
 struct DanssExtraStruct	{
@@ -151,22 +152,60 @@ int IsNeighbor(int hitA, int hitB, ReadDigiDataUser *user)
 	return 0;
 }
 
+double PMTYAverageLightColl(double x)
+{
+    //<func(x)=1>
+	const double FuncAverage = 1.00147;
+	double rez;
+	rez = (0.987387*exp(-0.0016*(x-48)) + 0.023973*exp(-0.0877*(x-48)) - 0.0113581*exp(-0.1042*(x-48))
+	        -2.30972E-6*exp(0.2214*(x-48))) / FuncAverage;
+	return rez;
+}
+
+double SiPMYAverageLightColl(double x)
+{
+    //<func(x)=1>
+	const double FuncAverage = 1.02208;
+	double rez;
+	rez = (0.00577381*exp(-0.1823*(x-48)) + 0.999583*exp(-0.0024*(x-48)) - 8.095E-13*exp(0.5205*(x-48))
+	        -0.00535714*exp(-0.1838*(x-48))) / FuncAverage;
+	return rez;
+}
+
+double YAverageLightColl(double x, int type)
+{
+	double rez;
+	switch(type) {
+	case bSiPm:
+		rez = SiPMYAverageLightColl(x);
+		break;
+	case bPmt:
+		rez = PMTYAverageLightColl(x);
+		break;
+	default:
+		rez = 1.0;
+	}
+	return rez;
+}
+
 //	float energy - measured energy
 //	float dist - distance from zero coordinate
 //	return corrected energy
 //	simulate "neutron" correction for MC events
-float acorr(float energy, float dist, char side = 'Y')
+float acorr(float energy, float dist, char side = 'Y', int type = bSiPm)
 {
 	float C, XY;
 
 	if (dist >= 0) {
-		C = exp((dist - 48.0) / AttenuationLength);	// 48 cm is the effective middle
+//		C = exp((dist - 48.0) / AttenuationLength);	// 48 cm is the effective middle
+		C = 1.0 / YAverageLightColl(dist, type);
 	} else if (IsMc && (iFlags & FLG_SIMLONGCORR)) {
 		XY = (side == 'X') ? DanssMc.X[1] : DanssMc.X[0];
+		XY -= 2;
 		dist = Random->Gaus(XY, MCNEUTRONSIGGMA);
 		if (dist < 0) dist = 0;
-		if (dist > 100) dist = 100;
-		C = exp((dist - 50.0) / AttenuationLength);	// 50 cm is the middle for McTruth
+		if (dist > 96) dist = 96;
+		C = 1.0 / YAverageLightColl(dist, type);
 	} else {
 		C = 1;
 	}
@@ -277,9 +316,9 @@ void CalculatePositron(ReadDigiDataUser *user)
 //	Step 1: Count SiPM
 	for (i=0; i<N; i++) if (HitFlag[i] >= 10) {
 		if (user->side(i) == 'X') {
-			DanssEvent.PositronSiPmEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X');
+			DanssEvent.PositronSiPmEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X', bSiPm);
 		} else {
-			DanssEvent.PositronSiPmEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y');
+			DanssEvent.PositronSiPmEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bSiPm);
 		}
 	}
 //	Step 2: Count PMT
@@ -288,9 +327,9 @@ void CalculatePositron(ReadDigiDataUser *user)
 		if (j >= N) continue;
 		HitFlag[i] = 5;
 		if (user->side(i) == 'X') {
-			DanssEvent.PositronPmtEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X');
+			DanssEvent.PositronPmtEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X', bPmt);
 		} else {
-			DanssEvent.PositronPmtEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y');
+			DanssEvent.PositronPmtEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bPmt);
 		}
 	}
 //	Step 3: Subtract gammas in PMT
@@ -298,9 +337,9 @@ void CalculatePositron(ReadDigiDataUser *user)
 		for (j=0; j<N; j++) if (IsInModule(i, j, user) && HitFlag[j] == 5) break;
 		if (j >= N) continue;
 		if (user->side(i) == 'X') {
-			DanssEvent.PositronPmtEnergy -= acorr(user->e(i), DanssEvent.PositronX[1], 'X');
+			DanssEvent.PositronPmtEnergy -= acorr(user->e(i), DanssEvent.PositronX[1], 'X', bSiPm);
 		} else {
-			DanssEvent.PositronPmtEnergy -= acorr(user->e(i), DanssEvent.PositronX[0], 'Y');
+			DanssEvent.PositronPmtEnergy -= acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bSiPm);
 		}
 	}
 	DanssEvent.PositronEnergy = DanssEvent.PositronSiPmEnergy + DanssEvent.PositronPmtEnergy;
@@ -309,9 +348,9 @@ void CalculatePositron(ReadDigiDataUser *user)
 //	Calculate Total energy with longitudinal correction
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && (user->type(i) == bPmt || user->type(i) == bSiPm)) {
 		if (user->side(i) == 'X') {
-			DanssEvent.TotalEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X');
+			DanssEvent.TotalEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X', user->type(i));
 		} else {
-			DanssEvent.TotalEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y');
+			DanssEvent.TotalEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y', user->type(i));
 		}
 	}
 	DanssEvent.TotalEnergy /= 2;	// PMT + SiPM
@@ -650,6 +689,10 @@ void FindFineTime(ReadDigiDataUser *user)
 		}
 	}
 	DanssEvent.fineTime = (asum > 0) ? tsum / asum : NOFINETIME;	// some large number if not usable hits found
+#ifndef DIGI_V2
+		if (DanssEvent.trigType == masterTrgRandom) DanssEvent.fineTime = 200;	// some fixed good time
+#endif
+
 	if (k > 1 && (iFlags & FLG_DTHIST)) for (i=0; i<N; i++) 
 		if (HitFlag[i] >= 0 && !(user->type(i) == bSiPm && user->npix(i) < MINSIPMPIXELS2) && user->e(i) > MINENERGY4TIME && user->t_raw(i) > 0) 
 		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - DanssEvent.fineTime);
@@ -695,6 +738,7 @@ void SumClean(ReadDigiDataUser *user)
 	case bSiPm:
 		DanssEvent.SiPmCleanHits++;
 		DanssEvent.SiPmCleanEnergy += user->e(i);
+		if (user->zCoord(i) < NBOTTOMLAYERS) DanssEvent.BottomLayersEnergy += user->e(i);
 //		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
 		break;
 	case bPmt:
@@ -916,12 +960,13 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 //		Common parameters
 			"globalTime/L:"		// time in terms of 125 MHz
 			"number/L:"		// event number in the file
-			"runNumber/I:"		// the run number
 			"unixTime/I:"		// linux time, seconds
 			"fineTime/F:"		// fine time of the event (for hit selection)
+			"trigType/I:"		// trigger type.
 //		Veto parameters
 			"VetoCleanHits/I:"	// hits above threshold and in time window
 			"VetoCleanEnergy/F:"	// Energy Sum of clean hits
+			"BottomLayersEnergy/F:"	// Energy in 2 bottom layers - additional veto event signature
 //		PMT parameters
 			"PmtCleanHits/I:"
 			"PmtCleanEnergy/F:"
@@ -943,7 +988,6 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			"MinPositron2GammaZ/F:"	// Z-distance to the closest gamma
 //		"neutron" parameters
 			"NeutronX[3]/F:"	// center of gammas position
-//		"NeutronRadius/F"	// average distance between hits and the center
 			"NHits/I"		// Number of hits
 		);
 		OutputTree->Branch("HitE", HitArray.E, "HitE[NHits]/F");
@@ -999,7 +1043,7 @@ int ReadDigiDataUser::processUserEvent()
   	if( ttype() != 1 ) return 0;
 	
 	memset(HitFlag, 0, nhits() * sizeof(int));
-	memset(&DanssEvent, 0, sizeof(struct DanssEventStruct6));
+	memset(&DanssEvent, 0, sizeof(struct DanssEventStruct7));
 	memset(&DanssExtra, 0, sizeof(struct DanssExtraStruct));
 
 	DanssInfo.stopTime = absTime();
@@ -1014,9 +1058,12 @@ int ReadDigiDataUser::processUserEvent()
 	if (globalTimeWrapped) DanssEvent.globalTime += (1L<<45);
 	fileLastTime = globalTime();
 	DanssEvent.number     = nevt();
-	DanssEvent.runNumber  = runnumber();
 	DanssEvent.unixTime   = absTime();
-
+#ifdef DIGI_V2
+	DanssEvent.trigType = -1;
+#else
+	DanssEvent.trigType = masterTriggerType();
+#endif
 	if (IsMc) mcTruth(DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
 
 	CleanZeroes(this);
@@ -1036,7 +1083,11 @@ int ReadDigiDataUser::processUserEvent()
 		return -1;
 	}
 
-  	if ((DanssEvent.SiPmCleanHits > 0 && DanssEvent.PmtCleanHits > 0) || DanssEvent.VetoCleanHits > 0) {	// remove pure pickup noise
+  	if ((DanssEvent.SiPmCleanHits > 0 && DanssEvent.PmtCleanHits > 0) || DanssEvent.VetoCleanHits > 0
+#ifndef DIGI_V2
+		|| DanssEvent.trigType == masterTrgRandom
+#endif
+  	) {	// remove pure pickup noise
 		iNevtTotal++;
 		DanssInfo.events++;
 		if (OutputTree) OutputTree->Fill();

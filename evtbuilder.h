@@ -247,7 +247,7 @@ struct DanssEventStruct6 {
 	int		SiPmEarlyHits;		// to understand random background
 	float		SiPmEarlyEnergy;
 //		"positron cluster" parameters
-	int		PositronHits;		// hits in the cluster
+	int		PositronHits;		// SiPm hits in the cluster
 	float		PositronEnergy;		// Energy sum of the cluster, corrected (SiPM+PMT)
 	float		TotalEnergy;		// Event full energy correctd (SiPM+PMT)
 	float		PositronSiPmEnergy;	// SiPM energy in the cluster, corrected
@@ -260,6 +260,41 @@ struct DanssEventStruct6 {
 //		"neutron" parameters
 	float		NeutronX[3];		// center of gammas position
 //	float		NeutronRadius;		// average distance between hits and the center
+	int		NHits;			// Number of hits
+};
+
+struct DanssEventStruct7 {
+//		Common parameters
+	long long	globalTime;		// time in terms of 125 MHz
+	long long	number;			// event number in the file
+	int		unixTime;		// linux time, seconds
+	float		fineTime;		// fine time of the event (for hit selection)
+	int		trigType;		// type of the trigger
+//		Veto parameters
+	int		VetoCleanHits;		// hits above threshold and in time window
+	float		VetoCleanEnergy;	// Energy Sum of clean hits
+	float		BottomLayersEnergy;	// Energy in the two bottom SiPM layers to be used in Veto
+//		PMT parameters
+	int		PmtCleanHits;
+	float		PmtCleanEnergy;
+//		SiPM parameters
+	int		SiPmCleanHits;
+	float		SiPmCleanEnergy;
+	int		SiPmEarlyHits;		// to understand random background
+	float		SiPmEarlyEnergy;
+//		"positron cluster" parameters
+	int		PositronHits;		// SiPm hits in the cluster
+	float		PositronEnergy;		// Energy sum of the cluster, longitudinally corrected (SiPM+PMT)
+	float		TotalEnergy;		// Event full energy  longitudinally correctd (SiPM+PMT)
+	float		PositronSiPmEnergy;	// SiPM energy in the  longitudinally cluster, corrected
+	float		PositronPmtEnergy;	// PMT energy in the  longitudinally cluster, corrected
+	float		PositronX[3];		// cluster position
+	int		AnnihilationGammas;	// number of possible annihilation gammas
+	float		AnnihilationEnergy;	// Energy in annihilation gammas
+	float		AnnihilationMax;	// Energy in the maximum annihilation hit
+	float		MinPositron2GammaZ;	// Z-distance to the closest gamma
+//		"neutron" parameters
+	float		NeutronX[3];		// center of gammas position
 	int		NHits;			// Number of hits
 };
 

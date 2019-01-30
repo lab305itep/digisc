@@ -216,9 +216,9 @@ void SetCriteria(void)
 	ptr = getenv("PROTONENERGY");
 	if (ptr) Criteria.ProtonEnergy = strtod(ptr, NULL);
 	
-	printf("Criteria.TimeWindow = %f us; Criteria.MuonEnergy = %f MeV; Criteria.ClusterEnergy = %f MeV; Criteria.ProtonEnergy = %f MeV\n",
+	printf("TimeWindow = %f us; MuonEnergy = %f MeV; ClusterEnergy = %f MeV; ProtonEnergy = %f MeV\n",
 		Criteria.TimeWindow, Criteria.MuonEnergy, Criteria.ClusterEnergy, Criteria.ProtonEnergy);
-	printf("Criteria.VetoEnergy = %f MeV; Criteria.CheckHits = %d; Criteria.ExtraEnergy = %f MeV\n",
+	printf("VetoEnergy = %f MeV; CheckHits = %d; ExtraEnergy = %f MeV\n",
 		Criteria.VetoEnergy, Criteria.CheckHits, Criteria.ExtraEnergy);
 }
 
