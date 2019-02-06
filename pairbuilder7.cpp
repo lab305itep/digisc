@@ -47,6 +47,7 @@
 #define MINVETOE	4.0	// MeV
 #define VETON		2	// number of hits
 #define DANSSVETOE	20.0	// Make veto if VETO counters are silent from Pmt or SiPM
+#define BOTTOMVETOE	3.0	// Make veto from 2 bottom strip layers
 #define RSHIFT		5000.0	// us
 #define NRANDOM		16	// increase random statistics
 #define ATTENUATION	0.00342	// Signal attenuation for positron energy correction
@@ -66,19 +67,43 @@ struct HitStruct {
 	struct HitTypeStruct 	type[iMaxDataElements];
 };
 
+double PMTYAverageLightColl(double x)
+{
+    //<func(x)=1>
+	const double FuncAverage = 1.00147;
+	double rez;
+	rez = (0.987387*exp(-0.0016*(x-48)) + 0.023973*exp(-0.0877*(x-48)) - 0.0113581*exp(-0.1042*(x-48))
+	        -2.30972E-6*exp(0.2214*(x-48))) / FuncAverage;
+	return rez;
+}
+
+double SiPMYAverageLightColl(double x)
+{
+    //<func(x)=1>
+	const double FuncAverage = 1.02208;
+	double rez;
+	rez = (0.00577381*exp(-0.1823*(x-48)) + 0.999583*exp(-0.0024*(x-48)) - 8.095E-13*exp(0.5205*(x-48))
+	        -0.00535714*exp(-0.1838*(x-48))) / FuncAverage;
+	return rez;
+}
+
 //	Correction based on the neutron position if this was not done before based on the positron position
-void acorr(struct DanssPairStruct7 *DanssPair) {
-	double C;
+void NeutronCorr(struct DanssPairStruct7 *DanssPair) 
+{
+	double CSiPm, CPmt;
 	if (DanssPair->PositronX[0] < 0 && DanssPair->NeutronX[0] >= 0) {
-		C = exp(ATTENUATION * (DanssPair->NeutronX[0] - 48.0));
+		CSiPm = SiPMYAverageLightColl(DanssPair->NeutronX[0]);
+		CPmt = PMTYAverageLightColl(DanssPair->NeutronX[0]);
 	} else if (DanssPair->PositronX[1] < 0 && DanssPair->NeutronX[1] >= 0) {
-		C = exp(ATTENUATION * (DanssPair->NeutronX[1] - 48.0));
+		CSiPm = SiPMYAverageLightColl(DanssPair->NeutronX[1]);
+		CPmt = PMTYAverageLightColl(DanssPair->NeutronX[1]);
 	} else {
-		C = 1.0;
+		CSiPm = 1.0;
+		CPmt = 1.0;
 	}
-	DanssPair->PositronEnergy *= C;
-	DanssPair->PositronSiPmEnergy *= C;
-	DanssPair->PositronPmtEnergy *= C;
+	DanssPair->PositronEnergy *= (CSiPm + CPmt) / 2;
+	DanssPair->PositronSiPmEnergy *= CSiPm;
+	DanssPair->PositronPmtEnergy *= CPmt;
 }
 
 void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
@@ -88,7 +113,7 @@ void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
 	memcpy(to->type, from->type, N * sizeof(struct HitTypeStruct));
 }
 
-int IsNeutron(struct DanssEventStruct6 *DanssEvent)
+int IsNeutron(struct DanssEventStruct7 *DanssEvent)
 {
 	float E;
 	int rc;
@@ -99,7 +124,7 @@ int IsNeutron(struct DanssEventStruct6 *DanssEvent)
 	return rc;
 }
 
-int IsPositron(struct DanssEventStruct6 *DanssEvent)
+int IsPositron(struct DanssEventStruct7 *DanssEvent)
 {
 	float E;
 	int rc;
@@ -110,23 +135,25 @@ int IsPositron(struct DanssEventStruct6 *DanssEvent)
 	return rc;
 }
 
-int IsVeto(struct DanssEventStruct6 *Event)
+int IsVeto(struct DanssEventStruct7 *Event)
 {
-	if (Event->VetoCleanEnergy > MINVETOE || Event->VetoCleanHits >= VETON || Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 2*DANSSVETOE) return 1;
+	if (Event->VetoCleanEnergy > MINVETOE || Event->VetoCleanHits >= VETON || 
+		Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 2*DANSSVETOE ||
+		Event->BottomLayersEnergy > BOTTOMVETOE) return 1;
 	return 0;
 }
 
-int IsShower(struct DanssEventStruct6 *Event)
+int IsShower(struct DanssEventStruct7 *Event)
 {
 	if (Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 2*SHOWERMIN) return 1;
 	return 0;
 }
 
 void MakePair(
-    struct DanssEventStruct6 *DanssEvent,	// Neutron
-    struct DanssEventStruct6 *SavedEvent,	// Positron
-    struct DanssEventStruct6 *VetoEvent, 	// Veto
-    struct DanssEventStruct6 *ShowerEvent, 	// Shower
+    struct DanssEventStruct7 *DanssEvent,	// Neutron
+    struct DanssEventStruct7 *SavedEvent,	// Positron
+    struct DanssEventStruct7 *VetoEvent, 	// Veto
+    struct DanssEventStruct7 *ShowerEvent, 	// Shower
     struct DanssPairStruct7 *DanssPair)
 {
 	double tmp;
@@ -139,7 +166,7 @@ void MakePair(
 	DanssPair->globalTime[0] = SavedEvent->globalTime;
 	DanssPair->globalTime[1] = DanssEvent->globalTime;
 	DanssPair->unixTime = DanssEvent->unixTime;
-	DanssPair->runNumber = DanssEvent->runNumber;
+//	DanssPair->runNumber = DanssEvent->runNumber;
 	DanssPair->SiPmCleanEnergy[0] = SavedEvent->SiPmCleanEnergy;
 	DanssPair->PmtCleanEnergy[0] = SavedEvent->PmtCleanEnergy;
 	DanssPair->SiPmCleanEnergy[1] = DanssEvent->SiPmCleanEnergy;
@@ -178,7 +205,7 @@ void MakePair(
 	DanssPair->NNHits = DanssEvent->NHits;
 	DanssPair->NPHits = SavedEvent->NHits;
 	
-	acorr(DanssPair);		// correct positron energy based on neutron position if only one coordinate of positron cluster is available
+	NeutronCorr(DanssPair);		// correct positron energy based on neutron position if only one coordinate of positron cluster is available
 	DanssPair->PositronEnergy = (DanssPair->PositronEnergy - CORR_P0) / CORR_P1;
 	DanssPair->PositronPmtEnergy = (DanssPair->PositronPmtEnergy - CORR_PMT_P0) / CORR_PMT_P1;
 	DanssPair->PositronSiPmEnergy = (DanssPair->PositronSiPmEnergy - CORR_SIPM_P0) / CORR_SIPM_P1;
@@ -190,7 +217,7 @@ int main(int argc, char **argv)
 		"number[2]/L:"		// event numbers in the file
 		"globalTime[2]/L:"	// global times
 		"unixTime/I:"		// linux time, seconds
-		"runNumber/I:"		// run number
+//		"runNumber/I:"		// run number
 		"SiPmCleanEnergy[2]/F:"	// Full Clean energy SiPm
 		"PmtCleanEnergy[2]/F:"	// Full Clean energy Pmt
 //		"positron cluster" parameters
@@ -230,11 +257,11 @@ int main(int argc, char **argv)
 		"NNHits/I";		// Number of hits in "neutron event"
 	
 	struct DanssPairStruct7		DanssPair;
-	struct DanssEventStruct6	DanssEvent;
-	struct DanssEventStruct6	Neutron;
-	struct DanssEventStruct6	Positron;
-	struct DanssEventStruct6	Veto;
-	struct DanssEventStruct6	Shower;
+	struct DanssEventStruct7	DanssEvent;
+	struct DanssEventStruct7	Neutron;
+	struct DanssEventStruct7	Positron;
+	struct DanssEventStruct7	Veto;
+	struct DanssEventStruct7	Shower;
 	struct DanssInfoStruct4		DanssInfo;
 	struct DanssInfoStruct		SumInfo;
 	struct HitStruct 		HitArray[3];	// 0 - positron, 1 - neutron, 2 - place for input
@@ -338,15 +365,15 @@ int main(int argc, char **argv)
 	for (iEvt =0; iEvt < nEvt; iEvt++) {
 		EventChain->GetEntry(iEvt);
 //	Shower	
-		if (IsShower(&DanssEvent)) memcpy(&Shower, &DanssEvent, sizeof(struct DanssEventStruct6));
+		if (IsShower(&DanssEvent)) memcpy(&Shower, &DanssEvent, sizeof(struct DanssEventStruct7));
 //	Veto
 		if (IsVeto(&DanssEvent)) {
-			memcpy(&Veto, &DanssEvent, sizeof(struct DanssEventStruct6));
+			memcpy(&Veto, &DanssEvent, sizeof(struct DanssEventStruct7));
 			continue;
 		}
 //	Get Neutron
 		if (IsNeutron(&DanssEvent)) {
-			memcpy(&Neutron, &DanssEvent, sizeof(struct DanssEventStruct6));
+			memcpy(&Neutron, &DanssEvent, sizeof(struct DanssEventStruct7));
 			CopyHits(&HitArray[1], &HitArray[2], DanssEvent.NHits);
 			for (iLoop = 0; iLoop <= NRANDOM; iLoop++) {
 				tShift = iLoop * RSHIFT;
@@ -360,7 +387,7 @@ int main(int argc, char **argv)
 				if (Neutron.globalTime - DanssEvent.globalTime < 0) break;
 //	less than 50 us from neutron
 				if (Neutron.globalTime - DanssEvent.globalTime < (MAXTDIFF + tShift) * GFREQ2US && i >= 0) {
-					memcpy(&Positron, &DanssEvent, sizeof(struct DanssEventStruct6));
+					memcpy(&Positron, &DanssEvent, sizeof(struct DanssEventStruct7));
 					CopyHits(&HitArray[0], &HitArray[2], DanssEvent.NHits);
 					Positron.globalTime += tShift * GFREQ2US;	// assume it here !!!
 					MakePair(&Neutron, &Positron, &Veto, &Shower, &DanssPair);

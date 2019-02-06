@@ -555,7 +555,7 @@ struct DanssPairStruct7 {
 	long long	number[2];		// event numbers in the file
 	long long	globalTime[2];		// event times
 	int		unixTime;		// linux time, seconds
-	int		runNumber;		// the run number
+//	int		runNumber;		// the run number
 	float		SiPmCleanEnergy[2];	// Full Clean energy SiPm
 	float		PmtCleanEnergy[2];	// Full Clean energy Pmt
 //		"positron cluster" parameters
@@ -580,6 +580,52 @@ struct DanssPairStruct7 {
 //		Environment
 	float		gtFromPrevious;		// time from the previous hit before positron, us
 	float		PreviousEnergy;		// energy of the previous event
+	float		gtToNext;		// time to the next hit after neutron, counted from positron, us
+	float		NextEnergy;		// energy of the next event
+	int		EventsBetween;		// Events between positron and neutron
+//		Veto
+	float		gtFromVeto;		// time from the last Veto event
+	int		VetoHits;		// hits in Veto counters
+	float		VetoEnergy;		// Energy in Veto counters
+	float		DanssEnergy;		// Veto Energy in Danss (Pmt + SiPm)/2
+	float		gtFromShower;		// time from large energy shower in DANSS
+	float		ShowerEnergy;		// shower event energy in DANSS (Pmt + SiPm)/2
+//		Hits
+	int		NPHits;			// Number of hits in "positron event"
+	int		NNHits;			// Number of hits in "neutron event"
+};
+
+struct DanssPairStruct8 {
+//		Common parameters
+	long long	number[2];		// event numbers in the file
+	long long	globalTime[2];		// event times
+	int		unixTime;		// linux time, seconds
+	float		SiPmCleanEnergy[2];	// Full Clean energy SiPm
+	float		PmtCleanEnergy[2];	// Full Clean energy Pmt
+//		"positron cluster" parameters
+	int		PositronHits;		// hits in the cluster
+	float		PositronEnergy;		// Energy sum of the cluster (SiPM)
+	float		TotalEnergy;		// Energy of the maximum hit (SiPM)
+	float		PositronSiPmEnergy;	// SiPM energy in the cluster, corrected
+	float		PositronPmtEnergy;	// PMT energy in the cluster, corrected
+	float		PositronX[3];		// cluster position
+	int		AnnihilationGammas;	// number of possible annihilation gammas
+	float		AnnihilationEnergy;	// Energy in annihilation gammas
+	float		AnnihilationMax;	// Energy in the maximum annihilation hit
+	float		MinPositron2GammaZ;	// Z-distance to the closest gamma
+//		"neutron" parameters
+	int		NeutronHits;		// number of hits considered as neutron capture gammas
+	float		NeutronEnergy;		// Energy sum of above (SiPM)
+	float		NeutronX[3];		// center of gammas position
+//		Pair parameters
+	float		gtDiff;			// time difference in us between positron and neutron
+	float		Distance;		// distance between neutron and positron, cm
+	float		DistanceZ;		// in Z, cm
+//		Environment
+	float		gtFromPreviousH;		// time from the previous Hard event before positron, us
+	float		PreviousEnergyH;		// energy of the previous Hard event
+	float		gtFromPreviousS;		// time from the previous hit before positron, us
+	float		PreviousEnergyS;		// energy of the previous event
 	float		gtToNext;		// time to the next hit after neutron, counted from positron, us
 	float		NextEnergy;		// energy of the next event
 	int		EventsBetween;		// Events between positron and neutron
