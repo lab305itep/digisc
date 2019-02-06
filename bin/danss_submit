@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+#	Create scripts and queue batches to run analysis
+#
+
+Usage()
+{
+	echo Usage: $1 program first_run last_run [queue [NCPU [\"exports\"]]]
+	echo Defaults: queue=mpi NCPU=500
+	echo If the last argument is present, additional export command is inserted into the script
+}
+
+#		Check parameters
+
+if (( $# < 3 )) ; then
+	Usage $0
+	exit
+fi
+
+PROGRAM=$1
+FIRST=$2
+LAST=$3
+QUEUE=${4:-mpi}
+NCPU=${5:-500}
+NF=$(($LAST-$FIRST+1))
+NB=$((($NF-1)/$NCPU+1))
+WD=`pwd`
+
+
+if (( $NF <= 0 )) ; then
+	echo Nothing to do: negative number of runs
+	exit 100
+fi
+
+if [ ! -x $PROGRAM ] ; then
+	echo Can not run $PROGRAM
+	exit 110
+fi
+
+#		Create & queue batch files
+
+for ((i=0; $i < $NB; i=$i+1 )) ; do
+	BBEGIN=$(($FIRST+$i*$NCPU))
+	BLAST=$(($BBEGIN+$NCPU-1))
+	if (( $BLAST > $LAST )) ; then
+		BLAST=$LAST
+	fi
+	TOGO=$(($BLAST-$BBEGIN+1))
+	name=${PROGRAM}_${BBEGIN}_${BLAST}
+	bfname=batch/${name}.sh
+	rm -f $bfname 2> /dev/null
+	echo "#!/bin/bash"							>  $bfname
+	echo "#PBS -N $name" 							>> $bfname
+	echo "#PBS -q $QUEUE"							>> $bfname
+	echo "#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/${name}.out"	>> $bfname
+	echo "#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/${name}.err"	>> $bfname
+	echo "#PBS -l nodes=$TOGO"						>> $bfname
+	echo "#PBS -l walltime=02:00:00"					>> $bfname
+	echo "cd $WD"								>> $bfname
+	echo ". /opt/fairsoft/bin/thisroot.sh"					>> $bfname
+	echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/fairsoft/lib/root:/opt/gcc-5.3/lib64"	>> $bfname
+#	echo "export DANSSRAWREC_HOME=/home/clusters/rrcmpi/alekseev/igor/digi_home"			>> $bfname
+	if [ x"$6" != "x" ] ; then
+		echo "export $6"						>> $bfname
+	fi
+	echo "mpirun --mca btl ^tcp $PROGRAM $BBEGIN"				>> $bfname
+	echo "exit 0"								>> $bfname
+	qsub -q $QUEUE -l nodes=$TOGO $bfname
+done
