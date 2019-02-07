@@ -21,6 +21,10 @@ int main(int argc, char *argv[])
 	char *suffix;
 	char *tdir;
 	char *tcalib;
+	char *runlist;
+	char *runnum;
+	FILE *rfile;
+	int i;
 	
 	t0 = time(NULL);
 //		Get our run number
@@ -34,6 +38,20 @@ int main(int argc, char *argv[])
 	fnum += serial;
 	tdir = getenv("DIGI_TARGETDIR");
 	if (!tdir) tdir = "root6n";
+	//		Check if run from list is required and get its number
+	runlist = getenv("DIGI_LIST");
+	if (runlist) {
+		rfile = fopen(runlist, "rt");
+		if (!rfile) {
+			fprintf(stderr, "Can not open the list file %s!\n", runlist);
+			goto fin;
+		}
+		for (i=0; i<fnum; i++) {
+			runnum = fgets(str, sizeof(str), rfile);
+			if (!runnum) goto fin;
+		}
+		fnum = strtol(str, NULL, 10);
+	}
 //		Try possible file names:
 //		V3
 	iver = 3;
