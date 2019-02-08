@@ -1,0 +1,69 @@
+#!/bin/bash
+
+. /opt/fairsoft/bin/thisroot.sh
+export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/opt/fairsoft/lib/root:/opt/gcc-5.3/lib64
+# export DANSSRAWREC_HOME=/home/clusters/rrcmpi/alekseev/igor/digi_home
+# BUILDER=./digi_evtbuilder6
+
+if [ "X"$1 == "X" ] ; then
+	echo "Usage ./$0 run_number|filename [flags] [root_dir] [other options]"
+	exit 10
+fi
+
+FN=$1
+FLAGS=${2:-"0x50002"}
+ROOT_DIR=${3:-"danss_root"}
+ARGS=""
+
+if [ $# -gt 3 ] ; then
+	shift 3
+	ARGS="$@"
+fi
+
+TMP=${FN//[0-9]/}
+if [ x${TMP}  != x ] ; then
+	RUN=$FN
+	LISTFILE=".mc.list"
+	echo $RUN > $LISTFILE
+	OUTFILE=$ROOT_DIR/`basename $RUN`
+	OUTFILE=${OUTFILE/.bz2/}
+	OUTFILE=${OUTFILE/.digi/.root}
+	export DANSSRAWREC_HOME=lib_v3.0
+	BUILDER=./digi_evtbuilder6_v3
+	$BUILDER -file $LISTFILE -output $OUTFILE -flag $FLAGS -mcdata -deadlist deadlist_12850.txt $ARGS 
+else
+	RUNNUMBER=`printf "%6.6d" $FN`
+#	Try V3 first:
+	RUN=digi_v3.0/${RUNNUMBER:0:3}xxx/danss_data_${RUNNUMBER}_phys.digi.bz2
+	if [ -f $RUN ] ; then
+		export DANSSRAWREC_HOME=lib_v3.0
+		BUILDER=./digi_evtbuilder6_v3
+	else 
+		RUN=digi_rad/${RUNNUMBER:0:3}xxx/danss_data_${RUNNUMBER}_phys.digi.bz2
+		if [ -f $RUN ] ; then
+			export DANSSRAWREC_HOME=lib_v3.0
+			BUILDER=./digi_evtbuilder6_v3
+		else 
+			RUN=digi_v2.1/${RUNNUMBER:0:3}xxx/danss_data_${RUNNUMBER}_phys_rawrec.digi.bz2
+			if [ -f $RUN ] ; then
+				export DANSSRAWREC_HOME=lib_v2.1
+				BUILDER=./digi_evtbuilder6_v2
+			else
+    				echo Run $RUNNUMBER not found $RUN
+				exit 10
+			fi
+		fi
+	fi
+
+	LISTFILE="${RUNNUMBER}.list"
+	echo $RUN > $LISTFILE
+	if [ $FN -lt 5469 ] ; then
+		TCALIB=tcalib_cmnew_ss-b.calib
+	else
+		TCALIB=tcalib_5512_ss-d.calib
+	fi
+	$BUILDER -no_hit_tables -file $LISTFILE -tcalib $TCALIB -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
+	
+fi
+
+rm $LISTFILE

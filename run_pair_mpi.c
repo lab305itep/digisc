@@ -27,8 +27,8 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	fnum += serial;
 //		check that file exists
-	sprintf(fin, "/home/clusters/rrcmpi/alekseev/igor/root6_dead/%3.3dxxx/danss_%6.6d.root", fnum/1000, fnum);
-	sprintf(fout, "/home/clusters/rrcmpi/alekseev/igor/pair7_dead/%3.3dxxx/pair_%6.6d.root", fnum/1000, fnum);
+	sprintf(fin, "/home/clusters/rrcmpi/alekseev/igor/root6n/%3.3dxxx/danss_%6.6d.root", fnum/1000, fnum);
+	sprintf(fout, "/home/clusters/rrcmpi/alekseev/igor/pair7n/%3.3dxxx/pair_%6.6d.root", fnum/1000, fnum);
 	irc = access(fin, R_OK);
 	if (irc) {
 		printf("Run %6.6d not found at %s\n", fnum, fin);

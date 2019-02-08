@@ -61,6 +61,13 @@ int main(int argc, char *argv[])
 	strcat(fname, ".bz2");
 	irc = access(fname, R_OK);
 	if (!irc) goto found;
+	iver = 3;
+	sprintf(fname, "digi_rad/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
+	irc = access(fname, R_OK);
+	if (!irc) goto found;
+	strcat(fname, ".bz2");
+	irc = access(fname, R_OK);
+	if (!irc) goto found;
 //		V2
 	iver = 2;
 	sprintf(fname, "digi_v2.1/%3.3dxxx/danss_data_%6.6d_phys_rawrec.digi", fnum/1000, fnum);

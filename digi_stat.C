@@ -3,8 +3,15 @@ void digi_statone(int num, const char *root_dir)
 	char fname[1024];
 	double tm;
 	char start[64], stop[64];
+	FILE *fff;
 	
 	sprintf(fname, "/home/clusters/rrcmpi/alekseev/igor/%s/%3.3dxxx/danss_%6.6d.root", root_dir, num/1000, num);
+	fff = fopen(fname, "rb");
+	if (!fff) {
+		printf("%d 0 file %s not found\n", num, fname);
+		return;
+	}
+	fclose(fff);
 	TFile *f = new TFile(fname);
 	if (!f->IsOpen()) {
 		printf("%d 0 file %s not found\n", num, fname);
@@ -34,9 +41,9 @@ void digi_statone(int num, const char *root_dir)
 
 	int N = evt->GetEntries();
 	
-	int veto = evt->GetEntries("VetoCleanHits > 1 || VetoCleanEnergy > 4 || PmtCleanEnergy + SiPmCleanEnergy > 40");
-	int vetoOnly = evt->GetEntries("(VetoCleanHits > 1 || VetoCleanEnergy > 4) && !(PmtCleanEnergy + SiPmCleanEnergy > 40)");
-	int danssOnly = evt->GetEntries("!(VetoCleanHits > 1 || VetoCleanEnergy > 4) && (PmtCleanEnergy + SiPmCleanEnergy > 40)");
+	int veto = evt->GetEntries("VetoCleanHits > 1 || VetoCleanEnergy > 4 || PmtCleanEnergy + SiPmCleanEnergy > 40 || BottomLayersEnergy > 3.0");
+	int vetoOnly = evt->GetEntries("(VetoCleanHits > 1 || VetoCleanEnergy > 4) && !(PmtCleanEnergy + SiPmCleanEnergy > 40 || BottomLayersEnergy > 3.0)");
+	int danssOnly = evt->GetEntries("!(VetoCleanHits > 1 || VetoCleanEnergy > 4) && PmtCleanEnergy + SiPmCleanEnergy > 40 && BottomLayersEnergy > 3.0");
 
 	int gt1MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 2");
 	int gt3MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 6");

@@ -50,13 +50,21 @@
 #define BOTTOMVETOE	3.0	// Make veto from 2 bottom strip layers
 #define RSHIFT		5000.0	// us
 #define NRANDOM		16	// increase random statistics
-#define ATTENUATION	0.00342	// Signal attenuation for positron energy correction
-#define CORR_P0		0.179	// Positron energy correction from MC
-#define CORR_P1		0.929	// Positron energy correction from MC
-#define CORR_PMT_P0	0.165	// Positron energy correction from MC
-#define CORR_PMT_P1	0.929	// Positron energy correction from MC
-#define CORR_SIPM_P0	0.187	// Positron energy correction from MC + 34 keV from SiPM to PMT comparison
-#define CORR_SIPM_P1	0.920	// Positron energy correction from MC
+//#define ATTENUATION	0.00342	// Signal attenuation for positron energy correction
+//	Old calibration
+//#define CORR_P0		0.179	// Positron energy correction from MC
+//#define CORR_P1		0.929	// Positron energy correction from MC
+//#define CORR_PMT_P0	0.165	// Positron energy correction from MC
+//#define CORR_PMT_P1	0.929	// Positron energy correction from MC
+//#define CORR_SIPM_P0	0.187	// Positron energy correction from MC + 34 keV from SiPM to PMT comparison
+//#define CORR_SIPM_P1	0.920	// Positron energy correction from MC
+//	New calibration
+#define CORR_P0		0.132	// Positron energy correction from MC 
+#define CORR_P1		0.977	// Positron energy correction from MC
+#define CORR_PMT_P0	0.122	// Positron energy correction from MC
+#define CORR_PMT_P1	0.948	// Positron energy correction from MC
+#define CORR_SIPM_P0	0.106	// Positron energy correction from MC
+#define CORR_SIPM_P1	0.998	// Positron energy correction from MC
 #define SHOWERMIN	800	// 800 MeV shower event threshold
 
 #define iMaxDataElements 3000
