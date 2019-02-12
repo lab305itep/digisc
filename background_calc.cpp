@@ -38,8 +38,8 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut cVeto("gtFromVeto > 60");
 	TCut cMuonA("gtFromVeto == 0");
 	TCut cMuonB("gtFromVeto > 0 && gtFromVeto <= 60");
-	TCut cIso("(gtFromPrevious > 45 && gtToNext > 80 && EventsBetween == 0) || (gtFromPrevious == gtFromVeto)");
-	TCut cShower("gtFromVeto > 200 || DanssEnergy < 300");
+	TCut cIso("((gtFromPrevious > 45  || gtFromPrevious == gtFromVeto) && gtToNext > 80 && EventsBetween == 0)");
+	TCut cShower("gtFromShower > 200 || ShowerEnergy < 800");
 	TCut cX("PositronX[0] < 0 || (PositronX[0] > 2 && PositronX[0] < 94)");
 	TCut cY("PositronX[1] < 0 || (PositronX[1] > 2 && PositronX[1] < 94)");
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");
@@ -50,9 +50,8 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
         TCut cPe("PositronEnergy > 1");
         TCut cR1("Distance < 45");
         TCut cR2("Distance < 55");
-//        TCut cRZ("fabs(DistanceZ) < 40");
         TCut cR = cR2 && (cRXY || cR1);
-        TCut cN("NeutronEnergy > 3.5");
+        TCut cN("NeutronEnergy > 3.5 && NeutronEnergy < 15.0 && NeutronHits >= 3");
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 2 || AnnihilationEnergy < 0.2 || MinPositron2GammaZ > 15))");
         TCut ct;
 	TCut cv[3];

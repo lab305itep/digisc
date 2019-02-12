@@ -15,6 +15,10 @@ int main(int argc, char *argv[])
 	int fnum;
 	time_t t0, t1;
 	int irc;
+	FILE *rfile;
+	char *runlist;
+	char *runnum;
+	int i;
 	
 	t0 = time(NULL);
 //		Get our run number
@@ -26,6 +30,21 @@ int main(int argc, char *argv[])
 	fnum = strtol(argv[1], NULL, 0);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	fnum += serial;
+	//		Check if run from list is required and get its number
+	runlist = getenv("PAIR_LIST");
+	if (runlist) {
+		rfile = fopen(runlist, "rt");
+		if (!rfile) {
+			fprintf(stderr, "Can not open the list file %s!\n", runlist);
+			goto fin;
+		}
+		for (i=0; i<fnum; i++) {
+			runnum = fgets(str, sizeof(str), rfile);
+			if (!runnum) goto fin;
+		}
+		fnum = strtol(str, NULL, 10);
+	}
+
 //		check that file exists
 	sprintf(fin, "/home/clusters/rrcmpi/alekseev/igor/root6n/%3.3dxxx/danss_%6.6d.root", fnum/1000, fnum);
 	sprintf(fout, "/home/clusters/rrcmpi/alekseev/igor/pair7n/%3.3dxxx/pair_%6.6d.root", fnum/1000, fnum);

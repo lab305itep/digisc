@@ -61,6 +61,7 @@ int main(int argc, char **argv)
 	char *patternA;
 	char *patternB;
 	int i, irc;
+	int Cnt[2];
 	
 	from = 1;
 	to = 100000;
@@ -74,11 +75,21 @@ int main(int argc, char **argv)
 	if (argc > 3) from = strtol(argv[3], NULL, 10);
 	if (argc > 4) to = strtol(argv[4], NULL, 10);
 	
+//	printf("%s[1] %s[2] %s[3] %s[4]\n", argv[1], argv[2], argv[3], argv[4]);
+//	return 100;
+	
+	Cnt[0] = Cnt[1] = 0;
 	for (i = from; i <= to; i++) {
 		irc = strcasecmp(patternA, "digi") ? checkroot(i, patternA) : checkdigi(i);
 		if (!irc) continue;
+		Cnt[0]++;
 		irc = checkroot(i, patternB);
-		if (!irc) printf("%d\n", i);
+		if (!irc) {
+			printf("%d\n", i);
+		} else {
+			Cnt[1]++;
+		}
 	}
+	printf("Checked: %d files; OK: %d files, range [%d - %d]\n", Cnt[0], Cnt[1], from, to);
 	return 0;
 }
