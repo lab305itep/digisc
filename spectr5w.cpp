@@ -9,6 +9,8 @@
 #include "HPainter2.h"
 
 #define NEBINS 128
+const char *NeutronCorrN = "0.004775-0.000245*x";
+const char *NeutronCorrC = "0.017361-0.000772*x";
 
 void make_cuts(TCut &cSig, TCut &cBgnd, TCut cAux)
 {
@@ -46,6 +48,8 @@ void spectr5(const char *name, int mask, int run_from, int run_to, double bgnd)
 	double bgScale;
 	char *ptr;
 	char fname[1024];
+	const char *pairdir = "/home/clusters/rrcmpi/alekseev/igor/pair7n/";
+	const char *outdir  = "/home/clusters/rrcmpi/alekseev/igor/period7n/";
 	
 //	Environment
 	nSect = 1;
@@ -59,22 +63,26 @@ void spectr5(const char *name, int mask, int run_from, int run_to, double bgnd)
 	cAux = (TCut)"";
 	ptr = getenv("SPECTR_AUXCUT");
 	if (ptr) cAux = (TCut)ptr;
+
+	ptr = getenv("PAIR_DIR");
+	if (ptr) pairdir = ptr;
+
+	ptr = getenv("OUT_DIR");
+	if (ptr) outdir = ptr;
 	
-	sprintf(fname, "/home/clusters/rrcmpi/alekseev/igor/period/%s.root", name);
+	sprintf(fname, "%s/%s.root", outdir, name);
 	TFile *fRoot = new TFile (fname, "RECREATE");
 	make_cuts(cSig, cBgnd, cAux);
 //		Background tail correction (mHz)
-//	TF1 fBgndN("fBgndN", "0.01370-0.00057*x", 0, 100);
-//	TF1 fBgndC("fBgndC", "0.06217-0.00288*x", 0, 100);
-	TF1 fBgndN("fBgndN", "0.01426-0.000613*x", 0, 100);
-	TF1 fBgndC("fBgndC", "0.07142-0.003486*x", 0, 100);
+	TF1 fBgndN("fBgndN", NeutronCorrN, 0, 100);
+	TF1 fBgndC("fBgndC", NeutronCorrC, 0, 100);
 
-	TH1D *hSig  = new TH1D("hSig",  "Positron spectrum;MeV;mHz/0.25 MeV", NEBINS, 0, 16);
-	TH1D *hBgnd = new TH1D("hCosm", "Positron spectrum;MeV;mHz/0.25 MeV", NEBINS, 0, 16);
-	TH1D *hRes  = new TH1D("hRes",  "Positron spectrum;MeV;mHz/0.25 MeV", NEBINS, 0, 16);
+	TH1D *hSig  = new TH1D("hSig",  "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
+	TH1D *hBgnd = new TH1D("hCosm", "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
+	TH1D *hRes  = new TH1D("hRes",  "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
 	TH1D *hConst = new TH1D("hConst", "Various period parameters", 10, 0, 10);
 	
-	HPainter2 *ptr2 = new HPainter2(mask, run_from, run_to, "/home/clusters/rrcmpi/alekseev/igor/pair7/");
+	HPainter2 *ptr2 = new HPainter2(mask, run_from, run_to, pairdir);
 	ptr2->SetFile(fRoot);
 	ptr2->Project(hSig,  "PositronEnergy", cSig);
 	ptr2->Project(hBgnd, "PositronEnergy", cBgnd);

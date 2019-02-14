@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 //		The run itself
-	sprintf(str, "/home/itep/alekseev/igor/spectr5w %d", serial + begin);
+	sprintf(str, "./spectr5w %d", serial + begin);
 	irc = system(str);
 	if (irc) printf("Period %d: error %d returned: %m\n", serial + begin, irc);
 //		time and print

@@ -41,20 +41,21 @@
 #define AFTERTRIG	(long long) (45 * GFREQ2US)
 #define BEFORETRIG	(long long) (80 * GFREQ2US)
 
-int IsVeto(struct DanssEventStruct6 *Event)
+int IsVeto(struct DanssEventStruct7 *Event)
 {
-	if (Event->VetoCleanEnergy > 4 || Event->VetoCleanHits >= 2 || Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 40) return 1;
+	if (Event->VetoCleanEnergy > 4 || Event->VetoCleanHits >= 2 || 
+		Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 40 || 
+		Event->BottomLayersEnergy > 3) return 1;
 	return 0;
 }
 
 void process(int run, const char *fmt, FILE *fOut)
 {
-	struct DanssEventStruct6 DanssEvent;
+	struct DanssEventStruct7 DanssEvent;
 	TChain *EventChain;
 	long long GlobalFirst;
 	long long LiveCnt;
 	long long PrevEnd;
-	int PrevIsVeto;
 	long long Delta;
 	int iEvt, nEvt;
 	double RunTime;
@@ -74,16 +75,14 @@ void process(int run, const char *fmt, FILE *fOut)
 	if (!nEvt) return;
 	EventChain->GetEntry(0);
 	GlobalFirst = DanssEvent.globalTime;
-	PrevIsVeto = IsVeto(&DanssEvent);
-	PrevEnd = DanssEvent.globalTime + ((PrevIsVeto) ? AFTERVETO : AFTERTRIG);
+	PrevEnd = DanssEvent.globalTime + ((IsVeto(&DanssEvent)) ? AFTERVETO : AFTERTRIG);
 	
 	for (iEvt = 1; iEvt < nEvt; iEvt++) {
 		EventChain->GetEntry(iEvt);
 		Delta = DanssEvent.globalTime - PrevEnd;
-		if (!PrevIsVeto) Delta -= BEFORETRIG;
+		Delta -= BEFORETRIG;
 		if (Delta > 0) LiveCnt += Delta;
-		PrevIsVeto = IsVeto(&DanssEvent);
-		PrevEnd = DanssEvent.globalTime + ((PrevIsVeto) ? AFTERVETO : AFTERTRIG);
+		PrevEnd = DanssEvent.globalTime + ((IsVeto(&DanssEvent))? AFTERVETO : AFTERTRIG);
 	}
 	
 	RunTime = (DanssEvent.globalTime - GlobalFirst) / GLOBALFREQ;
@@ -108,7 +107,7 @@ int main(int argc, char **argv)
 	
 	first = strtol(argv[1], NULL, 10);
 	last = strtol(argv[2], NULL, 10);
-	sprintf(fmt, "dead_%d_%d.txt", first, last);
+	sprintf(fmt, "dead_%6.6d_%6.6d.txt", first, last);
 	fOut = fopen(fmt, "wt");
 	if (!fOut) return 20;
 	sprintf(fmt, "%s/%%3.3dxxx/danss_%%6.6d.root", argv[3]);

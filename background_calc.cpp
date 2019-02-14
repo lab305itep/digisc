@@ -117,7 +117,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		}
 	}
 
-	HPainter2 *hp = new HPainter2(0x801E, run_first, run_last, "/home/clusters/rrcmpi/alekseev/igor/pair7");
+	HPainter2 *hp = new HPainter2(0x801E, run_first, run_last, "/home/clusters/rrcmpi/alekseev/igor/pair7n");
 	if (hp->GetUpTime() < 10) {
 		printf("%d - %d: no runs !\n", run_first, run_last);
 		fRoot->Close();

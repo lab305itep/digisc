@@ -42,14 +42,14 @@ void digi_statone(int num, const char *root_dir)
 	int N = evt->GetEntries();
 	
 	int veto = evt->GetEntries("VetoCleanHits > 1 || VetoCleanEnergy > 4 || PmtCleanEnergy + SiPmCleanEnergy > 40 || BottomLayersEnergy > 3.0");
-	int vetoOnly = evt->GetEntries("(VetoCleanHits > 1 || VetoCleanEnergy > 4) && !(PmtCleanEnergy + SiPmCleanEnergy > 40 || BottomLayersEnergy > 3.0)");
-	int danssOnly = evt->GetEntries("!(VetoCleanHits > 1 || VetoCleanEnergy > 4) && PmtCleanEnergy + SiPmCleanEnergy > 40 && BottomLayersEnergy > 3.0");
+	int vetoOnly = evt->GetEntries("(VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0) && !(PmtCleanEnergy + SiPmCleanEnergy > 40)");
+	int danssOnly = evt->GetEntries("!(VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0) && PmtCleanEnergy + SiPmCleanEnergy > 40");
 
 	int gt1MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 2");
 	int gt3MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 6");
 	int gt20MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 40");
 	int positrons = evt->GetEntries("PositronEnergy > 1 && PositronEnergy < 8");
-	int neutrons = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 6 && PmtCleanEnergy + SiPmCleanEnergy < 20 && SiPmCleanHits > 2");
+	int neutrons = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 6 && PmtCleanEnergy + SiPmCleanEnergy < 30 && SiPmCleanHits > 2");
 //	
 	strftime(start, sizeof(start), "%F %R", localtime(&tStart));
 	strftime(stop , sizeof(stop) , "%R", localtime(&tStop));

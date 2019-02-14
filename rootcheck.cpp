@@ -44,6 +44,25 @@ int checkroot(int fnum, const char *pattern)
 	return true;
 }
 
+int checkroot(const char *rname, const char *pattern)
+{
+	int irc;
+	char fname[1024];
+	TFile *f;
+	
+	sprintf(fname, pattern, rname);
+	irc = access(fname, R_OK);
+	if (irc) return false;
+	f = new TFile(fname);
+	if (f->IsZombie()) return false;
+	if (!f->GetNkeys()) {
+		f->Close();
+		return false;
+	}
+	f->Close();
+	return true;
+}
+
 void Usage(void)
 {
 	printf("Check validity of root files and print invalid or absent run numbers\n");
@@ -51,12 +70,15 @@ void Usage(void)
 }
 
 //	Check validity of root files and print invalid or absent run numbers
-//	argv[1] - patternA - reference file name pattern like "root6n/%3.3dxxx/danss_%6.6d.root". Could be "digi" to compare to digi set
+//	argv[1] - patternA - reference file name pattern like "root6n/%3.3dxxx/danss_%6.6d.root". 
+//		Could be "digi" to compare to digi set
+//		Could be pos to check against positions.h
 //	argv[2] - patternB - to be checked
 //	[argv[3] - from - (1-100000) range assumed
 //	argv[4]] - to
 int main(int argc, char **argv)
 {
+#include "positions.h"
 	int from, to;
 	char *patternA;
 	char *patternB;
@@ -79,15 +101,28 @@ int main(int argc, char **argv)
 //	return 100;
 	
 	Cnt[0] = Cnt[1] = 0;
-	for (i = from; i <= to; i++) {
-		irc = strcasecmp(patternA, "digi") ? checkroot(i, patternA) : checkdigi(i);
-		if (!irc) continue;
-		Cnt[0]++;
-		irc = checkroot(i, patternB);
-		if (!irc) {
-			printf("%d\n", i);
-		} else {
-			Cnt[1]++;
+	if (strcasecmp(patternA, "pos")) {
+		for (i = from; i <= to; i++) {
+			irc = strcasecmp(patternA, "digi") ? checkroot(i, patternA) : checkdigi(i);
+			if (!irc) continue;
+			Cnt[0]++;
+			irc = checkroot(i, patternB);
+			if (!irc) {
+				printf("%d\n", i);
+			} else {
+				Cnt[1]++;
+			}
+		}
+	} else {
+		for (i = from; i <= to; i++) {
+			if (i < 1 || i > sizeof(positions) / sizeof(positions[0])) continue;
+			Cnt[0]++;
+			irc = checkroot(positions[i-1].name, patternB);
+			if (!irc) {
+				printf("%d\n", i);
+			} else {
+				Cnt[1]++;
+			}
 		}
 	}
 	printf("Checked: %d files; OK: %d files, range [%d - %d]\n", Cnt[0], Cnt[1], from, to);

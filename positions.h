@@ -1,4 +1,4 @@
-	const struct {
+	const struct PositionsStruct {
 		char name[32];
 		int first;
 		int last;
@@ -315,5 +315,4 @@
 		{ "down_02.11.18",   50131, 50398, 4, 0.025},	// files 50399-50524 are absent
 		{ "down_14.11.18",   50525, 51320, 4, 0.025}	// rad sources also inside.
 	};
-	const char periods[][30] = {"April-June 16", "October 16 - July 17", 
-		"August 17 - March 18", "May 18 - January 98"};
+	const char periods[][30] = {"April-June 16", "October 16 - July 17", "August 17 - March 18", "May 18 - January 98"};
