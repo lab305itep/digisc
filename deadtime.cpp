@@ -49,6 +49,12 @@ int IsVeto(struct DanssEventStruct7 *Event)
 	return 0;
 }
 
+int IsPickUp(struct DanssEventStruct7 *Event)
+{
+	if (Event->PmtCleanEnergy/Event->SiPmCleanEnergy < 0.4 && Event->SiPmHits > 60) return 1;
+	return 0;
+}
+
 void process(int run, const char *fmt, FILE *fOut)
 {
 	struct DanssEventStruct7 DanssEvent;
@@ -64,9 +70,11 @@ void process(int run, const char *fmt, FILE *fOut)
 	char str[1024];
 	int irc;
 
+	sprintf(str, fmt, run/1000, run);
+	irc = access(str, R_OK);
+	if (irc) return;	// no file
 	EventChain = new TChain("DanssEvent");
 	EventChain->SetBranchAddress("Data", &DanssEvent);
-	sprintf(str, fmt, run/1000, run);
 	irc = EventChain->Add(str, 0);
 	if (!irc) return;	// no run
 
@@ -79,6 +87,7 @@ void process(int run, const char *fmt, FILE *fOut)
 	
 	for (iEvt = 1; iEvt < nEvt; iEvt++) {
 		EventChain->GetEntry(iEvt);
+		if (IsPickUp(&DanssEvent)) continue;
 		Delta = DanssEvent.globalTime - PrevEnd;
 		Delta -= BEFORETRIG;
 		if (Delta > 0) LiveCnt += Delta;

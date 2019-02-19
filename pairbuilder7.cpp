@@ -59,12 +59,12 @@
 //#define CORR_SIPM_P0	0.187	// Positron energy correction from MC + 34 keV from SiPM to PMT comparison
 //#define CORR_SIPM_P1	0.920	// Positron energy correction from MC
 //	New calibration
-#define CORR_P0		0.132	// Positron energy correction from MC 
-#define CORR_P1		0.977	// Positron energy correction from MC
-#define CORR_PMT_P0	0.122	// Positron energy correction from MC
-#define CORR_PMT_P1	0.948	// Positron energy correction from MC
-#define CORR_SIPM_P0	0.106	// Positron energy correction from MC
-#define CORR_SIPM_P1	0.998	// Positron energy correction from MC
+#define CORR_P0		0.137	// Positron energy correction from MC 
+#define CORR_P1		0.975	// Positron energy correction from MC
+#define CORR_PMT_P0	0.126	// Positron energy correction from MC
+#define CORR_PMT_P1	0.947	// Positron energy correction from MC
+#define CORR_SIPM_P0	0.114	// Positron energy correction from MC
+#define CORR_SIPM_P1	0.996	// Positron energy correction from MC
 #define SHOWERMIN	800	// 800 MeV shower event threshold
 
 #define iMaxDataElements 3000
@@ -119,6 +119,12 @@ void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
 	memcpy(to->E, from->E, N * sizeof(float));
 	memcpy(to->T, from->T, N * sizeof(float));
 	memcpy(to->type, from->type, N * sizeof(struct HitTypeStruct));
+}
+
+int IsPickUp(struct DanssEventStruct7 *DanssEvent)
+{
+	if (DanssEvent->PmtCleanEnergy / DanssEvent->SiPmCleanEnergy < 0.4 && DanssEvent->SiPmHits > 60) return 1;
+	return 0;
 }
 
 int IsNeutron(struct DanssEventStruct7 *DanssEvent)
@@ -372,6 +378,7 @@ int main(int argc, char **argv)
 	memset(&Shower, 0, sizeof(Shower));
 	for (iEvt =0; iEvt < nEvt; iEvt++) {
 		EventChain->GetEntry(iEvt);
+		if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
 //	Shower	
 		if (IsShower(&DanssEvent)) memcpy(&Shower, &DanssEvent, sizeof(struct DanssEventStruct7));
 //	Veto
@@ -388,11 +395,12 @@ int main(int argc, char **argv)
 //	Now look backward for positron in the region ([-50, 0] - iLoop*RSHIFT) us
 				for (i=iEvt-1; i>=0; i--) {
 					EventChain->GetEntry(i);
+					if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
 					if (Neutron.globalTime - DanssEvent.globalTime >= (MAXTDIFF + tShift) * GFREQ2US) break;		// not found
 					if (Neutron.globalTime - DanssEvent.globalTime >= tShift * GFREQ2US && IsPositron(&DanssEvent)) break;	// found
 					if (Neutron.globalTime - DanssEvent.globalTime < 0) break;
 				}
-				if (Neutron.globalTime - DanssEvent.globalTime < 0) break;
+				if (Neutron.globalTime - DanssEvent.globalTime < 0 || i < 0) break;
 //	less than 50 us from neutron
 				if (Neutron.globalTime - DanssEvent.globalTime < (MAXTDIFF + tShift) * GFREQ2US && i >= 0) {
 					memcpy(&Positron, &DanssEvent, sizeof(struct DanssEventStruct7));
@@ -402,6 +410,7 @@ int main(int argc, char **argv)
 //	look backward
 					for (i=iEvt-1;i>=0;i--) {
 						EventChain->GetEntry(i);
+						if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
 						if (DanssEvent.globalTime > Positron.globalTime) {
 							DanssPair.EventsBetween++;						
 						} else if (DanssEvent.globalTime < Positron.globalTime) {
@@ -410,12 +419,16 @@ int main(int argc, char **argv)
 							break;
 						}
 					}
+					if (i == 0) DanssPair.gtFromPrevious = RSHIFT;	// something large
 //	look forward
-					if (iEvt + 1 < nEvt) {
-						EventChain->GetEntry(iEvt+1);
+					for (i=iEvt+1;i < nEvt;i++) { 
+						EventChain->GetEntry(i);
+						if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
 						DanssPair.gtToNext = (DanssEvent.globalTime - Positron.globalTime) / GFREQ2US;
 						DanssPair.NextEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
+						break;
 					}
+					if (i == nEvt) DanssPair.gtToNext = RSHIFT;	// something large
 					if (iLoop) {
 						tRandom->Fill();
 						PairCnt[1]++;
@@ -449,4 +462,3 @@ fin:
 	fOut->Close();
 	return 0;
 }
-

@@ -9,8 +9,8 @@
 #include "HPainter2.h"
 
 #define NEBINS 128
-const char *NeutronCorrN = "0.004775-0.000245*x";
-const char *NeutronCorrC = "0.017361-0.000772*x";
+const char *NeutronCorrN = "0.004800-0.000225*x";
+const char *NeutronCorrC = "0.01773-0.000792*x";
 
 void make_cuts(TCut &cSig, TCut &cBgnd, TCut cAux)
 {

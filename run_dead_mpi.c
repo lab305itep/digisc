@@ -16,6 +16,8 @@ int main(int argc, char *argv[])
 	int fnum, pnum;
 	time_t t0, t1;
 	int irc;
+	const char *prog = "deadtime";
+	char *ptr;
 	
 	t0 = time(NULL);
 //		Get our run number
@@ -26,10 +28,14 @@ int main(int argc, char *argv[])
 	}
 	fnum = strtol(argv[1], NULL, 0);
 	pnum = strtol(argv[2], NULL, 0);
+	
+	ptr = getenv("DEAD_PROG");
+	if (ptr) prog = ptr;
+	
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	fnum += serial*pnum;
 //		The run itself
-	sprintf(str, "./deadtime %d %d %s", fnum, fnum+pnum-1, argv[3]);
+	sprintf(str, "./%s %d %d %s", prog, fnum, fnum+pnum-1, argv[3]);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		time and print

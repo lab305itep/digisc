@@ -4,6 +4,11 @@ void digi_statone(int num, const char *root_dir)
 	double tm;
 	char start[64], stop[64];
 	FILE *fff;
+	TCut ct;
+	
+	TCut cNoise("PmtCleanEnergy/SiPmCleanEnergy < 0.4 && SiPmHits > 60");
+	TCut cVeto("VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0");
+	TCut cDVeto("PmtCleanEnergy + SiPmCleanEnergy > 40");
 	
 	sprintf(fname, "/home/clusters/rrcmpi/alekseev/igor/%s/%3.3dxxx/danss_%6.6d.root", root_dir, num/1000, num);
 	fff = fopen(fname, "rb");
@@ -41,27 +46,36 @@ void digi_statone(int num, const char *root_dir)
 
 	int N = evt->GetEntries();
 	
-	int veto = evt->GetEntries("VetoCleanHits > 1 || VetoCleanEnergy > 4 || PmtCleanEnergy + SiPmCleanEnergy > 40 || BottomLayersEnergy > 3.0");
-	int vetoOnly = evt->GetEntries("(VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0) && !(PmtCleanEnergy + SiPmCleanEnergy > 40)");
-	int danssOnly = evt->GetEntries("!(VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0) && PmtCleanEnergy + SiPmCleanEnergy > 40");
-
-	int gt1MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 2");
-	int gt3MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 6");
-	int gt20MeV = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 40");
-	int positrons = evt->GetEntries("PositronEnergy > 1 && PositronEnergy < 8");
-	int neutrons = evt->GetEntries("PmtCleanEnergy + SiPmCleanEnergy > 6 && PmtCleanEnergy + SiPmCleanEnergy < 30 && SiPmCleanHits > 2");
+	int noise = evt->GetEntries(cNoise.GetTitle());
+	ct = (cVeto || cDVeto) && !cNoise;
+	int veto = evt->GetEntries(ct.GetTitle());
+	ct = cVeto && !cDVeto && !cNoise;
+	int vetoOnly = evt->GetEntries(ct.GetTitle());
+	ct = !cVeto && cDVeto && !cNoise;
+	int danssOnly = evt->GetEntries(ct.GetTitle());
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 2") && !cNoise;
+	int gt1MeV = evt->GetEntries(ct.GetTitle());
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 6") && !cNoise;
+	int gt3MeV = evt->GetEntries(ct.GetTitle());
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 40") && !cNoise;
+	int gt20MeV = evt->GetEntries(ct.GetTitle());
+	ct = TCut("PositronEnergy > 1 && PositronEnergy < 8") && !cNoise;
+	int positrons = evt->GetEntries(ct.GetTitle());
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 6 && PmtCleanEnergy + SiPmCleanEnergy < 30 && SiPmCleanHits > 2") && !cNoise;
+	int neutrons = evt->GetEntries(ct.GetTitle());
 //	
 	strftime(start, sizeof(start), "%F %R", localtime(&tStart));
 	strftime(stop , sizeof(stop) , "%R", localtime(&tStop));
-	printf("%6d %2d %s %s %5.0f   %8d %6.1f %6.1f %6.1f %6.2f %6.1f %6.1f %6.1f %6.1f %6.1f\n", 
-		num, ipos, start, stop, tm, N, N/tm, veto/tm, vetoOnly/tm, danssOnly/tm, gt1MeV/tm, gt3MeV/tm, gt20MeV/tm, positrons/tm, neutrons/tm);
+	printf("%6d %2d %s %s %5.0f   %8d %6.1f %6.1f %6.1f %6.1f %6.2f %6.1f %6.1f %6.1f %6.1f %6.1f\n", 
+		num, ipos, start, stop, tm, N, N/tm, noise/tm, veto/tm, vetoOnly/tm, danssOnly/tm, gt1MeV/tm, 
+			gt3MeV/tm, gt20MeV/tm, positrons/tm, neutrons/tm);
 
 	f->Close();
 }
 
 void digi_stattitle(void)
 {
-	printf("Run   Pos Start           Stop   len, s   Events   Trig   Veto  NoPMT NoVeto  >1MeV  >3MeV >20MeV     e+     n\n");
+	printf("Run   Pos Start           Stop   len, s   Events   Trig   PickUp Veto  NoPMT NoVeto  >1MeV  >3MeV >20MeV     e+     n\n");
 }
 
 void digi_stat(int first, int last, const char *root_dir = "root6")

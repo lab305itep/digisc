@@ -778,6 +778,9 @@ void SumEverything(ReadDigiDataUser *user)
 		DanssExtra.VetoEnergy += user->e(i);
 		break;
 	}
+	
+	DanssEvent.SiPmHits = DanssExtra.SiPmHits;
+	DanssEvent.SiPmEnergy = DanssExtra.SiPmEnergy;
 }
 
 /************************	class ReadDigiDataUser user functions			*****************************/
@@ -971,6 +974,8 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			"PmtCleanHits/I:"
 			"PmtCleanEnergy/F:"
 //		SiPM parameters
+			"SiPmHits/I:"
+			"SiPmEnergy/F:"
 			"SiPmCleanHits/I:"
 			"SiPmCleanEnergy/F:"
 			"SiPmEarlyHits/I:"

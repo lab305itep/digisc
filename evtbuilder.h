@@ -278,6 +278,8 @@ struct DanssEventStruct7 {
 	int		PmtCleanHits;
 	float		PmtCleanEnergy;
 //		SiPM parameters
+	int		SiPmHits;
+	float		SiPmEnergy;
 	int		SiPmCleanHits;
 	float		SiPmCleanEnergy;
 	int		SiPmEarlyHits;		// to understand random background

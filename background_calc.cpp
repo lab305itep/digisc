@@ -60,7 +60,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	cv[1] = cMuonA; // fast neutron
 	cv[2] = cMuonB; // pair of neutrons
 
-	ptr = getenv("OUTPUT_DIR");
+	ptr = getenv("OUT_DIR");
 	if (!ptr) ptr = "/home/clusters/rrcmpi/alekseev/igor/bgnd";
 	sprintf(strl, "%s/%s.root", ptr, name);
 	TFile *fRoot = new TFile(strl, "RECREATE");
@@ -117,7 +117,10 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		}
 	}
 
-	HPainter2 *hp = new HPainter2(0x801E, run_first, run_last, "/home/clusters/rrcmpi/alekseev/igor/pair7n");
+	ptr = getenv("PAIR_DIR");
+	if (!ptr) ptr = "/home/clusters/rrcmpi/alekseev/igor/pair7n";
+
+	HPainter2 *hp = new HPainter2(0x801E, run_first, run_last, ptr);
 	if (hp->GetUpTime() < 10) {
 		printf("%d - %d: no runs !\n", run_first, run_last);
 		fRoot->Close();
@@ -183,7 +186,6 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 }
 
 int main(int argc, char **argv)
-// void spectr_all(int nSect, const char *fname = "danss_report_v4.root", TCut cAux = (TCut)"", double bgScale = 2.24)	// 5.6% from reactor OFF data
 {
 #include "positions.h"
 	int i;
