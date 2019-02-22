@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 	fnum = strtol(argv[1], NULL, 0);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	fnum += serial;
-	tdir = getenv("DIGI_TARGETDIR");
+	tdir = getenv("OUT_DIR");
 	if (!tdir) tdir = "root6n";
 	//		Check if run from list is required and get its number
 	runlist = getenv("DIGI_LIST");
