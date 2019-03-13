@@ -56,7 +56,7 @@ void spectr5(const char *name, int mask, int run_from, int run_to, double bgnd)
 	ptr = getenv("SPECTR_NSECT");
 	if (ptr) nSect = strtol(ptr, NULL, 10);
 	
-	bgScale = 2.24;
+	bgScale = 2.64;
 	ptr = getenv("SPECTR_BGSCALE");
 	if (ptr) bgScale = strtod(ptr, NULL);
 	

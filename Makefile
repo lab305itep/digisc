@@ -7,7 +7,8 @@ ROOTLIB = -L/opt/fairsoft/lib/root -lCint -lCore -lRIO -lNet -lHist -lMinuit -lG
 DIGILIB = -lReadDigiData
 
 All: digi_evtbuilder6_v2 digi_evtbuilder6_v3 pairbuilder7 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
-    run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi rootcheck deadchannels
+    run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi rootcheck deadchannels \
+    hittree run_hits_mpi cmbuilder
 
 digi_evtbuilder6_v2: digi_evtbuilder6.cpp
 	gcc -DDIGI_V2 -O3 -o $@ $^ ${ROOTINC} -I${DIGI_V2} ${CLIB} ${ROOTLIB} -L${DIGI_V2} ${DIGILIB}
@@ -27,6 +28,9 @@ digi_zip: digi_zip.c
 run_muon_mpi: run_muon_mpi.c
 	mpicc -o $@ $^
 
+run_hits_mpi: run_hits_mpi.c
+	mpicc -o $@ $^
+
 run_stat_mpi: run_stat_mpi.c
 	mpicc -o $@ $^
 
@@ -42,6 +46,9 @@ run_bgnd_mpi: run_bgnd_mpi.c
 run_pmt2sipm_mpi: run_pmt2sipm_mpi.c
 	mpicc -o $@ $^
 
+cmbuilder: cmbuilder.cpp
+	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
+
 pairbuilder6: pairbuilder6.cpp
 	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
@@ -49,6 +56,9 @@ pairbuilder7: pairbuilder7.cpp
 	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
 deadtime: deadtime.cpp
+	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
+
+hittree: hittree.cpp
 	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
 deadchannels: deadchannels.cpp

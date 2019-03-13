@@ -6,7 +6,8 @@ void digi_statone(int num, const char *root_dir)
 	FILE *fff;
 	TCut ct;
 	
-	TCut cNoise("PmtCleanEnergy/SiPmCleanEnergy < 0.4 && SiPmHits > 60");
+//	TCut cNoise("PmtCleanEnergy/SiPmCleanEnergy < 0.4 && SiPmHits > 60");
+	TCut cNoise("(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3");
 	TCut cVeto("VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0");
 	TCut cDVeto("PmtCleanEnergy + SiPmCleanEnergy > 40");
 	
@@ -40,7 +41,12 @@ void digi_statone(int num, const char *root_dir)
 		printf("%d 0 file %s - no events\n", num, fname);
 		return;
 	}
-
+	TTree *hits = (TTree *) f->Get("RawHits");
+	if (!hits) {
+		printf("RawHits tree not found\n", fname);
+		return;
+	}
+	evt->AddFriend(hits);
 	evt->GetEntry(0);
 	time_t tStart = evt->GetLeaf("unixTime")->GetValue();
 
