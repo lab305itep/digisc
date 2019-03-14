@@ -8,7 +8,7 @@ DIGILIB = -lReadDigiData
 
 All: digi_evtbuilder6_v2 digi_evtbuilder6_v3 pairbuilder7 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
     run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi rootcheck deadchannels \
-    hittree run_hits_mpi cmbuilder
+    hittree run_hits_mpi cmbuilder spectr6
 
 digi_evtbuilder6_v2: digi_evtbuilder6.cpp
 	gcc -DDIGI_V2 -O3 -o $@ $^ ${ROOTINC} -I${DIGI_V2} ${CLIB} ${ROOTLIB} -L${DIGI_V2} ${DIGILIB}
@@ -74,6 +74,9 @@ rawbgnd: rawbgnd.cpp
 	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
 spectr5w: spectr5w.cpp HPainter2.cpp
+	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
+
+spectr6: spectr6.cpp HPainter2.cpp
 	gcc $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
 xyz: xyz.cpp HPainter2.cpp

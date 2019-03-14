@@ -1,20 +1,20 @@
 #!/bin/bash
-#PBS -N digi_spectr_base
+#PBS -N digi_spectr_nobug
 #PBS -q mpi
 #PBS -l walltime=0:30:00
 #PBS -l nodes=323
 #PBS -l pvmem=2Gb
-#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_base.out
-#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_base.err
+#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_nobug.out
+#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_nobug.err
 cd /home/itep/alekseev/igor
 . /opt/fairsoft/bin/thisroot.sh
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/gcc-5.3/lib64
 export SPECTR_BGSCALE=2.64
 export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair7n1
-export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_jan19_base
+export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_jan19_nobug
 export SPECTR_WHAT="PositronEnergy"
 export SPECTR_MUCUT="gtFromVeto > 60"
-export SPECTR_CUT00="((gtFromPrevious > 45  || gtFromPrevious == gtFromVeto) && gtToNext > 80 && EventsBetween == 0)"
+export SPECTR_CUT00="(gtFromPrevious > 45 && gtToNext > 80 && EventsBetween == 0) || gtFromPrevious == gtFromVeto"
 export SPECTR_CUT01="gtFromShower > 200 || ShowerEnergy < 800"
 export SPECTR_CUT02="PositronX[0] < 0 || (PositronX[0] > 2 && PositronX[0] < 94)"
 export SPECTR_CUT03="PositronX[1] < 0 || (PositronX[1] > 2 && PositronX[1] < 94)"

@@ -1,18 +1,18 @@
 #!/bin/bash
-#PBS -N digi_spectr_base
+#PBS -N digi_spectr_base_sipm
 #PBS -q mpi
 #PBS -l walltime=0:30:00
 #PBS -l nodes=323
 #PBS -l pvmem=2Gb
-#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_base.out
-#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_base.err
+#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_base_sipm.out
+#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/spectr_base_sipm.err
 cd /home/itep/alekseev/igor
 . /opt/fairsoft/bin/thisroot.sh
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/gcc-5.3/lib64
 export SPECTR_BGSCALE=2.64
 export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair7n1
-export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_jan19_base
-export SPECTR_WHAT="PositronEnergy"
+export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_jan19_base_SiPm
+export SPECTR_WHAT="PositronSiPmEnergy"
 export SPECTR_MUCUT="gtFromVeto > 60"
 export SPECTR_CUT00="((gtFromPrevious > 45  || gtFromPrevious == gtFromVeto) && gtToNext > 80 && EventsBetween == 0)"
 export SPECTR_CUT01="gtFromShower > 200 || ShowerEnergy < 800"
