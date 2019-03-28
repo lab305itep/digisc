@@ -11,8 +11,8 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/gcc-5.3/lib64
 SRCDIR=/home/clusters/rrcmpi/alekseev/igor/root6n1
 TGTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n2
 HITDIR=/home/clusters/rrcmpi/alekseev/igor/hitcheck
-FROM=43000
-TO=43999
+FROM=22083
+TO=22083
 for ((i=$FROM; $i<=$TO; i=$i+1 )) ; do
 	let j=i/1000
 	ROOTNAME=`printf "%3.3dxxx/danss_%6.6d.root" $j $i`

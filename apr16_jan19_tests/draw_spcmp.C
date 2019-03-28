@@ -16,6 +16,8 @@ draw_spcmp(const char *hname)
 	TH1 *h[4][3];
 	TH1 *hr[3][3];
 	TH1 *hPlb = NULL;
+	TH1D *hPlb0 = NULL;
+	TH1 *hRebin[4];
 	
 	TFile *fPlb = new TFile(plb_name);
 	if (fPlb->IsOpen()) switch (hname[1]) {
@@ -37,6 +39,11 @@ draw_spcmp(const char *hname)
 		hPlb->SetLineWidth(2);
 		hPlb->SetMarkerColor(kMagenta);
 		hPlb->SetMarkerStyle(kOpenCircle);
+		hPlb0 = new TH1D("hPlb0", "PLB with 4 extra bins", 64, 0, 16);
+		for (i=1; i<=60; i++) {
+			hPlb0->SetBinContent(i+4, hPlb->GetBinContent(i));
+			hPlb0->SetBinError(i+4, hPlb->GetBinError(i));
+		}
 		hPlb->Scale(0.5);	// to be compatible with new binning
 	}
 	
@@ -105,6 +112,22 @@ draw_spcmp(const char *hname)
 		hr[0][j]->SetMaximum(1.5);
 		for (i=0; i<3; i++) hr[i][j]->Draw((i) ? "e,same" : "e");
 		lg1.Draw();
+		cv->Update();
+		cv->SaveAs(str.Data());
+	}
+	
+	if (hPlb) {
+		cv->Clear();
+		for (i=0; i<4; i++) {
+			hRebin[i] = h[i][0]->Rebin();
+			hRebin[i]->Divide(hPlb0);
+		}
+		hRebin[0]->SetTitle("Ratio to PLB");
+		hRebin[0]->SetMinimum(0.7);
+		hRebin[0]->SetMaximum(1.6);
+		hRebin[0]->GetXaxis()->SetRange(5, 40);
+		for (i=0; i<4; i++) hRebin[i]->Draw((i) ? "e,same" : "e");
+		lg.Draw();
 		cv->Update();
 		cv->SaveAs(str.Data());
 	}

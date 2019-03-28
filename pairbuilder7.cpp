@@ -121,9 +121,11 @@ void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
 	memcpy(to->type, from->type, N * sizeof(struct HitTypeStruct));
 }
 
-int IsPickUp(struct DanssEventStruct7 *DanssEvent)
+int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
+//	"(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3"
 {
-	if (DanssEvent->PmtCleanEnergy / DanssEvent->SiPmCleanEnergy < 0.4 && DanssEvent->SiPmHits > 60) return 1;
+	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
+		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;
 	return 0;
 }
 
@@ -279,17 +281,20 @@ int main(int argc, char **argv)
 	struct DanssInfoStruct4		DanssInfo;
 	struct DanssInfoStruct		SumInfo;
 	struct HitStruct 		HitArray[3];	// 0 - positron, 1 - neutron, 2 - place for input
+	struct RawHitInfoStruct		RawHits;
 
-	TChain *EventChain;
-	TChain *InfoChain;
+	TChain *EventChain = NULL;
+	TChain *InfoChain = NULL;
+	TChain *RawChain = NULL;
 	TTree *tOut;
 	TTree *tRandom;
 	TTree *InfoOut;
 	TFile *fOut;
 	FILE *fList;
 	char str[1024];
-	long long iEvt, nEvt;
+	long long iEvt, nEvt, rEvt;
 	int PairCnt[2];
+	int PickUpCnt;
 	int i;
 	int iLoop;
 	float tShift;
@@ -339,6 +344,11 @@ int main(int argc, char **argv)
 	EventChain->SetBranchAddress("HitE", &HitArray[2].E);
 	EventChain->SetBranchAddress("HitT", &HitArray[2].T);
 	EventChain->SetBranchAddress("HitType", &HitArray[2].type);
+	if (!(strstr(argv[1], "mc") || strstr(argv[2], "mc") || strstr(argv[1], "MC") || strstr(argv[2], "MC"))) {
+		RawChain = new TChain("RawHits");
+		RawChain->SetBranchAddress("RawHits", &RawHits);
+	}
+//	EventChain->AddFriend("RawHits");
 	InfoChain = new TChain("DanssInfo");
 	InfoChain->SetBranchAddress("Info", &DanssInfo);
 
@@ -361,11 +371,13 @@ int main(int argc, char **argv)
 			ptr = strchr(str, '\n');
 			if (ptr) *ptr = '\0';
 			EventChain->Add(str);
+			if (RawChain) RawChain->Add(str);
 			InfoChain->Add(str);
 		}
 		fclose(fList);
 	} else if (!strcmp(ptr, ".root")) {
 		EventChain->Add(argv[1]);
+		if (RawChain) RawChain->Add(argv[1]);
 		InfoChain->Add(argv[1]);
 	} else {
 		printf("Strange file extention: .txt or .root expected\n");
@@ -373,12 +385,23 @@ int main(int argc, char **argv)
 	}
 
 	nEvt = EventChain->GetEntries();
+	rEvt = (RawChain) ? RawChain->GetEntries() : 0;
+	if (rEvt != nEvt) {
+		printf("Event chain (%d) and RawHits chain (%d) do not match\n",  nEvt, rEvt); 
+		goto fin;
+	} 
+//	printf("EventChain: %d   RawHits: %d\n", nEvt, rEvt);
 	memset(PairCnt, 0, sizeof(PairCnt));
 	memset(&Veto, 0, sizeof(Veto));
 	memset(&Shower, 0, sizeof(Shower));
+	PickUpCnt = 0;
 	for (iEvt =0; iEvt < nEvt; iEvt++) {
 		EventChain->GetEntry(iEvt);
-		if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
+		if (RawChain) RawChain->GetEntry(iEvt);
+		if (RawChain && IsPickUp(&DanssEvent, &RawHits)) {
+			PickUpCnt++;
+			continue;	// ignore PickUp events
+		}
 //	Shower	
 		if (IsShower(&DanssEvent)) memcpy(&Shower, &DanssEvent, sizeof(struct DanssEventStruct7));
 //	Veto
@@ -395,7 +418,8 @@ int main(int argc, char **argv)
 //	Now look backward for positron in the region ([-50, 0] - iLoop*RSHIFT) us
 				for (i=iEvt-1; i>=0; i--) {
 					EventChain->GetEntry(i);
-					if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
+					if (RawChain) RawChain->GetEntry(i);
+					if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
 					if (Neutron.globalTime - DanssEvent.globalTime >= (MAXTDIFF + tShift) * GFREQ2US) break;		// not found
 					if (Neutron.globalTime - DanssEvent.globalTime >= tShift * GFREQ2US && IsPositron(&DanssEvent)) break;	// found
 					if (Neutron.globalTime - DanssEvent.globalTime < 0) break;
@@ -410,7 +434,8 @@ int main(int argc, char **argv)
 //	look backward
 					for (i=iEvt-1;i>=0;i--) {
 						EventChain->GetEntry(i);
-						if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
+						if (RawChain) RawChain->GetEntry(i);
+						if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
 						if (DanssEvent.globalTime > Positron.globalTime) {
 							DanssPair.EventsBetween++;						
 						} else if (DanssEvent.globalTime < Positron.globalTime) {
@@ -423,7 +448,8 @@ int main(int argc, char **argv)
 //	look forward
 					for (i=iEvt+1;i < nEvt;i++) { 
 						EventChain->GetEntry(i);
-						if (IsPickUp(&DanssEvent)) continue;	// ignore PickUp events
+						if (RawChain) RawChain->GetEntry(i);
+						if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
 						DanssPair.gtToNext = (DanssEvent.globalTime - Positron.globalTime) / GFREQ2US;
 						DanssPair.NextEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
 						break;
@@ -450,11 +476,12 @@ int main(int argc, char **argv)
 	}
 	InfoOut->Fill();
 
-	printf("%Ld events processed with %d randomizing loops - %d/%d pairs found. Aquired time %7.0f s\n", 
-		iEvt, NRANDOM, PairCnt[0], PairCnt[1], SumInfo.upTime / GLOBALFREQ);
+	printf("%Ld events processed with %d randomizing loops - %d/%d pairs found. Aquired time %7.0f s. PickUp count = %d\n", 
+		iEvt, NRANDOM, PairCnt[0], PairCnt[1], SumInfo.upTime / GLOBALFREQ, PickUpCnt);
 fin:
-	delete EventChain;
-	delete InfoChain;
+	if (EventChain) delete EventChain;
+	if (InfoChain) delete InfoChain;
+	if (RawChain) delete RawChain;
 
 	InfoOut->Write();
 	tOut->Write();

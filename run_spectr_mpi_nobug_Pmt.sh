@@ -27,6 +27,7 @@ export SPECTR_CUT09="NeutronEnergy > 3.5 && NeutronEnergy < 15.0 && NeutronHits 
 export SPECTR_CUT10="!(PositronHits == 1 && (AnnihilationGammas < 2 || AnnihilationEnergy < 0.2 || MinPositron2GammaZ > 15))";
 
 mkdir -p $OUT_DIR
+rm -f ${OUT_DIR}/*.root
 mpirun --mca btl ^tcp run_spectr_mpi
 
 NAME=`basename $OUT_DIR`.root

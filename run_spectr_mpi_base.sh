@@ -10,7 +10,7 @@ cd /home/itep/alekseev/igor
 . /opt/fairsoft/bin/thisroot.sh
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/gcc-5.3/lib64
 export SPECTR_BGSCALE=2.64
-export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair7n1
+export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair7n2
 export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_jan19_base
 export SPECTR_WHAT="PositronEnergy"
 export SPECTR_MUCUT="gtFromVeto > 60"
@@ -27,6 +27,7 @@ export SPECTR_CUT09="NeutronEnergy > 3.5 && NeutronEnergy < 15.0 && NeutronHits 
 export SPECTR_CUT10="!(PositronHits == 1 && (AnnihilationGammas < 2 || AnnihilationEnergy < 0.2 || MinPositron2GammaZ > 15))";
 
 mkdir -p $OUT_DIR
+rm -f ${OUT_DIR}/*.root
 mpirun --mca btl ^tcp run_spectr_mpi
 
 NAME=`basename $OUT_DIR`.root

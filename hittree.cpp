@@ -7,6 +7,9 @@
 #include <TLeaf.h>
 #include <TTree.h>
 
+//#define MASK ((1L<<45) - 1)
+#define MASK ((1L<<60) - 1)
+
 /*      Open data file either directly or via zcat etc, depending on the extension      */
 FILE* OpenDataFile(const char *fname) 
 {
@@ -77,7 +80,7 @@ int main(int argc, char **argv)
 	gtB = -1;
 	for(i=0; i<N; i++) {
 		evt->GetEntry(i);
-		gtA = (evt->GetLeaf("globalTime"))->GetValueLong64();
+		gtA = MASK & (evt->GetLeaf("globalTime"))->GetValueLong64();
 		memset(&Raw, 0, sizeof(Raw));
 		if (gtB < gtA) for (;;) {
 			ptr = fgets(str, sizeof(str), fIn);
@@ -89,7 +92,7 @@ int main(int argc, char **argv)
 			strcpy(str_copy, str);
 			ptr = strtok(str, " \t");
 			if (!ptr) continue;
-			gtB = strtoll(ptr, NULL, 10);
+			gtB = MASK & strtoll(ptr, NULL, 10);
 			if (!gtB) continue;
 			if (gtB >= gtA) break;
 		} else {

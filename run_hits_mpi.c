@@ -42,9 +42,6 @@ int main(int argc, char *argv[])
 	fnum += serial*pnum;
 //		The run itself
 	for (i = 0; i<pnum; i++) {
-//	ROOTNAME=`printf "%3.3dxxx/danss_%6.6d.root" $j $i`
-//	HITNAME=`printf "%3.3dxxx/hits_%6.6d.txt.bz2" $j $i`
-//	if [ -f $SRCDIR/$ROOTNAME ] ; then
 
 		sprintf(str, "%s/%3.3dxxx/danss_%6.6d.root", src_dir, (fnum + i)/1000, fnum+i);
 		if (access(str, R_OK)) {

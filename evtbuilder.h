@@ -704,5 +704,13 @@ struct DanssMcStruct {
 	float		DriftTime;
 };
 
+//		Raw hits information
+struct RawHitInfoStruct {
+	unsigned short PmtCnt;
+	unsigned short VetoCnt;
+	unsigned short SiPmCnt;
+};
+
+
 #endif /* EVTBUILDER_H */
 
