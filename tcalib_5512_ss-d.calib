@@ -49,6 +49,7 @@ Channel=01.48  DT= -21.7
 Channel=01.49  DT= -21.2
 Channel=01.50  DT= -26.5
 Channel=01.51  DT= -23.2
+Channel=01.52  DT= -19.1
 Channel=02.00  DT=  18.0
 Channel=02.01  DT=  19.8
 Channel=02.02  DT=  17.7
@@ -121,7 +122,7 @@ Channel=03.11  DT=-115.2
 Channel=03.12  DT=-114.6
 Channel=03.13  DT=-114.2
 Channel=03.14  DT=-116.5
-Channel=03.15  DT=-115.5
+Channel=03.15  DT=-113.0
 Channel=03.16  DT=-112.7
 Channel=03.17  DT=-111.4
 Channel=03.18  DT=-112.3
@@ -147,8 +148,8 @@ Channel=03.37  DT=-112.2
 Channel=03.38  DT=-112.4
 Channel=03.39  DT=-111.9
 Channel=03.40  DT=-117.3
-Channel=03.41  DT=   0.7
-Channel=03.42  DT=   1.9
+Channel=03.41  DT=-115.0
+Channel=03.42  DT=-112.7
 Channel=03.43  DT=   1.7
 Channel=03.45  DT=  -6.6
 Channel=05.00  DT=  15.8
@@ -868,7 +869,9 @@ Channel=17.13  DT=  15.9
 Channel=17.14  DT=  16.7
 Channel=17.16  DT=  15.4
 Channel=17.17  DT=  16.3
+Channel=17.18  DT=  15.4
 Channel=17.19  DT=  15.7
+Channel=17.20  DT=  13.8
 Channel=17.21  DT=  13.8
 Channel=17.22  DT=  13.3
 Channel=17.23  DT=  13.7

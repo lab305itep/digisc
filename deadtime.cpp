@@ -49,21 +49,24 @@ int IsVeto(struct DanssEventStruct7 *Event)
 	return 0;
 }
 
-int IsPickUp(struct DanssEventStruct7 *Event)
+int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
 {
-	if (Event->PmtCleanEnergy/Event->SiPmCleanEnergy < 0.4 && Event->SiPmHits > 60) return 1;
+	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
+		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;
 	return 0;
 }
 
 void process(int run, const char *fmt, FILE *fOut)
 {
 	struct DanssEventStruct7 DanssEvent;
-	TChain *EventChain;
+	struct RawHitInfoStruct  RawHits;
+	TChain *EventChain = NULL;
+	TChain *RawChain = NULL;
 	long long GlobalFirst;
 	long long LiveCnt;
 	long long PrevEnd;
 	long long Delta;
-	int iEvt, nEvt;
+	int iEvt, nEvt, rEvt;
 	double RunTime;
 	double LiveTime;
 	char *ptr;
@@ -72,22 +75,34 @@ void process(int run, const char *fmt, FILE *fOut)
 
 	sprintf(str, fmt, run/1000, run);
 	irc = access(str, R_OK);
-	if (irc) return;	// no file
+	if (irc) goto fin;	// no file
 	EventChain = new TChain("DanssEvent");
 	EventChain->SetBranchAddress("Data", &DanssEvent);
+	RawChain = new TChain("RawHits");
+	RawChain->SetBranchAddress("RawHits", &RawHits);
+	
 	irc = EventChain->Add(str, 0);
-	if (!irc) return;	// no run
+	if (!irc) goto fin;	// no run
+	RawChain->Add(str, 0);
 
 	LiveCnt = 0;
 	nEvt = EventChain->GetEntries();
-	if (!nEvt) return;
+	if (!nEvt) goto fin;
+	rEvt = (RawChain) ? RawChain->GetEntries() : 0;
+	if (RawChain && rEvt != nEvt) {
+		printf("Event chain (%d) and RawHits chain (%d) do not match\n",  nEvt, rEvt); 
+		goto fin;
+	}
+
 	EventChain->GetEntry(0);
+	RawChain->GetEntry(0);
 	GlobalFirst = DanssEvent.globalTime;
 	PrevEnd = DanssEvent.globalTime + ((IsVeto(&DanssEvent)) ? AFTERVETO : AFTERTRIG);
 	
 	for (iEvt = 1; iEvt < nEvt; iEvt++) {
 		EventChain->GetEntry(iEvt);
-		if (IsPickUp(&DanssEvent)) continue;
+		RawChain->GetEntry(iEvt);
+		if (IsPickUp(&DanssEvent, &RawHits)) continue;
 		Delta = DanssEvent.globalTime - PrevEnd;
 		Delta -= BEFORETRIG;
 		if (Delta > 0) LiveCnt += Delta;
@@ -96,9 +111,11 @@ void process(int run, const char *fmt, FILE *fOut)
 	
 	RunTime = (DanssEvent.globalTime - GlobalFirst) / GLOBALFREQ;
 	LiveTime = LiveCnt / GLOBALFREQ;
+fin:
 	fprintf(fOut, "%6d  %6.1f  %6.1f  %6.1f  %7.5f\n", 
 		run, RunTime, LiveTime, RunTime - LiveTime, (RunTime - LiveTime) / RunTime);
-	delete EventChain;
+	if (EventChain) delete EventChain;
+	if (RawChain) delete RawChain;
 }
 
 int main(int argc, char **argv)
@@ -112,7 +129,6 @@ int main(int argc, char **argv)
 		printf("Will process files and count time alive\n");
 		return 10;
 	}
-	
 	
 	first = strtol(argv[1], NULL, 10);
 	last = strtol(argv[2], NULL, 10);

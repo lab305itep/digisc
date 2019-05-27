@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int main(int argc, char ** argv)
@@ -22,7 +23,7 @@ int main(int argc, char ** argv)
 		ptr = strstr(str, "sessions=");
 		if (ptr) {
 			ptr += strlen("sessions=");
-			SCnt += strtol(ptr, 0, NULL);
+			SCnt += strtol(ptr, NULL, 0);
 			NCnt++;
 		} else {
 			ptr = strstr(str, "jobs =");

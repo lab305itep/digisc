@@ -347,6 +347,9 @@ int main(int argc, char **argv)
 	if (!(strstr(argv[1], "mc") || strstr(argv[2], "mc") || strstr(argv[1], "MC") || strstr(argv[2], "MC"))) {
 		RawChain = new TChain("RawHits");
 		RawChain->SetBranchAddress("RawHits", &RawHits);
+	} else {
+		RawChain = NULL;
+		printf("MC-run - no noise check !\n");
 	}
 //	EventChain->AddFriend("RawHits");
 	InfoChain = new TChain("DanssInfo");
@@ -386,10 +389,10 @@ int main(int argc, char **argv)
 
 	nEvt = EventChain->GetEntries();
 	rEvt = (RawChain) ? RawChain->GetEntries() : 0;
-	if (rEvt != nEvt) {
+	if (RawChain && rEvt != nEvt) {
 		printf("Event chain (%d) and RawHits chain (%d) do not match\n",  nEvt, rEvt); 
 		goto fin;
-	} 
+	}
 //	printf("EventChain: %d   RawHits: %d\n", nEvt, rEvt);
 	memset(PairCnt, 0, sizeof(PairCnt));
 	memset(&Veto, 0, sizeof(Veto));

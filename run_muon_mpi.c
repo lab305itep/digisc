@@ -12,6 +12,9 @@ int main(int argc, char *argv[])
 	char str[4096];
 	char fin[1024];
 	char fout[1024];
+	char *ptr;
+	char *src_dir = "/home/clusters/rrcmpi/alekseev/igor/root6n2/";
+	char *tgt_dir = "/home/clusters/rrcmpi/alekseev/igor/muon_n2/";
 	int fnum;
 	time_t t0, t1;
 	int irc;
@@ -26,16 +29,24 @@ int main(int argc, char *argv[])
 	fnum = strtol(argv[1], NULL, 0);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	fnum += serial;
+	
+	ptr = getenv("SRC_DIR");
+	if (ptr) src_dir = ptr;
+	ptr = getenv("TGT_DIR");
+	if (ptr) tgt_dir = ptr;
 //		check that file exists
-	sprintf(fin, "/home/clusters/rrcmpi/alekseev/igor/root6/%3.3dxxx/danss_%6.6d.root", fnum/1000, fnum);
-	sprintf(fout, "/home/clusters/rrcmpi/alekseev/igor/muon/%3.3dxxx/muon_%6.6d.root", fnum/1000, fnum);
+	sprintf(fin, "%s/%3.3dxxx/danss_%6.6d.root", src_dir, fnum/1000, fnum);
+	sprintf(fout, "%s/%3.3dxxx/muon_%6.6d.root", tgt_dir, fnum/1000, fnum);
 	irc = access(fin, R_OK);
 	if (irc) {
 		printf("Run %6.6d not found at %s\n", fnum, fin);
 		goto fin;
 	}
 //		The run itself
-	sprintf(str, "/home/itep/alekseev/igor/muonpair %s %s", fin, fout);
+	sprintf(str, "mkdir -p %s/%3.3dxxx/", tgt_dir, fnum/1000);
+	irc = system(str);
+	if (irc) printf("%s - %d: error %d returned: %m\n", str, fnum, irc);
+	sprintf(str, "./muonpair %s %s", fin, fout);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		time and print

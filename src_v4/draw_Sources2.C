@@ -50,7 +50,7 @@ class MyRandom {
 };
 
 void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, 
-	const char *name, const char *fname, TCut cXY, TCut cZ, double Efit[2])
+	const char *name, const char *fname, TCut cXY, TCut cZ, double eScale, double Efit[2])
 {
 	char str[256];
 	long long gtA, gtB;
@@ -89,15 +89,19 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB,
 	TCut cxyz("NeutronX[0] >= 0 && NeutronX[1] >= 0 && NeutronX[2] >= 0");
 	TCut cVeto("VetoCleanHits < 2 && VetoCleanEnergy < 4");
 	TCut cn("SiPmCleanHits > 5");
-	TCut cSel = cxyz && cVeto;
+	TCut cNoise("(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3");
+	TCut cSel = cxyz && cVeto && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel && cZ && cn);
-	tExpA->Project("hExpA", "(SiPmCleanEnergy+PmtCleanEnergy)/2.0", cSel && cZ && cXY && cn);
-	tExpB->Project("hExpB", "(SiPmCleanEnergy+PmtCleanEnergy)/2.0", cSel && cZ && cXY && cn);
-	tExpA->Project("hExpSiPMA", "SiPmCleanEnergy", cSel && cZ && cXY && cn);
-	tExpB->Project("hExpSiPMB", "SiPmCleanEnergy", cSel && cZ && cXY && cn);
-	tExpA->Project("hExpPMTA", "PmtCleanEnergy", cSel && cZ && cXY && cn);
-	tExpB->Project("hExpPMTB", "PmtCleanEnergy", cSel && cZ && cXY && cn);
+	sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy)*%5.3f/2.0", eScale);
+	tExpA->Project("hExpA", str, cSel && cZ && cXY && cn);
+	tExpB->Project("hExpB", str, cSel && cZ && cXY && cn);
+	sprintf(str, "SiPmCleanEnergy*%5.3f", eScale);
+	tExpA->Project("hExpSiPMA", str, cSel && cZ && cXY && cn);
+	tExpB->Project("hExpSiPMB", str, cSel && cZ && cXY && cn);
+	sprintf(str, "PmtCleanEnergy*%5.3f", eScale);
+	tExpA->Project("hExpPMTA", str, cSel && cZ && cXY && cn);
+	tExpB->Project("hExpPMTB", str, cSel && cZ && cXY && cn);
 	tExpA->Project("hHitsA", "SiPmCleanHits", cSel && cZ && cXY);
 	tExpB->Project("hHitsB", "SiPmCleanHits", cSel && cZ && cXY);
 	
@@ -145,23 +149,21 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB,
 	hHitsC->SetStats(0);
 	
 	TCanvas *cExpA = new TCanvas("cExpA", "Data", 1200, 800);
-	cExpA->Divide(3, 1);
+	cExpA->Divide(2, 2);
 	cExpA->cd(1);
 	hExpC->Fit("gaus", "", "", Efit[0], Efit[1]);
 	cExpA->cd(2);
 	hExpSiPMC->Fit("gaus", "", "", Efit[0], Efit[1]);
 	cExpA->cd(3);
 	hExpPMTC->Fit("gaus", "", "", Efit[0], Efit[1]);
+	cExpA->cd(4);
+	hHitsC->Draw();
 
 	sprintf(str, "%s.pdf(", fname);
 	cExpA->SaveAs(str);
 
 	TCanvas *cExpB = new TCanvas("cExpB", "Hits", 1200, 800);
-	cExpB->Divide(2, 1);
-	cExpB->cd(1);
 	hXY->Draw("colz");
-	cExpB->cd(2);
-	hHitsC->Draw();
 	sprintf(str, "%s.pdf)", fname);
 	cExpB->SaveAs(str);
 
@@ -276,7 +278,7 @@ void Add2Chain(TChain *ch, int from, int to, int max_files)
 	}
 }
 
-void draw_Sources2(int iser, int max_files = 0, double kRndm = 0.0)
+void draw_Sources2(int iser, double Rndm_or_scale, int max_files = 0)
 {
 	const char *name = "";
 	char fname[1024];
@@ -291,6 +293,10 @@ void draw_Sources2(int iser, int max_files = 0, double kRndm = 0.0)
 	TChain *tExpB = new TChain("DanssEvent");
 	TChain *tInfoA = new TChain("DanssInfo");
 	TChain *tInfoB = new TChain("DanssInfo");
+	TChain *tRawA = new TChain("RawHits");
+	TChain *tRawB = new TChain("RawHits");
+	tExpA->AddFriend(tRawA);
+	tExpB->AddFriend(tRawB);
 	
 	code = iser / 1000;
 	switch (iser) {
@@ -298,113 +304,125 @@ void draw_Sources2(int iser, int max_files = 0, double kRndm = 0.0)
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 12376, 12407, max_files);
+		Add2Chain(tRawA, 12376, 12407, max_files);
 		Add2Chain(tInfoA, 12376, 12407, max_files);
 		Add2Chain(tExpB, 12411, 12474, max_files);
+		Add2Chain(tRawB, 12411, 12474, max_files);
 		Add2Chain(tInfoB, 12411, 12474, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_feb17_center");
+		sprintf(fname, "22Na_feb17_center_sc_%5.3f", Rndm_or_scale);
 		break;
 	case 2:		// Na Feb 17, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 12364, 12373, max_files);
+		Add2Chain(tRawA, 12364, 12373, max_files);
 		Add2Chain(tInfoA, 12364, 12373, max_files);
 		Add2Chain(tExpB, 12411, 12430, max_files);
+		Add2Chain(tRawB, 12411, 12430, max_files);
 		Add2Chain(tInfoB, 12411, 12430, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_feb17_edge");
+		sprintf(fname, "22Na_feb17_edge_%5.3f", Rndm_or_scale);
 		break;
 	case 11:		// Na Nov 18, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 51099, 51161, max_files);
+		Add2Chain(tRawA, 51099, 51161, max_files);
 		Add2Chain(tInfoA, 51099, 51161, max_files);
 		Add2Chain(tExpB, 51167, 51267, max_files);
+		Add2Chain(tRawB, 51167, 51267, max_files);
 		Add2Chain(tInfoB, 51167, 51267, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_nov18_center");
+		sprintf(fname, "22Na_nov18_center_%5.3f", Rndm_or_scale);
 		break;
 	case 12:		// Na Nov 18, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 51036, 51095, max_files);
+		Add2Chain(tRawA, 51036, 51095, max_files);
 		Add2Chain(tInfoA, 51036, 51095, max_files);
 		Add2Chain(tExpB, 51167, 51267, max_files);
+		Add2Chain(tRawB, 51167, 51267, max_files);
 		Add2Chain(tInfoB, 51167, 51267, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_nov18_edge");
+		sprintf(fname, "22Na_nov18_edge_%5.3f", Rndm_or_scale);
 		break;
 	case 101:		// Co Feb 17, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 12306, 12346, max_files);
+		Add2Chain(tRawA, 12306, 12346, max_files);
 		Add2Chain(tInfoA, 12306, 12346, max_files);
 		Add2Chain(tExpB, 12198, 12303, max_files);
+		Add2Chain(tRawB, 12198, 12303, max_files);
 		Add2Chain(tInfoB, 12198, 12303, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_feb17_center");
+		sprintf(fname, "60Co_feb17_center_%5.3f", Rndm_or_scale);
 		break;
 	case 102:		// Co Feb 17, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 12348, 12361, max_files);
+		Add2Chain(tRawA, 12348, 12361, max_files);
 		Add2Chain(tInfoA, 12348, 12361, max_files);
 		Add2Chain(tExpB, 12260, 12303, max_files);
+		Add2Chain(tRawB, 12260, 12303, max_files);
 		Add2Chain(tInfoB, 12260, 12303, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_feb17_edge");
+		sprintf(fname, "60Co_feb17_edge_%5.3f", Rndm_or_scale);
 		break;
 	case 111:		// Co Nov 18, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 50949, 50997, max_files);
+		Add2Chain(tRawA, 50949, 50997, max_files);
 		Add2Chain(tInfoA, 50949, 50997, max_files);
 		Add2Chain(tExpB, 50750, 50873, max_files);
+		Add2Chain(tRawB, 50750, 50873, max_files);
 		Add2Chain(tInfoB, 50750, 50873, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_nov18_center");
+		sprintf(fname, "60Co_nov18_center_%5.3f", Rndm_or_scale);
 		break;
 	case 112:		// Co Nov 18, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		Add2Chain(tExpA, 50999, 51034, max_files);
+		Add2Chain(tRawA, 50999, 51034, max_files);
 		Add2Chain(tInfoA, 50999, 51034, max_files);
 		Add2Chain(tExpB, 50750, 50873, max_files);
+		Add2Chain(tRawB, 50750, 50873, max_files);
 		Add2Chain(tInfoB, 50750, 50873, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_nov18_edge");
+		sprintf(fname, "60Co_nov18_edge_%5.3f", Rndm_or_scale);
 		break;
 	case 1001:	// Na MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.root");
 		name = "22Na";
-		sprintf(fname, "22Na_MC_center_rndm_%4.2f", kRndm);
+		sprintf(fname, "22Na_MC_center_rndm_%4.2f", Rndm_or_scale);
 		break;
 	case 1002:	// Na MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.root");
+		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim_90cm.root");
 		name = "22Na";
-		sprintf(fname, "22Na_MC_edge_rndm_%4.2f", kRndm);
-		printf("No MC yet!\n");
-		code = -1;
+		sprintf(fname, "22Na_MC_edge_rndm_%4.2f", Rndm_or_scale);
 		break;
 	case 1101:	// Co MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
 		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.root");
 		name = "60Co";
-		sprintf(fname, "60Co_MC_center_rndm_%4.2f", kRndm);
+		sprintf(fname, "60Co_MC_center_rndm_%4.2f", Rndm_or_scale);
 		break;
 	case 1102:	// Co MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.root");
+		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim_90cm.root");
 		name = "60Co";
-		sprintf(fname, "60Co_MC_edge_rndm_%4.2f", kRndm);
-		printf("No MC yet!\n");
-		code = -1;
+		sprintf(fname, "60Co_MC_edge_rndm_%4.2f", Rndm_or_scale);
 		break;
 	default:
 		printf("%d - unknown\n", iser);
@@ -425,10 +443,10 @@ void draw_Sources2(int iser, int max_files = 0, double kRndm = 0.0)
 
 	switch (code) {
 	case 0:	// Experiment
-		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, cXY, cZ, Efit);
+		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, cXY, cZ, Rndm_or_scale, Efit);
 		break;
 	case 1:	// MC
-		draw_MC(tMc, name, fname, cXY, cZ, Efit, kRndm);
+		draw_MC(tMc, name, fname, cXY, cZ, Efit, Rndm_or_scale);
 		break;		
 	default:
 		break;

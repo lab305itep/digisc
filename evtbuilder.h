@@ -648,7 +648,7 @@ struct DanssMuonStruct {
 	long long	number[2];		// event numbers in the file
 	long long	globalTime[2];		// event times
 	int		unixTime;		// linux time, seconds
-	int		runNumber;		// the run number
+//	int		runNumber;		// the run number
 //		Hit summs
 	int		SiPmHits[2];		// SiPm clean hits
 	float		SiPmEnergy[2];		// Full Clean energy SiPm

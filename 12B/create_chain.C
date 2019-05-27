@@ -46,7 +46,7 @@ TChain *create_chain(const char *name, int from, int to)
 	ch = new TChain(name, name);
 	for (i=from; i<=to; i++) {
 		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon/%3.3dxxx/muon_%6.6d.root", i/1000, i);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon2n2/%3.3dxxx/muon_%6.6d.root", i/1000, i);
 		num = access(str, R_OK);	// R_OK = 4 - test read access
 		if (num) continue;
 		ch->AddFile(str, 0);

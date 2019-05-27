@@ -40,12 +40,18 @@
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
 #define MAXPHITS	10
 #define NRANDOM		16	// increase random statistics
-#define CORR_P0		0.179	// cluster energy correction from MC
-#define CORR_P1		0.929	// cluster energy correction from MC
-#define CORR_PMT_P0	0.165	// cluster energy correction from MC
-#define CORR_PMT_P1	0.929	// cluster energy correction from MC
-#define CORR_SIPM_P0	0.187	// cluster energy correction from MC + 34 keV from SiPM to PMT comparison
-#define CORR_SIPM_P1	0.920	// cluster energy correction from MC
+//#define CORR_P0		0.179	// cluster energy correction from MC
+//#define CORR_P1		0.929	// cluster energy correction from MC
+//#define CORR_PMT_P0	0.165	// cluster energy correction from MC
+//#define CORR_PMT_P1	0.929	// cluster energy correction from MC
+//#define CORR_SIPM_P0	0.187	// cluster energy correction from MC + 34 keV from SiPM to PMT comparison
+//#define CORR_SIPM_P1	0.920	// cluster energy correction from MC
+#define CORR_P0		0.137	// Positron energy correction from MC 
+#define CORR_P1		0.975	// Positron energy correction from MC
+#define CORR_PMT_P0	0.126	// Positron energy correction from MC
+#define CORR_PMT_P1	0.947	// Positron energy correction from MC
+#define CORR_SIPM_P0	0.114	// Positron energy correction from MC
+#define CORR_SIPM_P1	0.996	// Positron energy correction from MC
 
 #define iMaxDataElements 3000
 
@@ -77,7 +83,15 @@ void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
 	memcpy(to->type, from->type, N * sizeof(struct HitTypeStruct));
 }
 
-int IsVeto(struct DanssEventStruct6 *DanssEvent)
+int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
+//	"(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3"
+{
+	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
+		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;
+	return 0;
+}
+
+int IsVeto(struct DanssEventStruct7 *DanssEvent)
 {
 	float E;
 	int rc;
@@ -88,7 +102,7 @@ int IsVeto(struct DanssEventStruct6 *DanssEvent)
 	return rc;
 }
 
-int IsMuon(struct DanssEventStruct6 *DanssEvent, struct HitStruct *Hits, int *NPHits, struct PHits *PHits)
+int IsMuon(struct DanssEventStruct7 *DanssEvent, struct HitStruct *Hits, int *NPHits, struct PHits *PHits)
 {
 	float E;
 	int i, j, rc;
@@ -129,7 +143,7 @@ int PatternCheck(int N0, struct HitStruct *Hits, int N1, struct PHits *PHits)
 	return rc;
 }
 
-int IsDelayed(struct DanssEventStruct6 *DanssEvent, struct HitStruct *HitArray, int NPHits, struct PHits *PHits)
+int IsDelayed(struct DanssEventStruct7 *DanssEvent, struct HitStruct *HitArray, int NPHits, struct PHits *PHits)
 {
 	if (IsVeto(DanssEvent)) return 0;
 	if (DanssEvent->PositronEnergy < Criteria.ClusterEnergy) return 0;
@@ -139,8 +153,8 @@ int IsDelayed(struct DanssEventStruct6 *DanssEvent, struct HitStruct *HitArray, 
 }
 
 void MakePair(
-	struct DanssEventStruct6 *DelayedEvent,	// Delayed
-	struct DanssEventStruct6 *PromptEvent,	// Muon
+	struct DanssEventStruct7 *DelayedEvent,	// Delayed
+	struct DanssEventStruct7 *PromptEvent,	// Muon
 	struct DanssMuonStruct   *DanssPair)
 {
 	double tmp;
@@ -153,7 +167,6 @@ void MakePair(
 	DanssPair->globalTime[0] = PromptEvent->globalTime;
 	DanssPair->globalTime[1] = DelayedEvent->globalTime;
 	DanssPair->unixTime = PromptEvent->unixTime;
-	DanssPair->runNumber = PromptEvent->runNumber;
 	
 	DanssPair->SiPmHits[0] = PromptEvent->SiPmCleanHits;
 	DanssPair->SiPmEnergy[0] = PromptEvent->SiPmCleanEnergy;
@@ -228,7 +241,6 @@ int main(int argc, char **argv)
 		"number[2]/L:"		// event numbers in the file
 		"globalTime[2]/L:"	// global times
 		"unixTime/I:"		// linux time, seconds
-		"runNumber/I:"		// run number
 		
 		"SiPmHits[2]/I:"	// SiPm clean hits
 		"SiPmEnergy[2]/F:"	// Full Clean energy SiPm
@@ -254,23 +266,25 @@ int main(int argc, char **argv)
 		"NDHits/I";		// Number of hits in "neutron event"
 	
 	struct DanssMuonStruct		DanssPair;
-	struct DanssEventStruct6	DanssEvent;
-	struct DanssEventStruct6	Muon;
+	struct DanssEventStruct7	DanssEvent;
+	struct DanssEventStruct7	Muon;
 	struct DanssInfoStruct4		DanssInfo;
 	struct DanssInfoStruct		SumInfo;
 	struct HitStruct		HitArray[2];	// 0 - muon, 1 - decay
+	struct RawHitInfoStruct		RawHits;
 	struct PHits			PHits[10];
 	int NPHits;
 
-	TChain *EventChain;
-	TChain *InfoChain;
+	TChain *EventChain = NULL;
+	TChain *InfoChain = NULL;
+	TChain *RawChain = NULL;
 	TTree *tOut;
 	TTree *tRandom;
 	TTree *InfoOut;
 	TFile *fOut;
 	FILE *fList;
 	char str[1024];
-	long long iEvt, nEvt;
+	long long iEvt, nEvt, rEvt;
 	int PairCnt[2];
 	int i;
 	int iLoop;
@@ -322,6 +336,13 @@ int main(int argc, char **argv)
 	EventChain->SetBranchAddress("HitE", &HitArray[1].E);
 	EventChain->SetBranchAddress("HitT", &HitArray[1].T);
 	EventChain->SetBranchAddress("HitType", &HitArray[1].type);
+	if (!(strstr(argv[1], "mc") || strstr(argv[2], "mc") || strstr(argv[1], "MC") || strstr(argv[2], "MC"))) {
+		RawChain = new TChain("RawHits");
+		RawChain->SetBranchAddress("RawHits", &RawHits);
+	} else {
+		RawChain = NULL;
+		printf("MC-run - no noise check !\n");
+	}
 	InfoChain = new TChain("DanssInfo");
 	InfoChain->SetBranchAddress("Info", &DanssInfo);
 
@@ -344,11 +365,13 @@ int main(int argc, char **argv)
 			ptr = strchr(str, '\n');
 			if (ptr) *ptr = '\0';
 			EventChain->Add(str);
+			if (RawChain) RawChain->Add(str);
 			InfoChain->Add(str);
 		}
 		fclose(fList);
 	} else if (!strcmp(ptr, ".root")) {
 		EventChain->Add(argv[1]);
+		if (RawChain) RawChain->Add(argv[1]);
 		InfoChain->Add(argv[1]);
 	} else {
 		printf("Strange file extention: .txt or .root expected\n");
@@ -356,6 +379,11 @@ int main(int argc, char **argv)
 	}
 
 	nEvt = EventChain->GetEntries();
+	rEvt = (RawChain) ? RawChain->GetEntries() : 0;
+	if (RawChain && rEvt != nEvt) {
+		printf("Event chain (%d) and RawHits chain (%d) do not match\n",  nEvt, rEvt); 
+		goto fin;
+	}
 	memset(PairCnt, 0, sizeof(PairCnt));
 	Muon.globalTime = -GLOBALFREQ * 1000;	// some large number
 	for (iEvt =0; iEvt < nEvt; iEvt++) {
@@ -364,13 +392,18 @@ int main(int argc, char **argv)
 //	2. Look for all possible delayed events
 //	3. Go to the next muon
 		EventChain->GetEntry(iEvt);
+		if (RawChain) RawChain->GetEntry(iEvt);
+		if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
+
 //	Get Muon
 		if (IsMuon(&DanssEvent, &HitArray[1], &NPHits, PHits)) {
-			memcpy(&Muon, &DanssEvent, sizeof(struct DanssEventStruct6));
+			memcpy(&Muon, &DanssEvent, sizeof(struct DanssEventStruct7));
 			CopyHits(&HitArray[0], &HitArray[1], DanssEvent.NHits);
 //	Look for delayed event
 			for (i = iEvt + 1; i < nEvt; i++) {
 				EventChain->GetEntry(i);
+				if (RawChain) RawChain->GetEntry(i);
+				if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
 				if (DanssEvent.globalTime - Muon.globalTime >= Criteria.TimeWindow * GFREQ2US
 					|| DanssEvent.globalTime - Muon.globalTime <= 0) break;
 				if (IsDelayed(&DanssEvent, &HitArray[1], NPHits, PHits)) {
@@ -382,6 +415,8 @@ int main(int argc, char **argv)
 //	Look for random event - delayed event before
 			for (i = iEvt - 1; i >= 0; i--) {
 				EventChain->GetEntry(i);
+				if (RawChain) RawChain->GetEntry(i);
+				if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
 				if (Muon.globalTime - DanssEvent.globalTime >= Criteria.TimeWindow * NRANDOM * GFREQ2US
 					|| Muon.globalTime - DanssEvent.globalTime <= 0) break;
 				if (IsDelayed(&DanssEvent, &HitArray[1], NPHits, PHits)) {
@@ -408,6 +443,7 @@ int main(int argc, char **argv)
 		iEvt, NRANDOM, PairCnt[0], PairCnt[1], SumInfo.upTime / GLOBALFREQ);
 fin:
 	delete EventChain;
+	if (RawChain) delete RawChain;
 	delete InfoChain;
 
 	InfoOut->Write();

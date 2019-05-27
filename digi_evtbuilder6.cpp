@@ -60,7 +60,8 @@
 //	fine time
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
-#define TCUT		10			// fine time cut, ns
+#define TCUT		10			// fine time cut, ns for SiPM
+#define TCUTPMT		20			// fine time cut, ns for PMT and VETO
 #define NOFINETIME	10000			// something out of range
 //	Flags
 #define FLG_PRINTALL		       1	// do large debuggging printout
@@ -119,6 +120,12 @@ struct HitStruct {
 	struct HitTypeStruct 	type[iMaxDataElements];
 }					HitArray;
 
+TH1D *hCrossTalk;
+
+#ifndef DIGI_V2
+	TH1D *hEtoEMC;
+	TH1D *hNPEtoEMC;
+#endif
 /********************************************************************************************************************/
 /************************	Analysis functions					*****************************/
 /********************************************************************************************************************/
@@ -479,8 +486,15 @@ void CleanByTime(ReadDigiDataUser *user)
 	
 	N = user->nhits();
 	if (DanssEvent.fineTime != NOFINETIME) {
-		for (i=0; i<N; i++) 
-			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT && ((iFlags & FLG_PMTTIMECUT) || user->type(i) == bSiPm)) HitFlag[i] = -1;
+		for (i=0; i<N; i++) switch (user->type(i)) {
+		case bSiPm:
+			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) HitFlag[i] = -1;
+			break;
+		case bPmt:
+		case bVeto:
+			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUTPMT && (iFlags & FLG_PMTTIMECUT)) HitFlag[i] = -1;
+			break;
+		}
 		tearly = DanssEvent.fineTime - SIPMEARLYTIME;
 	} else {
 		tearly = SOMEEARLYTIME;
@@ -739,6 +753,13 @@ void SumClean(ReadDigiDataUser *user)
 		DanssEvent.SiPmCleanHits++;
 		DanssEvent.SiPmCleanEnergy += user->e(i);
 		if (user->zCoord(i) < NBOTTOMLAYERS) DanssEvent.BottomLayersEnergy += user->e(i);
+		if (user->npe(i) > 3) hCrossTalk->Fill(user->npix(i) / user->npe(i));
+#ifndef DIGI_V2
+		if (IsMc && user->e_McTruth(i) > 0.3) {
+			hEtoEMC->Fill(user->e(i) / user->e_McTruth(i));
+			hNPEtoEMC->Fill(user->npe(i) / user->e_McTruth(i));
+		}
+#endif
 //		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
 		break;
 	case bPmt:
@@ -755,7 +776,7 @@ void SumClean(ReadDigiDataUser *user)
 
 	for (i=0; i<N; i++) if (HitFlag[i] == -100) {
 		DanssEvent.SiPmEarlyHits++;
-		DanssEvent.SiPmEarlyEnergy += user->e(i);		
+		DanssEvent.SiPmEarlyEnergy += user->e(i);
 	}
 }
 
@@ -1027,6 +1048,13 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		sprintf(strl, "Time delta distribution for channel %2.2d.%2.2d;ns", i+1, j);
 		hTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
 	}
+	hCrossTalk = new TH1D("hCrossTalk", "Croos talk distribution;Pixels/Ph.e.", 280, 0.8, 2.2);
+#ifndef DIGI_V2
+	if (IsMc) {
+		hEtoEMC = new TH1D("hEtoEMC", "Measured to MC truth energy ratio", 100, 0, 3);
+		hNPEtoEMC = new TH1D("hNPEtoEMC", "Photo electrons to MC truth energy ratio", 250, 0, 50);
+	}
+#endif
 }
 
 //------------------------------->
@@ -1129,7 +1157,13 @@ void ReadDigiDataUser::finishUserProc()
 	if (OutputTree) OutputTree->Write();
 	if (InfoTree) InfoTree->Write();
 	if ((iFlags & FLG_DTHIST) && OutputFile) for (i=0; i<iMaxAddress_AdcBoard; i++) for (j=0; j<iNChannels_AdcBoard; j++) hTimeDelta[i][j]->Write();
-
+	hCrossTalk->Write();
+#ifndef DIGI_V2
+	if (IsMc) {
+		hEtoEMC->Write();
+		hNPEtoEMC->Write();
+	}
+#endif
 	if (OutputFile) OutputFile->Close();
   
 	printf("Total up time        %Ld seconds\n", upTime / (long long) GLOBALFREQ);
