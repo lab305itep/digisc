@@ -23,9 +23,11 @@ void join_periods(const char *newname, const char *perioddir)
 	if (!fNew->IsOpen()) return;
 
 	for (i=0; i<N; i++) {
-		fSys = (TSystemFile *) files->At(i+2);	// skip . and ..
+		fSys = (TSystemFile *) files->At(i);
 		if (!fSys) continue;
-		sprintf(str, "%s/%s", perioddir, fSys->GetName());
+		ptr = (char *) fSys->GetName();
+		if (ptr[0] == '.') continue;	// skip . and ..
+		sprintf(str, "%s/%s", perioddir, ptr);
 		fIn = new TFile(str);
 		if (!fIn->IsOpen()) continue;
 		keys = fIn->GetListOfKeys();

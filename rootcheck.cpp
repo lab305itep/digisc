@@ -40,6 +40,10 @@ int checkroot(int fnum, const char *pattern)
 		f->Close();
 		return false;
 	}
+	if (f->TestBit(TFile::kRecovered)) {
+		f->Close();
+		return false;
+	}
 	f->Close();
 	return true;
 }
@@ -56,6 +60,11 @@ int checkroot(const char *rname, const char *pattern)
 	f = new TFile(fname);
 	if (f->IsZombie()) return false;
 	if (!f->GetNkeys()) {
+		f->Close();
+		return false;
+	}
+	irc = f->TestBit(TFile::kRecovered);
+	if (irc) {
 		f->Close();
 		return false;
 	}

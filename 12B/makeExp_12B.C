@@ -5,6 +5,8 @@
 #include <unistd.h>
 
 #include <TChain.h>
+#include <TFile.h>
+#include <TH1D.h>
 
 TChain *create_chain(const char *name, int from, int to)
 {
@@ -56,4 +58,31 @@ TChain *create_chain(const char *name, int from, int to)
 	free(rc_stat);
 	
 	return ch;
+}
+
+void makeExp_12B(int from, int to, double scale)
+{
+	char str[1024];
+
+	TChain *chA = create_chain("MuonPair", from, to);
+	TChain *chR = create_chain("MuonRandom", from, to);
+	if (!chA || !chR) return;
+	
+	sprintf(str, "Danss_12B_scale_%5.3f.root", scale);
+	TFile *fOut = new TFile(str, "RECREATE");
+
+	sprintf(str, "Experiment with ^{12}B cuts, %s;MeV", "ClusterEnergy");
+	TH1D *hExp = new TH1D("hExp12B", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterEnergy");
+	TH1D *hRndm = new TH1D("hRndm12B", str, 80, 0, 20);
+	sprintf(str, "ClusterEnergy * %6.4f", scale);
+	chA->Project(hExp->GetName(), str, "gtDiff > 500");
+	chR->Project(hRndm->GetName(), str, "gtDiff > 500");
+	hExp->Sumw2();
+	hRndm->Sumw2();
+	hExp->Add(hRndm, -1.0/16);
+	fOut->cd();
+	hExp->Write();
+	hRndm->Write();
+	fOut->Close();
 }

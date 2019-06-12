@@ -57,8 +57,8 @@ for ((i=0; $i < $NB; i=$i+1 )) ; do
 	echo "#PBS -l nodes=$TOGO"						>> $bfname
 	echo "#PBS -l walltime=02:00:00"					>> $bfname
 	echo "cd $WD"								>> $bfname
-	echo ". /opt/fairsoft/bin/thisroot.sh"					>> $bfname
-	echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/fairsoft/lib/root:/opt/gcc-5.3/lib64"	>> $bfname
+#	echo ". /opt/fairsoft/bin/thisroot.sh"					>> $bfname
+#	echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/fairsoft/lib/root:/opt/gcc-5.3/lib64"	>> $bfname
 #	echo "export DANSSRAWREC_HOME=/home/clusters/rrcmpi/alekseev/igor/digi_home"			>> $bfname
 	if [ x"$6" != "x" ] ; then
 		echo "export $6"						>> $bfname

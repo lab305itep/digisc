@@ -30,6 +30,7 @@ if [ x${TMP}  != x ] ; then
 	OUTFILE=${OUTFILE/.digi/.root}
 	export DANSSRAWREC_HOME=lib_v3.0
 	BUILDER=./digi_evtbuilder6_v3
+	mkdir -p $ROOT_DIR
 	$BUILDER -file $LISTFILE -output $OUTFILE -flag $FLAGS -mcdata -deadlist deadlist_12850.txt $ARGS 
 else
 	RUNNUMBER=`printf "%6.6d" $FN`
@@ -62,7 +63,9 @@ else
 	else
 		TCALIB=tcalib_5512_ss-d.calib
 	fi
-	$BUILDER -no_hit_tables -file $LISTFILE -tcalib $TCALIB -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
+	mkdir -p $ROOT_DIR
+	$BUILDER -no_hit_tables -file $LISTFILE -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
+#	$BUILDER -no_hit_tables -file $LISTFILE -tcalib $TCALIB -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
 	
 fi
 

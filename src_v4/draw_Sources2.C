@@ -88,15 +88,17 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB,
 
 	TCut cxyz("NeutronX[0] >= 0 && NeutronX[1] >= 0 && NeutronX[2] >= 0");
 	TCut cVeto("VetoCleanHits < 2 && VetoCleanEnergy < 4");
-	TCut cn("SiPmCleanHits > 5");
+	TCut cn("SiPmCleanHits > 2");
 	TCut cNoise("(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3");
 	TCut cSel = cxyz && cVeto && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel && cZ && cn);
-	sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy)*%5.3f/2.0", eScale);
+//	sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy-0.13)*%5.3f/2.0", eScale);	// 0.13 - SiPM residual noise energy
+	sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy)*%5.3f/2.0", eScale);		// new nosie cut
 	tExpA->Project("hExpA", str, cSel && cZ && cXY && cn);
 	tExpB->Project("hExpB", str, cSel && cZ && cXY && cn);
-	sprintf(str, "SiPmCleanEnergy*%5.3f", eScale);
+//	sprintf(str, "(SiPmCleanEnergy-0.13)*%5.3f", eScale);				// 0.13 - SiPM residual noise energy
+	sprintf(str, "(SiPmCleanEnergy)*%5.3f", eScale);
 	tExpA->Project("hExpSiPMA", str, cSel && cZ && cXY && cn);
 	tExpB->Project("hExpSiPMB", str, cSel && cZ && cXY && cn);
 	sprintf(str, "PmtCleanEnergy*%5.3f", eScale);
@@ -216,7 +218,7 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, TCut cXY, TCut cZ
 
 	TCut cxyz("NeutronX[0] >= 0 && NeutronX[1] >= 0 && NeutronX[2] >= 0");
 	TCut cVeto("VetoCleanHits < 2 && VetoCleanEnergy < 4");
-	TCut cn("SiPmCleanHits > 5");
+	TCut cn("SiPmCleanHits > 2");
 	TCut cSel = cxyz && cVeto;
 	
 	sprintf(str, "MyRandom::GausAdd((SiPmCleanEnergy+PmtCleanEnergy)/2.0, %6.4f)", kRndm);
@@ -272,7 +274,7 @@ void Add2Chain(TChain *ch, int from, int to, int max_files)
 	char str[1024];
 	
 	for(i=from; i<=to && (max_files <= 0 || i < from+max_files); i++) {
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root6n2/%3.3dxxx/danss_%6.6d.root",
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root6n4/%3.3dxxx/danss_%6.6d.root",
 			i/1000, i);
 		ch->AddFile(str);
 	}
@@ -399,28 +401,28 @@ void draw_Sources2(int iser, double Rndm_or_scale, int max_files = 0)
 	case 1001:	// Na MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.root");
+		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.root");
 		name = "22Na";
 		sprintf(fname, "22Na_MC_center_rndm_%4.2f", Rndm_or_scale);
 		break;
 	case 1002:	// Na MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim_90cm.root");
+		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim_90cm.root");
 		name = "22Na";
 		sprintf(fname, "22Na_MC_edge_rndm_%4.2f", Rndm_or_scale);
 		break;
 	case 1101:	// Co MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.root");
+		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.root");
 		name = "60Co";
 		sprintf(fname, "60Co_MC_center_rndm_%4.2f", Rndm_or_scale);
 		break;
 	case 1102:	// Co MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n1/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim_90cm.root");
+		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim_90cm.root");
 		name = "60Co";
 		sprintf(fname, "60Co_MC_edge_rndm_%4.2f", Rndm_or_scale);
 		break;

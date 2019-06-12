@@ -1,4 +1,4 @@
-void src2mc(const char *exp, const char *mc, const char *title = NULL)
+void src2mc(const char *exp, const char *mc, const char *fname = NULL)
 {
 	int i;
 	const char *expHists[4] = {"hExpC", "hExpSiPMC", "hExpPMTC", "hHitsC"};
@@ -38,4 +38,5 @@ void src2mc(const char *exp, const char *mc, const char *title = NULL)
 		hMc[i]->Draw("hist,same");
 		if (i == 3) lg->Draw();
 	}
+	if (fname) cv->SaveAs(fname);
 }

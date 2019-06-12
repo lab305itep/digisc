@@ -1,13 +1,13 @@
 #!/bin/bash
-#PBS -N hittree_all1
+#PBS -N hittree_all
 #PBS -q mpi
-#PBS -l nodes=7
-#PBS -l walltime=3:00:00
-#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/hittree_all1.out
-#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/hittree_all1.err
+#PBS -l nodes=220
+#PBS -l walltime=24:00:00
+#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/hittree_all.out
+#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/hittree_all.err
 cd /home/itep/alekseev/igor
-. /opt/fairsoft/bin/thisroot.sh
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/gcc-5.3/lib64
-#mpirun --mca btl ^tcp run_hits_mpi 41385 43
-mpirun --mca btl ^tcp run_hits_mpi 45700 41
+export SRC_DIR=/home/clusters/rrcmpi/alekseev/igor/root6n3 
+export TGT_DIR=/home/clusters/rrcmpi/alekseev/igor/root6n4
+# We run at ~120 files/hour
+mpirun --mca btl ^tcp run_hits_mpi 2000 250
 exit 0

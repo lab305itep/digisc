@@ -44,7 +44,7 @@
 #include "evtbuilder.h"
 
 /***********************	Definitions	****************************/
-#define MYVERSION	"4.10"
+#define MYVERSION	"4.20"
 //	Initial clean parameters
 #define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit
 #define MINSIPMPIXELS2	2			// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
@@ -57,6 +57,7 @@
 #define EDGEPMARK		1.0		// Minimum energy to flag event with edge hits
 #define MCNEUTRONSIGGMA		20.0		// Sigma for neutron based longitudinal correction for MC
 #define NBOTTOMLAYERS		2		// Use two bottom SiPM layers as additional VETO
+#define ENERGY_CORRECTION	0.95		// Energy correction to be applied for experimental data
 //	fine time
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
@@ -464,7 +465,8 @@ void CleanByConfirmation2(ReadDigiDataUser *user)
 	
 	N = user->nhits();
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm) {
-		if (user->npix(i) >= MINSIPMPIXELS2) continue;		// that's enough
+//		commented out - search for confirmation for all SiPm hits
+//		if (user->npix(i) >= MINSIPMPIXELS2) continue;		// that's enough
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
 		if (j < N) continue;
 		HitFlag[i] = -1;
@@ -472,7 +474,7 @@ void CleanByConfirmation2(ReadDigiDataUser *user)
 //		"early" hits
 	for (i=0; i<N; i++) if (HitFlag[i] == -100)
 	{
-		if (user->npix(i) >= MINSIPMPIXELS2) continue;		// that's enough
+//		if (user->npix(i) >= MINSIPMPIXELS2) continue;		// that's enough
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
 		if (j < N) continue;
 		HitFlag[i] = -1;
@@ -500,6 +502,25 @@ void CleanByTime(ReadDigiDataUser *user)
 		tearly = SOMEEARLYTIME;
 	}
 	for (i=0; i<N; i++) if (user->type(i) == bSiPm && fabs(user->t_raw(i) - tearly) <= TCUT) HitFlag[i] = -100;	// mark early hit candidates
+}
+
+void CorrectEnergy(void)
+{
+	int i;
+	DanssEvent.VetoCleanEnergy *= ENERGY_CORRECTION;
+	DanssEvent.BottomLayersEnergy *= ENERGY_CORRECTION;
+	DanssEvent.PmtCleanEnergy *= ENERGY_CORRECTION;
+	DanssEvent.SiPmEnergy *= ENERGY_CORRECTION;
+	DanssEvent.SiPmCleanEnergy *= ENERGY_CORRECTION;
+	DanssEvent.SiPmEarlyEnergy *= ENERGY_CORRECTION;
+	DanssEvent.PositronEnergy *= ENERGY_CORRECTION;
+	DanssEvent.TotalEnergy *= ENERGY_CORRECTION;
+	DanssEvent.PositronSiPmEnergy *= ENERGY_CORRECTION;
+	DanssEvent.PositronPmtEnergy *= ENERGY_CORRECTION;
+	DanssEvent.AnnihilationEnergy *= ENERGY_CORRECTION;
+	DanssEvent.AnnihilationMax *= ENERGY_CORRECTION;
+	
+	for (i=0; i<DanssEvent.NHits; i++) HitArray.E[i] *= ENERGY_CORRECTION;
 }
 
 void CreateDeadList(char *fname)
@@ -823,10 +844,9 @@ void ReadDigiDataUser::init_Tds()
 	char *ptr;
 	int i, k;
 	int iAdcNum, iAdcChan;
-	
 
 //	Set all zeroes
-	for(i = 0; i < iNElements; i++) {
+	for(i = 100; i < iNElements; i++) {
     		iAdcNum = i / 100;
     		iAdcChan = i % 100;
     		if(!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
@@ -923,8 +943,8 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	char strs[128];
 	char strl[1024];
 	char *DeadListName;
+	
 	int RandomSeed = 17321;
-
 	AttenuationLength = 300;
 	progStartTime = time(NULL);
 	chOutputFile = NULL;
@@ -1110,6 +1130,7 @@ int ReadDigiDataUser::processUserEvent()
 	CalculateNeutron(this);
 	CalculatePositron(this);
 	StoreHits(this);
+	if (!IsMc) CorrectEnergy();
 	if (iFlags & FLG_PRINTALL) DebugFullPrint(this);
 	if (DanssEvent.globalTime == dumpgTime) {
 		DumpEvent(this);

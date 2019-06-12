@@ -7,8 +7,9 @@
 #include <TLeaf.h>
 #include <TTree.h>
 
-//#define MASK ((1L<<45) - 1)
-#define MASK ((1L<<60) - 1)
+//#define MASK ((1L<<42) - 1)
+#define MASK ((1L<<45) - 1)
+#define MAXTRIG		4000000
 
 /*      Open data file either directly or via zcat etc, depending on the extension      */
 FILE* OpenDataFile(const char *fname) 
@@ -33,14 +34,20 @@ FILE* OpenDataFile(const char *fname)
 
 int main(int argc, char **argv)
 {
-	int i, N;
+	int i, j, K, N;
 	long long gtA;
 	long long gtB;
 	struct RawStruct {
 		unsigned short PmtCnt;
 		unsigned short VetoCnt;
 		unsigned short SiPmCnt;
-	} Raw;
+	};
+	struct RawStruct Raw;
+	struct RawArrayStruct {
+		long long tag;
+		struct RawStruct data;
+	};
+	struct RawArrayStruct *RawArray;
 	char str[1024];
 	char str_copy[1024];
 	char *ptr;
@@ -61,11 +68,49 @@ int main(int argc, char **argv)
 		return 30;
 	}
 	
+	RawArray = (struct RawArrayStruct *) malloc(MAXTRIG * sizeof(struct RawArrayStruct));
+	if (!RawArray) {
+		printf("No memory: %m\n");
+		return 35;
+	}
+	
 	FILE *fIn = OpenDataFile(argv[2]);
 	if (!fIn) {
 		printf("Something wrong with file: %s\n", argv[2]);
+		free(RawArray);
 		return 40;
 	}
+	
+	K = 0;
+	for (;;) {
+		ptr = fgets(str, sizeof(str), fIn);
+		if (!ptr) break;	// EOF
+		strcpy(str_copy, str);
+		ptr = strtok(str, " \t");
+		if (!ptr) continue;
+		if (!isdigit(ptr[0])) continue;
+		RawArray[K].tag = MASK & strtoll(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) {
+			printf("Bad string at %d: %s [file %s]\n", i, str_copy, argv[2]);
+			continue;
+		}
+		RawArray[K].data.PmtCnt = strtol(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) {
+			printf("Bad string at %d: %s [file %s]\n", i, str_copy, argv[2]);
+			continue;
+		}
+		RawArray[K].data.VetoCnt = strtol(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) {
+			printf("Bad string at %d: %s [file %s]\n", i, str_copy, argv[2]);
+			continue;
+		}
+		RawArray[K].data.SiPmCnt = strtol(ptr, NULL, 10);
+		K++;
+	}
+	pclose(fIn);
 
 	TFile *f = new TFile(argv[1], "UPDATE");
 	TTree *evt = (TTree *) f->Get("DanssEvent");
@@ -77,56 +122,32 @@ int main(int argc, char **argv)
 	TTree *t = new TTree("RawHits", "RawHits");
 	t->Branch("RawHits", &Raw, "PmtCnt/s:VetoCnt/s:SiPmCnt/s");
 	
-	gtB = -1;
+	j = 0;
+	
 	for(i=0; i<N; i++) {
 		evt->GetEntry(i);
 		gtA = MASK & (evt->GetLeaf("globalTime"))->GetValueLong64();
 		memset(&Raw, 0, sizeof(Raw));
-		if (gtB < gtA) for (;;) {
-			ptr = fgets(str, sizeof(str), fIn);
-			if (!ptr) {
-				printf("Unexpected EOF of %s @ %d: %m\n", argv[2], i);
-				gtB = -1;
-				break;
+		for (;j<K;j++) {
+			gtB = RawArray[j].tag;
+			if (gtB == gtA) break;
+		} 
+		if (gtB != gtA) {	// try to start from the beginning
+			for (j=0;j<K;j++) {
+				gtB = RawArray[j].tag;
+				if (gtB == gtA) break;
 			}
-			strcpy(str_copy, str);
-			ptr = strtok(str, " \t");
-			if (!ptr) continue;
-			gtB = MASK & strtoll(ptr, NULL, 10);
-			if (!gtB) continue;
-			if (gtB >= gtA) break;
-		} else {
-			strcpy(str, str_copy);
-			strtok(str, " \t");
 		}
-		if (gtB < 0) break;
 		if (gtB == gtA) {		// trigger found
-			ptr = strtok(NULL, " \t");
-			if (!ptr) {
-				printf("Bad string at %d: %s [file %s]\n", i, str_copy, argv[2]);
-				goto fill;
-			}
-			Raw.PmtCnt = strtol(ptr, NULL, 10);
-			ptr = strtok(NULL, " \t");
-			if (!ptr) {
-				printf("Bad string at %d: %s [file %s]\n", i, str_copy, argv[2]);
-				goto fill;
-			}
-			Raw.VetoCnt = strtol(ptr, NULL, 10);
-			ptr = strtok(NULL, " \t");
-			if (!ptr) {
-				printf("Bad string at %d: %s [file %s]\n", i, str_copy, argv[2]);
-				goto fill;
-			}
-			Raw.SiPmCnt = strtol(ptr, NULL, 10);
+			memcpy(&Raw, &RawArray[j].data, sizeof(struct RawStruct));
 		} else {			// trigger is somehow missing
 			printf("Trigger %d at %Ld not found [file %s]\n", i, gtA, argv[2]);
 		}
-fill:
 		t->Fill();
 	}
 	
 	t->Write();
 	f->Close();
+	free(RawArray);
 	return 0;
 }

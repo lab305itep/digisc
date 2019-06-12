@@ -6,8 +6,6 @@
 #PBS -l nodes=1
 #PBS -l walltime=23:30:00
 cd /home/itep/alekseev/igor/src_v4
-. /opt/fairsoft/bin/thisroot.sh
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/gcc-5.3/lib64
 
 #LIST="1 2 11 12 101 102 111 112 1001 1101"
 LIST="12 112"
