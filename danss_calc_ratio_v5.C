@@ -3,8 +3,8 @@
 #include "positions.h"
 TFile *fData;
 // Fast neutron corrections 
-const char *NeutronCorrN = "0.004800-0.000225*x";
-const char *NeutronCorrC = "0.01773-0.000792*x";
+const char *NeutronCorrN = "0.003475-0.000152*x";
+const char *NeutronCorrC = "0.01138-0.000437*x";
 const double OtherBlockFraction = 0.0060;	// Neutrino fraction of other blocks. Distances to other reactors: 160, 336 and 478 m
 const double ERange[2] = {1.001, 6.999};
 
@@ -209,7 +209,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	hUp->SetTitle(title);
 	hUp->Draw("hist,e");
 	val = hUp->IntegralAndError(hUp->FindBin(1.001), hUp->FindBin(7.999), err);
-	sprintf(strs, "  Up: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, "  Up: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hUp, strs, "l");
 
 	sprintf(strs, "hMid_%d", periodmask);
@@ -227,7 +227,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	hMid->SetFillColor(kGreen-10);
 	hMid->Draw("same,hist,e");
 	val = hMid->IntegralAndError(hUp->FindBin(1.001), hMid->FindBin(7.999), err);
-	sprintf(strs, " Mid: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, " Mid: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hMid, strs, "l");
 
 	sprintf(strs, "hDown_%d", periodmask);
@@ -245,7 +245,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	hDown->SetFillColor(kBlue-10);
 	hDown->Draw("same,hist,e");
 	val = hDown->IntegralAndError(hUp->FindBin(1.001), hDown->FindBin(7.999), err);
-	sprintf(strs, "Down: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, "Down: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hDown, strs, "l");
 
 	hUpSub->SetLineColor(kBlack);
@@ -291,7 +291,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	hUp->SetTitle(title);
 	hUp->Draw("hist,e");
 	val = hUp->IntegralAndError(hUp->FindBin(1.001), hUp->FindBin(7.999), err);
-	sprintf(strs, "  Up: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, "  Up: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hUp, strs, "l");
 
 	sprintf(strs, "hMid_%s_%s", pfrom, pto);
@@ -309,7 +309,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	hMid->SetFillColor(kGreen-10);
 	hMid->Draw("same,hist,e");
 	val = hMid->IntegralAndError(hUp->FindBin(1.001), hMid->FindBin(7.999), err);
-	sprintf(strs, " Mid: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, " Mid: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hMid, strs, "l");
 
 	sprintf(strs, "hDown_%s_%s", pfrom, pto);
@@ -326,7 +326,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	hDown->SetFillColor(kBlue-10);
 	hDown->Draw("same,hist,e");
 	val = hDown->IntegralAndError(hUp->FindBin(1.001), hDown->FindBin(7.999), err);
-	sprintf(strs, "Down: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, "Down: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hDown, strs, "l");
 
 	hUpSub->SetLineColor(kBlack);

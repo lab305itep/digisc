@@ -23,8 +23,10 @@ int main(int argc, char *argv[])
 	char *tcalib;
 	char *runlist;
 	char *runnum;
+	char *ptr;
 	FILE *rfile;
 	int i;
+	int SetVer = 0;
 	
 	t0 = time(NULL);
 //		Get our run number
@@ -52,32 +54,39 @@ int main(int argc, char *argv[])
 		}
 		fnum = strtol(str, NULL, 10);
 	}
+	ptr = getenv("DIGI_VERSION");
+	if (ptr) SetVer = strtol(ptr, NULL, 10);
 //		Try possible file names:
+	iver = 0;
 //		V3
-	iver = 3;
-	sprintf(fname, "digi_v3.0/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
-	irc = access(fname, R_OK);
-	if (!irc) goto found;
-	strcat(fname, ".bz2");
-	irc = access(fname, R_OK);
-	if (!irc) goto found;
-	iver = 3;
-	sprintf(fname, "digi_rad/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
-	irc = access(fname, R_OK);
-	if (!irc) goto found;
-	strcat(fname, ".bz2");
-	irc = access(fname, R_OK);
-	if (!irc) goto found;
+	if (!SetVer || SetVer == 3) {
+		iver = 3;
+		sprintf(fname, "digi_v3.0/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
+		irc = access(fname, R_OK);
+		if (!irc) goto found;
+		strcat(fname, ".bz2");
+		irc = access(fname, R_OK);
+		if (!irc) goto found;
+		iver = 3;
+		sprintf(fname, "digi_rad/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
+		irc = access(fname, R_OK);
+		if (!irc) goto found;
+		strcat(fname, ".bz2");
+		irc = access(fname, R_OK);
+		if (!irc) goto found;
+	}
 //		V2
-	iver = 2;
-	sprintf(fname, "digi_v2.1/%3.3dxxx/danss_data_%6.6d_phys_rawrec.digi", fnum/1000, fnum);
-	irc = access(fname, R_OK);
-	if (!irc) goto found;
-	strcat(fname, ".bz2");
-	irc = access(fname, R_OK);
-	if (!irc) goto found;
+	if (!SetVer || SetVer == 2) {
+		iver = 2;
+		sprintf(fname, "digi_v2.1/%3.3dxxx/danss_data_%6.6d_phys_rawrec.digi", fnum/1000, fnum);
+		irc = access(fname, R_OK);
+		if (!irc) goto found;
+		strcat(fname, ".bz2");
+		irc = access(fname, R_OK);
+		if (!irc) goto found;
 //		No digi file
-	printf("Run %6.6d not found.\n", fnum);
+		printf("Run %6.6d not found.\n", fnum);
+	}
 	goto fin;
 found:
 //		create the list file

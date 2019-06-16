@@ -43,7 +43,7 @@ void digi_statone(int num, const char *root_dir)
 	}
 	TTree *hits = (TTree *) f->Get("RawHits");
 	if (!hits) {
-		printf("RawHits tree not found\n", fname);
+		printf("RawHits tree not found in %s\n", fname);
 		return;
 	}
 	evt->AddFriend(hits);
