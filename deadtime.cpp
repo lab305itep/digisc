@@ -111,9 +111,9 @@ void process(int run, const char *fmt, FILE *fOut)
 	
 	RunTime = (DanssEvent.globalTime - GlobalFirst) / GLOBALFREQ;
 	LiveTime = LiveCnt / GLOBALFREQ;
-fin:
 	fprintf(fOut, "%6d  %6.1f  %6.1f  %6.1f  %7.5f\n", 
 		run, RunTime, LiveTime, RunTime - LiveTime, (RunTime - LiveTime) / RunTime);
+fin:
 	if (EventChain) delete EventChain;
 	if (RawChain) delete RawChain;
 }

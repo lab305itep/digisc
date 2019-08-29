@@ -50,7 +50,7 @@ class MyRandom {
 };
 
 void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, 
-	const char *name, const char *fname, TCut cXY, TCut cZ, double eScale, double Efit[2])
+	const char *name, const char *fname, TCut cXY, TCut cZ, double eScale, double Efit[2], int version)
 {
 	char str[256];
 	long long gtA, gtB;
@@ -93,12 +93,18 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB,
 	TCut cSel = cxyz && cVeto && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel && cZ && cn);
-//	sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy-0.13)*%5.3f/2.0", eScale);	// 0.13 - SiPM residual noise energy
-	sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy)*%5.3f/2.0", eScale);		// new nosie cut
+	if (version == 72) {
+		sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy-0.13)*%5.3f/2.0", eScale);	// 0.13 - SiPM residual noise energy
+	} else {
+		sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy)*%5.3f/2.0", eScale);		// new nosie cut
+	}
 	tExpA->Project("hExpA", str, cSel && cZ && cXY && cn);
 	tExpB->Project("hExpB", str, cSel && cZ && cXY && cn);
-//	sprintf(str, "(SiPmCleanEnergy-0.13)*%5.3f", eScale);				// 0.13 - SiPM residual noise energy
-	sprintf(str, "(SiPmCleanEnergy)*%5.3f", eScale);
+	if (version == 72) {
+		sprintf(str, "(SiPmCleanEnergy-0.13)*%5.3f", eScale);				// 0.13 - SiPM residual noise energy
+	} else {
+		sprintf(str, "(SiPmCleanEnergy)*%5.3f", eScale);
+	}
 	tExpA->Project("hExpSiPMA", str, cSel && cZ && cXY && cn);
 	tExpB->Project("hExpSiPMB", str, cSel && cZ && cXY && cn);
 	sprintf(str, "PmtCleanEnergy*%5.3f", eScale);
@@ -268,19 +274,19 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, TCut cXY, TCut cZ
 	}
 }
 
-void Add2Chain(TChain *ch, int from, int to, int max_files)
+void Add2Chain(TChain *ch, int from, int to, const char *rootdir, int max_files = 0)
 {
 	int i;
 	char str[1024];
 	
 	for(i=from; i<=to && (max_files <= 0 || i < from+max_files); i++) {
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root6n4/%3.3dxxx/danss_%6.6d.root",
-			i/1000, i);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/%3.3dxxx/danss_%6.6d.root", 
+			rootdir, i/1000, i);
 		ch->AddFile(str);
 	}
 }
 
-void draw_Sources2(int iser, double Rndm_or_scale, int max_files = 0)
+void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_files = 0)
 {
 	const char *name = "";
 	char fname[1024];
@@ -290,6 +296,8 @@ void draw_Sources2(int iser, double Rndm_or_scale, int max_files = 0)
 	TCut cZ;
 	int code;
 	int i;
+	char *rootdir = (char *)"root6n4";
+	
 	TChain *tMc = new TChain("DanssEvent");
 	TChain *tExpA = new TChain("DanssEvent");
 	TChain *tExpB = new TChain("DanssEvent");
@@ -300,131 +308,147 @@ void draw_Sources2(int iser, double Rndm_or_scale, int max_files = 0)
 	tExpA->AddFriend(tRawA);
 	tExpB->AddFriend(tRawB);
 	
+	switch (version) {
+	case 72:
+		rootdir = (char *)"root6n2";
+		break;
+	case 74:
+		rootdir = (char *)"root6n4";
+		break;
+	default:
+		rootdir = (char *)"root6n4";
+		break;
+	}
+	
 	code = iser / 1000;
 	switch (iser) {
 	case 1:		// Na Feb 17, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 12376, 12407, max_files);
-		Add2Chain(tRawA, 12376, 12407, max_files);
-		Add2Chain(tInfoA, 12376, 12407, max_files);
-		Add2Chain(tExpB, 12411, 12474, max_files);
-		Add2Chain(tRawB, 12411, 12474, max_files);
-		Add2Chain(tInfoB, 12411, 12474, max_files);
+		Add2Chain(tExpA, 12376, 12407, rootdir, max_files);
+		Add2Chain(tRawA, 12376, 12407, rootdir, max_files);
+		Add2Chain(tInfoA, 12376, 12407, rootdir, max_files);
+		Add2Chain(tExpB, 12411, 12474, rootdir, max_files);
+		Add2Chain(tRawB, 12411, 12474, rootdir, max_files);
+		Add2Chain(tInfoB, 12411, 12474, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_feb17_center_sc_%5.3f", Rndm_or_scale);
+		sprintf(fname, "22Na_feb17_center_sc_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 2:		// Na Feb 17, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 12364, 12373, max_files);
-		Add2Chain(tRawA, 12364, 12373, max_files);
-		Add2Chain(tInfoA, 12364, 12373, max_files);
-		Add2Chain(tExpB, 12411, 12430, max_files);
-		Add2Chain(tRawB, 12411, 12430, max_files);
-		Add2Chain(tInfoB, 12411, 12430, max_files);
+		Add2Chain(tExpA, 12364, 12373, rootdir, max_files);
+		Add2Chain(tRawA, 12364, 12373, rootdir, max_files);
+		Add2Chain(tInfoA, 12364, 12373, rootdir, max_files);
+		Add2Chain(tExpB, 12411, 12430, rootdir, max_files);
+		Add2Chain(tRawB, 12411, 12430, rootdir, max_files);
+		Add2Chain(tInfoB, 12411, 12430, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_feb17_edge_%5.3f", Rndm_or_scale);
+		sprintf(fname, "22Na_feb17_edge_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 11:		// Na Nov 18, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 51099, 51161, max_files);
-		Add2Chain(tRawA, 51099, 51161, max_files);
-		Add2Chain(tInfoA, 51099, 51161, max_files);
-		Add2Chain(tExpB, 51167, 51267, max_files);
-		Add2Chain(tRawB, 51167, 51267, max_files);
-		Add2Chain(tInfoB, 51167, 51267, max_files);
+		Add2Chain(tExpA, 51099, 51161, rootdir, max_files);
+		Add2Chain(tRawA, 51099, 51161, rootdir, max_files);
+		Add2Chain(tInfoA, 51099, 51161, rootdir, max_files);
+		Add2Chain(tExpB, 51167, 51267, rootdir, max_files);
+		Add2Chain(tRawB, 51167, 51267, rootdir, max_files);
+		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_nov18_center_%5.3f", Rndm_or_scale);
+		sprintf(fname, "22Na_nov18_center_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 12:		// Na Nov 18, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 51036, 51095, max_files);
-		Add2Chain(tRawA, 51036, 51095, max_files);
-		Add2Chain(tInfoA, 51036, 51095, max_files);
-		Add2Chain(tExpB, 51167, 51267, max_files);
-		Add2Chain(tRawB, 51167, 51267, max_files);
-		Add2Chain(tInfoB, 51167, 51267, max_files);
+		Add2Chain(tExpA, 51036, 51095, rootdir, max_files);
+		Add2Chain(tRawA, 51036, 51095, rootdir, max_files);
+		Add2Chain(tInfoA, 51036, 51095, rootdir, max_files);
+		Add2Chain(tExpB, 51167, 51267, rootdir, max_files);
+		Add2Chain(tRawB, 51167, 51267, rootdir, max_files);
+		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_nov18_edge_%5.3f", Rndm_or_scale);
+		sprintf(fname, "22Na_nov18_edge_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 101:		// Co Feb 17, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 12306, 12346, max_files);
-		Add2Chain(tRawA, 12306, 12346, max_files);
-		Add2Chain(tInfoA, 12306, 12346, max_files);
-		Add2Chain(tExpB, 12198, 12303, max_files);
-		Add2Chain(tRawB, 12198, 12303, max_files);
-		Add2Chain(tInfoB, 12198, 12303, max_files);
+		Add2Chain(tExpA, 12306, 12346, rootdir, max_files);
+		Add2Chain(tRawA, 12306, 12346, rootdir, max_files);
+		Add2Chain(tInfoA, 12306, 12346, rootdir, max_files);
+		Add2Chain(tExpB, 12198, 12303, rootdir, max_files);
+		Add2Chain(tRawB, 12198, 12303, rootdir, max_files);
+		Add2Chain(tInfoB, 12198, 12303, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_feb17_center_%5.3f", Rndm_or_scale);
+		sprintf(fname, "60Co_feb17_center_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 102:		// Co Feb 17, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 12348, 12361, max_files);
-		Add2Chain(tRawA, 12348, 12361, max_files);
-		Add2Chain(tInfoA, 12348, 12361, max_files);
-		Add2Chain(tExpB, 12260, 12303, max_files);
-		Add2Chain(tRawB, 12260, 12303, max_files);
-		Add2Chain(tInfoB, 12260, 12303, max_files);
+		Add2Chain(tExpA, 12348, 12361, rootdir, max_files);
+		Add2Chain(tRawA, 12348, 12361, rootdir, max_files);
+		Add2Chain(tInfoA, 12348, 12361, rootdir, max_files);
+		Add2Chain(tExpB, 12260, 12303, rootdir, max_files);
+		Add2Chain(tRawB, 12260, 12303, rootdir, max_files);
+		Add2Chain(tInfoB, 12260, 12303, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_feb17_edge_%5.3f", Rndm_or_scale);
+		sprintf(fname, "60Co_feb17_edge_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 111:		// Co Nov 18, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 50949, 50997, max_files);
-		Add2Chain(tRawA, 50949, 50997, max_files);
-		Add2Chain(tInfoA, 50949, 50997, max_files);
-		Add2Chain(tExpB, 50750, 50873, max_files);
-		Add2Chain(tRawB, 50750, 50873, max_files);
-		Add2Chain(tInfoB, 50750, 50873, max_files);
+		Add2Chain(tExpA, 50949, 50997, rootdir, max_files);
+		Add2Chain(tRawA, 50949, 50997, rootdir, max_files);
+		Add2Chain(tInfoA, 50949, 50997, rootdir, max_files);
+		Add2Chain(tExpB, 50750, 50873, rootdir, max_files);
+		Add2Chain(tRawB, 50750, 50873, rootdir, max_files);
+		Add2Chain(tInfoB, 50750, 50873, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_nov18_center_%5.3f", Rndm_or_scale);
+		sprintf(fname, "60Co_nov18_center_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 112:		// Co Nov 18, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		Add2Chain(tExpA, 50999, 51034, max_files);
-		Add2Chain(tRawA, 50999, 51034, max_files);
-		Add2Chain(tInfoA, 50999, 51034, max_files);
-		Add2Chain(tExpB, 50750, 50873, max_files);
-		Add2Chain(tRawB, 50750, 50873, max_files);
-		Add2Chain(tInfoB, 50750, 50873, max_files);
+		Add2Chain(tExpA, 50999, 51034, rootdir, max_files);
+		Add2Chain(tRawA, 50999, 51034, rootdir, max_files);
+		Add2Chain(tInfoA, 50999, 51034, rootdir, max_files);
+		Add2Chain(tExpB, 50750, 50873, rootdir, max_files);
+		Add2Chain(tRawB, 50750, 50873, rootdir, max_files);
+		Add2Chain(tInfoB, 50750, 50873, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_nov18_edge_%5.3f", Rndm_or_scale);
+		sprintf(fname, "60Co_nov18_edge_%5.3f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 1001:	// Na MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.root", rootdir);
+		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_center_rndm_%4.2f", Rndm_or_scale);
+		sprintf(fname, "22Na_MC_center_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 1002:	// Na MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim_90cm.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim_90cm.root", rootdir);
+		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_edge_rndm_%4.2f", Rndm_or_scale);
+		sprintf(fname, "22Na_MC_edge_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 1101:	// Co MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.root", rootdir);
+		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_center_rndm_%4.2f", Rndm_or_scale);
+		sprintf(fname, "60Co_MC_center_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
 		break;
 	case 1102:	// Co MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		tMc->AddFile("/home/clusters/rrcmpi/alekseev/igor/root6n3/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim_90cm.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim_90cm.root", rootdir);
+		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_edge_rndm_%4.2f", Rndm_or_scale);
+		sprintf(fname, "60Co_MC_edge_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
 		break;
 	default:
 		printf("%d - unknown\n", iser);
@@ -445,7 +469,7 @@ void draw_Sources2(int iser, double Rndm_or_scale, int max_files = 0)
 
 	switch (code) {
 	case 0:	// Experiment
-		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, cXY, cZ, Rndm_or_scale, Efit);
+		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, cXY, cZ, Rndm_or_scale, Efit, version);
 		break;
 	case 1:	// MC
 		draw_MC(tMc, name, fname, cXY, cZ, Efit, Rndm_or_scale);

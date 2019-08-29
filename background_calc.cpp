@@ -45,14 +45,15 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");
 	TCut cRXY("PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0");
 	TCut c20("gtDiff > 2");
-        TCut cGamma("AnnihilationEnergy < 1.8 && AnnihilationGammas <= 7");
+        TCut cGamma("AnnihilationEnergy < 1.8 && AnnihilationGammas <= 10");
 	TCut cGammaMax("AnnihilationMax < 0.8");
         TCut cPe("PositronEnergy > 1");
         TCut cR1("Distance < 45");
         TCut cR2("Distance < 55");
         TCut cR = cR2 && (cRXY || cR1);
         TCut cN("NeutronEnergy > 3.5 && NeutronEnergy < 15.0 && NeutronHits >= 3");
-        TCut cNZ("NeutronX[2] < 95.5");
+//        TCut cNZ("NeutronX[2] < 95.5");
+        TCut cNZ("1");
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 2 || AnnihilationEnergy < 0.2 || MinPositron2GammaZ > 15))");
         TCut ct;
 	TCut cv[3];
@@ -158,7 +159,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		hp->Project(h[12][j], "PositronHits", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cN && cNZ && cSingle && "AnnihilationEnergy < 1.8";
 		hp->Project(h[13][j], "AnnihilationGammas", ct && cv[j] && cAux);
-		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cN && cNZ && cSingle && "AnnihilationGammas <= 7";
+		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cN && cNZ && cSingle && "AnnihilationGammas <= 10";
 		hp->Project(h[14][j], "AnnihilationEnergy", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cN && cNZ && cSingle;
 		hp->Project(h[15][j], "AnnihilationMax", ct && cv[j] && cAux);

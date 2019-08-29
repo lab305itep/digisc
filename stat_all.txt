@@ -1,1 +1,1 @@
-stat_v3.71dp.txt
+stat_v3.72dp.txt

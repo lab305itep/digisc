@@ -5,6 +5,7 @@ TFile *fData;
 // Fast neutron corrections 
 const char *NeutronCorrN = "0.003475-0.000152*x";
 const char *NeutronCorrC = "0.01138-0.000437*x";
+const double rOffCosmCorr = 0.91;
 const double OtherBlockFraction = 0.0060;	// Neutrino fraction of other blocks. Distances to other reactors: 160, 336 and 478 m
 const double ERange[2] = {1.001, 6.999};
 
@@ -52,7 +53,7 @@ int is_in_date_range(const char *name, const char *from, const char *to)
 }
 
 //  Make sum of spectra over large number of points
-int sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, double bgScale = 1.0, double *days = NULL)
+int sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, double bgScale = 1.0, double Nscale = 1.0, double *days = NULL)
 {
 	int N;
 	TH1D *hSig;
@@ -84,9 +85,9 @@ int sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, dou
 		dt = hConst->GetBinContent(1) / 1000.0;	// seconds * 10^3
 		tSum += dt;
 		hSum->Add(hSig);
-		hSub->Add(hBgnd, positions[i].bgnd * bgScale);
+		hSub->Add(hBgnd, positions[i].bgnd * bgScale * Nscale);
 		hSub->Add(&fBgndN, dt);
-		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale);
+		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale * Nscale);
 	}
 	hSum->Add(hSub, -1);
 	if (days) *days = tSum / 86.4;
@@ -97,7 +98,7 @@ int sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, dou
 	return Cnt;
 }
 
-int sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *pfrom, const char *pto, double bgScale = 1.0, double *days = NULL)
+int sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *pfrom, const char *pto, double bgScale = 1.0, double Nscale = 1.0, double *days = NULL)
 {
 	int N;
 	TH1D *hSig;
@@ -130,8 +131,8 @@ int sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *pfr
 		tSum += dt;
 		hSum->Add(hSig);
 		hSub->Add(hBgnd, positions[i].bgnd * bgScale);
-		hSub->Add(&fBgndN, dt);
-		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale);
+		hSub->Add(&fBgndN, dt * Nscale);
+		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale * Nscale);
 	}
 	hSum->Add(hSub, -1);
 	if (days) *days = tSum / 86.4;
@@ -142,7 +143,7 @@ int sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *pfr
 	return Cnt;
 }
 
-void sum_of_raw(TH1D *hSumSig, TH1D *hSumBgnd, const char *posmask, int permask, const char *pfrom = NULL, const char *pto = NULL)
+void sum_of_raw(TH1D *hSumSig, TH1D *hSumBgnd, const char *posmask, int permask, const char *pfromA = NULL, const char *ptoA = NULL, const char *pfromB = NULL, const char *ptoB = NULL)
 {
 	int N;
 	TH1D *hSig;
@@ -160,7 +161,10 @@ void sum_of_raw(TH1D *hSumSig, TH1D *hSumBgnd, const char *posmask, int permask,
 	tSum = 0;
 	for (i=0; i<N; i++) {
 		ptr = strchr(posmask, positions[i].name[0]);
-		if (!(is_in_date_range(positions[i].name, pfrom, pto) && ptr && ((1 << positions[i].period) & permask))) continue;
+		if (!ptr) continue;
+		if (!((1 << positions[i].period) & permask)) continue;
+		if (!(is_in_date_range(positions[i].name, pfromA, ptoA) || 
+			(pfromB && ptoB && is_in_date_range(positions[i].name, pfromB, ptoB)))) continue;
 		sprintf(str, "%s_hSig-diff", positions[i].name);
 		hSig = (TH1D*) fData->Get(str);
 		sprintf(str, "%s_hConst", positions[i].name);
@@ -179,8 +183,7 @@ void sum_of_raw(TH1D *hSumSig, TH1D *hSumBgnd, const char *posmask, int permask,
 	hSumBgnd->Scale(86.4 / tSum);
 }
 
-
-void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bgScale)
+void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bgScale, double Nscale = 1.0)
 {
 	TLegend *lg;
 	char strs[128];
@@ -197,7 +200,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	sprintf(strs, "hUpSub_%d", periodmask);
 	sprintf(strl, "Background spectrum %s, UP;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hUpSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n = sum_of_spectra(hUp, hUpSub, "u", periodmask, bgScale);
+	n = sum_of_spectra(hUp, hUpSub, "u", periodmask, bgScale, Nscale);
 	Cnt = n;
 	TH1D *hTmp = (TH1D *) hUp->Clone("hTmp");	// keep to subtract block #3
 	hUp->Add(hTmp, -OtherBlockFraction);
@@ -218,7 +221,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	sprintf(strs, "hMidSub_%d", periodmask);
 	sprintf(strl, "Background spectrum %s, MIDDLE;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hMidSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n = sum_of_spectra(hMid, hMidSub, "m", periodmask, bgScale);
+	n = sum_of_spectra(hMid, hMidSub, "m", periodmask, bgScale, Nscale);
 	Cnt += n;
 	hMid->Add(hTmp, -OtherBlockFraction);
 	hMid->Write();
@@ -236,7 +239,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	sprintf(strs, "hDownSub_%d", periodmask);
 	sprintf(strl, "Background spectrum %s, DOWN;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hDownSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n = sum_of_spectra(hDown, hDownSub, "d", periodmask, bgScale);
+	n = sum_of_spectra(hDown, hDownSub, "d", periodmask, bgScale, Nscale);
 	Cnt += n;
 	hDown->Add(hTmp, -OtherBlockFraction);
 	hDown->Write();
@@ -261,7 +264,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	delete hTmp;
 }
 
-void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const char *pto, double bgScale)
+void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const char *pto, double bgScale, double Nscale = 1.0)
 {
 	TLegend *lg;
 	char strs[128];
@@ -279,7 +282,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	sprintf(strs, "hUpSub_%s_%s", pfrom, pto);
 	sprintf(strl, "Background spectrum %s, UP;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hUpSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n = sum_of_spectral(hUp, hUpSub, "u", pfrom, pto, bgScale);
+	n = sum_of_spectral(hUp, hUpSub, "u", pfrom, pto, bgScale, Nscale);
 	Cnt = n;
 	TH1D *hTmp = (TH1D *) hUp->Clone("hTmp");	// keep to subtract block #3
 	hUp->Add(hTmp, -OtherBlockFraction);
@@ -300,7 +303,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	sprintf(strs, "hMidSub_%s_%s", pfrom, pto);
 	sprintf(strl, "Background spectrum %s, MIDDLE;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hMidSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n = sum_of_spectral(hMid, hMidSub, "m", pfrom, pto, bgScale);
+	n = sum_of_spectral(hMid, hMidSub, "m", pfrom, pto, bgScale, Nscale);
 	Cnt += n;
 	hMid->Add(hTmp, -OtherBlockFraction);
 	hMid->Write();
@@ -318,7 +321,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	sprintf(strs, "hDownSub_%s_%s", pfrom, pto);
 	sprintf(strl, "Background spectrum %s, DOWN;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hDownSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n = sum_of_spectral(hDown, hDownSub, "d", pfrom, pto, bgScale);
+	n = sum_of_spectral(hDown, hDownSub, "d", pfrom, pto, bgScale, Nscale);
 	Cnt += n;
 	hDown->Add(hTmp, -OtherBlockFraction);
 	hDown->Write();
@@ -417,7 +420,7 @@ void draw_single_ratio(const char *nameA, const char *nameB, const char *name, c
 }
 
 void draw_normalized_ratio(const char* beginA, const char *endA, const char* beginB, const char *endB, 
-	const char *name, const char *title, double min=0.6, double max=1.2, double bgScale = 1.0)
+	const char *name, const char *title, double min=0.6, double max=1.2, double bgScale = 1.0, double Nscale = 1.0)
 {
 	char strs[128];
 	double daysAU, daysAM, daysAD, daysBU, daysBM, daysBD;
@@ -440,12 +443,12 @@ void draw_normalized_ratio(const char* beginA, const char *endA, const char* beg
 	TH1D *hBDb = new TH1D("hNRBDb", "", NEBINS, 0, 16);
 	TH1D *hAB = new TH1D(name, title, NEBINS, 0, 16);
 //		Make initial sum
-	sum_of_spectral(hAU, hAUb, "u", beginA, endA, bgScale, &daysAU);
-	sum_of_spectral(hAM, hAMb, "m", beginA, endA, bgScale, &daysAM);
-	sum_of_spectral(hAD, hADb, "d", beginA, endA, bgScale, &daysAD);
-	sum_of_spectral(hBU, hBUb, "u", beginB, endB, bgScale, &daysBU);
-	sum_of_spectral(hBM, hBMb, "m", beginB, endB, bgScale, &daysBM);
-	sum_of_spectral(hBD, hBDb, "d", beginB, endB, bgScale, &daysBD);
+	sum_of_spectral(hAU, hAUb, "u", beginA, endA, bgScale, Nscale, &daysAU);
+	sum_of_spectral(hAM, hAMb, "m", beginA, endA, bgScale, Nscale, &daysAM);
+	sum_of_spectral(hAD, hADb, "d", beginA, endA, bgScale, Nscale, &daysAD);
+	sum_of_spectral(hBU, hBUb, "u", beginB, endB, bgScale, Nscale, &daysBU);
+	sum_of_spectral(hBM, hBMb, "m", beginB, endB, bgScale, Nscale, &daysBM);
+	sum_of_spectral(hBD, hBDb, "d", beginB, endB, bgScale, Nscale, &daysBD);
 //		Subtract other blocks
 	TH1D *hTmpA = (TH1D *) hAU->Clone("hTmpA");
 	TH1D *hTmpB = (TH1D *) hBU->Clone("hTmpB");
@@ -564,11 +567,12 @@ void draw_period_ratios(int m1, int m2, const char *title, double min=0.7, doubl
 	delete hRDown;
 }
 
-void draw_signal_spectra(const char *from, const char *to, double bgScale = 5.6/2.5)
+void draw_signal_spectra(const char *from, const char *to, double bgScale = 5.6/2.5, double Nscale = 1.0)
 {
 	char strs[128];
 	char strl[1024];
 	TLatex txt;
+	double val, err;
 
 	sprintf(strs, "hOff_%s_%s", from, to);
 	sprintf(strl, "Positron raw spectrum %s-%s;Positron energy, MeV;Events / (day * 125 keV)", from, to);
@@ -576,13 +580,13 @@ void draw_signal_spectra(const char *from, const char *to, double bgScale = 5.6/
 	sprintf(strs, "hOffCosm_%s_%s", from, to);
 	sprintf(strl, "Positron raw spectrum (cosmic) %s-%s;Positron energy, MeV;Events / (day * 125 keV)", from, to);
 	TH1D *hC = new TH1D(strs, strl, NEBINS, 0, 16);
-	sum_of_raw(hN, hC, "umdrs", 31, from, to);
+	sum_of_raw(hN, hC, "umdrs", 63, from, to);
 	hN->Add((TH1D*)gROOT->FindObject("hUp_28"), -0.006);		// subtract blocks 1-3
 	TF1 fBgndN("fBgndN", NeutronCorrN, 0, 100);
 	TF1 fBgndC("fBgndC", NeutronCorrC, 0, 100);
-	hC->Add(&fBgndC, -86.4);
+	hC->Add(&fBgndC, -86.4 * Nscale * rOffCosmCorr);
 	hC->Scale(bgScale * 0.025);
-	hC->Add(&fBgndN, 86.4);
+	hC->Add(&fBgndN, 86.4 * Nscale * rOffCosmCorr);
 	hN->Write();
 	hC->Write();
 	hC->SetLineColor(kRed);
@@ -597,13 +601,102 @@ void draw_signal_spectra(const char *from, const char *to, double bgScale = 5.6/
 	sprintf(strs, "Cosmic * %4.1f%%", bgScale * 2.5);
 	lg->AddEntry(hC, strs, "le");
 	lg->Draw();
-	sprintf(strs, "Integral 1-7 MeV = %5.1f events/day", hN->Integral(hN->FindBin(1.001), hN->FindBin(6.999)));
+	val = hN->IntegralAndError(hN->FindBin(1.001), hN->FindBin(6.999), err);
+	sprintf(strs, "Integral 1-7 MeV = %5.1f #pm %3.1f events/day", val, err);
 	txt.SetTextColor(kBlue);
-	txt.DrawLatex(6, 0.55*hN->GetMaximum(), strs);
-	sprintf(strs, "Integral 1-7 MeV = %5.1f events/day", hC->Integral(hN->FindBin(1.001), hN->FindBin(6.999)));
+	txt.DrawLatex(5, 0.55*hN->GetMaximum(), strs);
+	val = hC->IntegralAndError(hN->FindBin(1.001), hN->FindBin(6.999), err);
+	sprintf(strs, "Integral 1-7 MeV = %5.1f #pm %3.1f  events/day", val, err);
 	txt.SetTextColor(kRed);
-	txt.DrawLatex(6, 0.45*hN->GetMaximum(), strs);
+	txt.DrawLatex(5, 0.45*hN->GetMaximum(), strs);
 }
+
+double CalcHistRatio(TH1 *hA, TH1 *hB, int binFirst, int binLast, double &err)
+{
+//	We ignore error on hB here
+	double Sab, Sb2;
+	double a, b, ea;
+	int i;
+	
+	if (hA->GetNbinsX() != hB->GetNbinsX()) {
+		printf("CalcHistRatio: histogramms %s and %s have different number of bins !\n",
+			hA->GetTitle(), hB->GetTitle());
+		err = 0;
+		return -1;
+	}
+	Sab = Sb2 = 0;
+	for (i=binFirst; i<=binLast; i++) {
+		a = hA->GetBinContent(i+1);
+		b = hB->GetBinContent(i+1);
+		ea = hA->GetBinError(i+1);
+		Sab += a * b / (ea * ea);
+		Sb2 += b * b / (ea * ea);
+	}
+	err = 1 / sqrt(2 * Sb2);
+//	printf("Sab = %f, Sb2 = %f, err = %f, val = %f\n", Sab, Sb2, err, Sab / Sb2);
+	return Sab / Sb2;
+}
+
+void draw_signal_spectra2(const char *fromA, const char *toA, const char *fromB, const char *toB, double bgScale = 5.6/2.5, double Nscale = 1.0,
+const char *posmask = "umd")
+{
+	char strs[128];
+	char strl[1024];
+	TLatex txt;
+	double val, err;
+
+	sprintf(strs, "hOff_%s_%s_%s_%s_%s", fromA, toA, fromB, toB, posmask);
+	sprintf(strl, "Positron raw spectrum %s-%s, %s-%s;Positron energy, MeV;Events / (day * 125 keV)", fromA, toA, fromB, toB);
+	TH1D *hN = new TH1D(strs, strl, NEBINS, 0, 16);
+	sprintf(strs, "hOffCosm_%s_%s_%s_%s_%s", fromA, toA, fromB, toB, posmask);
+	sprintf(strl, "Positron raw spectrum (cosmic) %s-%s, %s-%s;Positron energy, MeV;Events / (day * 125 keV)", fromA, toA, fromB, toB);
+	TH1D *hC = new TH1D(strs, strl, NEBINS, 0, 16);
+	sum_of_raw(hN, hC, posmask, 63, fromA, toA, fromB, toB);
+	hN->Add((TH1D*)gROOT->FindObject("hUp_62"), -0.006);		// subtract blocks 1-3
+	TF1 fBgndN("fBgndN", NeutronCorrN, 0, 100);
+	TF1 fBgndC("fBgndC", NeutronCorrC, 0, 100);
+	sprintf(strs, "hOff_%s_%s_%s_%s_%s_c", fromA, toA, fromB, toB, posmask);
+	TH1D *hNC = (TH1D*) hN->Clone(strs);
+	sprintf(strs, "hOffCosm_%s_%s_%s_%s_%s_c", fromA, toA, fromB, toB, posmask);
+	TH1D *hCC = (TH1D*) hC->Clone(strs);
+	hC->Add(&fBgndC, -86.4 * Nscale * rOffCosmCorr);
+	hC->Scale(bgScale * 0.025);
+	hC->Add(&fBgndN, 86.4 * Nscale * rOffCosmCorr);
+	hNC->Add(&fBgndN, -86.4 * Nscale * rOffCosmCorr);
+	hCC->Add(&fBgndC, -86.4 * Nscale * rOffCosmCorr);
+	hN->Write();
+	hC->Write();
+	hNC->Write();
+	hCC->Write();
+	hC->SetLineColor(kRed);
+	hC->GetYaxis()->SetLabelSize(0.08);
+	hC->SetTitleSize(0.08);
+	hC->SetMinimum(0);
+	hN->SetLineColor(kBlue);
+	hN->Draw();
+	hC->Draw("same");
+	TLegend *lg = new TLegend(0.65, 0.75, 0.90, 0.9);
+	lg->AddEntry(hN, "Neutrino", "le");
+	sprintf(strs, "Cosmic * %4.1f%%", bgScale * 2.5);
+	lg->AddEntry(hC, strs, "le");
+	lg->Draw();
+	val = CalcHistRatio(hNC, hCC, hNC->FindBin(1.001), hNC->FindBin(7.999), err);
+	sprintf(strs, "Signal/Cosmics = %6.4f #pm %6.4f", val, err);
+	txt.SetTextColor(kGreen);
+	txt.DrawLatex(5, 0.79*hN->GetMaximum(), strs);
+	sprintf(strs, "Detector position(s): %s", posmask);
+	txt.SetTextColor(kBlack);
+	txt.DrawLatex(5, 0.67*hN->GetMaximum(), strs);
+	val = hN->IntegralAndError(hN->FindBin(1.001), hN->FindBin(6.999), err);
+	sprintf(strs, "Integral 1-7 MeV = %5.1f #pm %3.1f events/day", val, err);
+	txt.SetTextColor(kBlue);
+	txt.DrawLatex(5, 0.55*hN->GetMaximum(), strs);
+	val = hC->IntegralAndError(hN->FindBin(1.001), hN->FindBin(6.999), err);
+	sprintf(strs, "Integral 1-7 MeV = %5.1f #pm %3.1f  events/day", val, err);
+	txt.SetTextColor(kRed);
+	txt.DrawLatex(5, 0.43*hN->GetMaximum(), strs);
+}
+
 
 int sum_accidental(TH1D *h, const char *posmask, const char *pfrom = NULL, const char *pto = NULL)
 {
@@ -648,7 +741,7 @@ void draw_accidental(const char *pfrom = NULL, const char *pto = NULL)
 
 	sprintf(strs, "AccUp_%s_%s", pfrom, pto);
 	sprintf(strl, "Accidental background spectrum %s-%s, UP;Positron energy, MeV;Events / (day * 125 keV)", 
-		pfrom, pto);
+		(pfrom) ? pfrom : "Apr 16", (pto) ? pto : "Mar 19");
 	TH1D *hUp = new TH1D(strs, strl, NEBINS, 0, 16);
 	n = sum_accidental(hUp, "u", pfrom, pto);
 	hUp->Write();
@@ -659,7 +752,7 @@ void draw_accidental(const char *pfrom = NULL, const char *pto = NULL)
 	hUp->SetTitle(strl);
 	hUp->Draw("hist,e");
 	val = hUp->IntegralAndError(hUp->FindBin(1.001), hUp->FindBin(7.999), err);
-	sprintf(strs, "  Up: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, "  Up: %d events %6.1f #pm%4.1f / day", n, val, err);
 	TLegend *lg = new TLegend(0.35, 0.65, 0.9, 0.9);
 	lg->AddEntry(hUp, strs, "l");
 
@@ -673,7 +766,7 @@ void draw_accidental(const char *pfrom = NULL, const char *pto = NULL)
 	hMid->SetFillColor(kGreen-10);
 	hMid->Draw("same,hist,e");
 	val = hMid->IntegralAndError(hMid->FindBin(1.001), hMid->FindBin(7.999), err);
-	sprintf(strs, " Mid: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, " Mid: %d events %6.1f #pm%4.1f / day", n, val, err);
 	lg->AddEntry(hMid, strs, "l");
 
 	sprintf(strs, "hAccDown_%s_%s", pfrom, pto);
@@ -686,13 +779,13 @@ void draw_accidental(const char *pfrom = NULL, const char *pto = NULL)
 	hDown->SetFillColor(kBlue-10);
 	hDown->Draw("same,hist,e");
 	val = hDown->IntegralAndError(hDown->FindBin(1.001), hDown->FindBin(7.999), err);
-	sprintf(strs, "Down: %d events %5.0f #pm%4.0f / day", n, val, err);
+	sprintf(strs, "Down: %d events %6.1f #pm%4.1f / day", n, val, err);
 	lg->AddEntry(hDown, strs, "l");
 	
 	lg->Draw();
 }
 
-void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
+void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nscale = 1.0)
 {
 	TCanvas *cv;
 	TFile *f;
@@ -726,71 +819,78 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	
 	printf("Spectra pages\n");
 //	Page 1:	Spectra All
-	draw_spectra_page(cv, "Apr 16-Jan 19", 0x1E, bgScale);
+	draw_spectra_page(cv, "Apr 16-Mar 19", 0x3E, bgScale, Nscale);
 	cv->Print(pname);
 	
 //	Page 1a:	Spectra All but April-June 16.
-	draw_spectra_page(cv, "Oct 16-Jan 19", 0x1C, bgScale);
+	draw_spectra_page(cv, "Apr 16-Jan 19", 0x1E, bgScale, Nscale);
+	cv->Print(pname);
+//	Page 1a:	Without periods 1 and 5
+	draw_spectra_page(cv, "Oct 16-Jan 19", 0x1C, bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 1b:	before Sep17
-	draw_spectra_pagel(cv, "Apr 16-Sep 17", "01.04.16", "30.09.17", bgScale);
+	draw_spectra_pagel(cv, "Apr 16-Sep 17", "01.04.16", "30.09.17", bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 1c:	After Sep17
-	draw_spectra_pagel(cv, "Sep 17-Jan19", "01.10.17", "09.01.19", bgScale);
+	draw_spectra_pagel(cv, "Sep 17-Jan19", "01.10.17", "09.01.19", bgScale, Nscale);
 	cv->Print(pname);
 	
 //	3 months Before reactor shut down
-	draw_spectra_pagel(cv, "Apr-July 17", "05.04.17", "07.07.17", bgScale);
+	draw_spectra_pagel(cv, "Apr-July 17", "05.04.17", "07.07.17", bgScale, Nscale);
 	cv->Print(pname);
 
 //	3 months After reactor on + 1 month
-	draw_spectra_pagel(cv, "Oct-Dec 17", "20.09.17", "20.12.17", bgScale);
+	draw_spectra_pagel(cv, "Oct-Dec 17", "20.09.17", "20.12.17", bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 2:	Spectra April-June
-	draw_spectra_page(cv, "April-June 16", 2, bgScale);
+	draw_spectra_page(cv, "April-June 16", 2, bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 3:	Spectra October-to the end of campaign
-	draw_spectra_page(cv, "Oct 16-Jul 17", 4, bgScale);
+	draw_spectra_page(cv, "Oct 16-Jul 17", 4, bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 4:	Spectra Campaign 5 till upgrade
-	draw_spectra_page(cv, "Aug 17-Mar 18", 8, bgScale);
+	draw_spectra_page(cv, "Aug 17-Mar 18", 8, bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 5:	Spectra March 18-January 19
-	draw_spectra_page(cv, "May-Jan 19", 0x10, bgScale);
+	draw_spectra_page(cv, "May-Jan 19", 0x10, bgScale, Nscale);
+	cv->Print(pname);
+
+//	Page 5:	Spectra March 19 start of campaign 6
+	draw_spectra_page(cv, "Mar 19", 0x20, bgScale, Nscale);
 	cv->Print(pname);
 
 //********* two-months periods spectra pages (scan...)
-	draw_spectra_pagel(cv, "Apr-Jun 16", "21.04.16", "07.06.16", bgScale);
+	draw_spectra_pagel(cv, "Apr-Jun 16", "21.04.16", "07.06.16", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Oct-Nov 16", "30.09.16", "01.12.16", bgScale);
+	draw_spectra_pagel(cv, "Oct-Nov 16", "30.09.16", "01.12.16", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Dec 16-Jan 17", "02.12.16", "01.02.17", bgScale);
+	draw_spectra_pagel(cv, "Dec 16-Jan 17", "02.12.16", "01.02.17", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Feb-Mar 17", "06.02.17", "01.04.17", bgScale);
+	draw_spectra_pagel(cv, "Feb-Mar 17", "06.02.17", "01.04.17", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Apr-May 17", "03.04.17", "01.06.17", bgScale);
+	draw_spectra_pagel(cv, "Apr-May 17", "03.04.17", "01.06.17", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Jun-Jul 17", "02.06.17", "08.07.17", bgScale);
+	draw_spectra_pagel(cv, "Jun-Jul 17", "02.06.17", "08.07.17", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Aug-Oct 17", "19.08.17", "31.10.17", bgScale);
+	draw_spectra_pagel(cv, "Aug-Oct 17", "19.08.17", "31.10.17", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Nov-Dec 17", "01.11.17", "31.12.17", bgScale);
+	draw_spectra_pagel(cv, "Nov-Dec 17", "01.11.17", "31.12.17", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Jan-Mar 18", "01.01.18", "08.03.18", bgScale);
+	draw_spectra_pagel(cv, "Jan-Mar 18", "01.01.18", "08.03.18", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "May-Jun 18", "04.05.18", "01.07.18", bgScale);
+	draw_spectra_pagel(cv, "May-Jun 18", "04.05.18", "01.07.18", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Jul-Aug 18", "02.07.18", "01.09.18", bgScale);
+	draw_spectra_pagel(cv, "Jul-Aug 18", "02.07.18", "01.09.18", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Sep-Oct 18", "03.09.18", "01.11.18", bgScale);
+	draw_spectra_pagel(cv, "Sep-Oct 18", "03.09.18", "01.11.18", bgScale, Nscale);
 	cv->Print(pname);
-	draw_spectra_pagel(cv, "Nov 18-Jan 19", "02.11.18", "06.01.19", bgScale);
+	draw_spectra_pagel(cv, "Nov 18-Jan 19", "02.11.18", "06.01.19", bgScale, Nscale);
 	cv->Print(pname);
 //*********
 
@@ -800,9 +900,9 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->Divide(3, 2);
 
 	cv->cd(1);
-	TH1D *hSum = new TH1D("hSum", "Positron spectrum Apr 16 - Jan 19;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
+	TH1D *hSum = new TH1D("hSum", "Positron spectrum Apr 16 - Mar 19;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
 	TH1D *hSumSub = new TH1D("hSumSub", "Background spectrum Apr 16 - Jan 19;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
-	sum_of_spectra(hSum, hSumSub, "umdrs", 0x1E, bgScale);
+	sum_of_spectra(hSum, hSumSub, "umdrs", 0x3E, bgScale, Nscale);
 	hSum->Write();
 	hSumSub->Write();
 	hSum->Draw("e");
@@ -810,7 +910,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->cd(2);
 	TH1D *hSum1 = new TH1D("hSum1", "Positron spectrum Apr-Jun 16;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
 	TH1D *hSum1Sub = new TH1D("hSumAfterSub", "Background spectrum Oct - Dec 17;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
-	sum_of_spectra(hSum1, hSum1Sub, "umdrs", 2, bgScale);
+	sum_of_spectra(hSum1, hSum1Sub, "umdrs", 2, bgScale, Nscale);
 	hSum1->Write();
 	hSum1Sub->Write();
 	hSum1->Draw("e");
@@ -818,7 +918,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->cd(3);
 	TH1D *hSum2 = new TH1D("hSum2", "Positron spectrum Oct 16-Jul 17;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
 	TH1D *hSum2Sub = new TH1D("hSum2Sub", "Background spectrum Oct 16-Jul 17;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
-	sum_of_spectra(hSum2, hSum2Sub, "umdrs", 4, bgScale);
+	sum_of_spectra(hSum2, hSum2Sub, "umdrs", 4, bgScale, Nscale);
 	hSum2->Write();
 	hSum2Sub->Write();
 	hSum2->Draw("e");
@@ -826,7 +926,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->cd(4);
 	TH1D *hSum3 = new TH1D("hSum3", "Positron spectrum Aug 17-Mar 18;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
 	TH1D *hSum3Sub = new TH1D("hSum3Sub", "Background spectrum Aug 17-Mar 18;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
-	sum_of_spectra(hSum3, hSum3Sub, "umdrs", 8, bgScale);
+	sum_of_spectra(hSum3, hSum3Sub, "umdrs", 8, bgScale, Nscale);
 	hSum3->Write();
 	hSum3Sub->Write();
 	hSum3->Draw("e");
@@ -834,7 +934,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->cd(5);
 	TH1D *hSum4 = new TH1D("hSum4", "Positron spectrum May-Nov 18;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
 	TH1D *hSum4Sub = new TH1D("hSum4Sub", "Background spectrum May-Nov 18;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
-	sum_of_spectra(hSum4, hSum4Sub, "umdrs", 0x10, bgScale);
+	sum_of_spectra(hSum4, hSum4Sub, "umdrs", 0x10, bgScale, Nscale);
 	hSum4->Write();
 	hSum4Sub->Write();
 	hSum4->Draw("e");
@@ -876,10 +976,10 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->Divide(2, 2);
 
 	cv->cd(1);
-	draw_single_ratio("hDown_30", "hUp_30", "hDownUp_30", "Ratio Down/Up Apr 16-Jan 19 (Everything);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
+	draw_single_ratio("hDown_62", "hUp_62", "hDownUp_62", "Ratio Down/Up Apr 16-Mar 19 (Everything);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
 
 	cv->cd(2);
-	draw_single_ratio("hDown_28", "hUp_28", "hDownUpAll", "Ratio Down/Up Oct 16-Jan 19 (ALL-Apr16);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
+	draw_single_ratio("hDown_28", "hUp_28", "hDownUp_28", "Ratio Down/Up Oct 16-Jan 19 (ALL-Apr16-Mar19);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
 
 	cv->cd(3);
 	draw_single_ratio("hDown_01.04.16_30.09.17", "hUp_01.04.16_30.09.17", "hDownUp_01.04.16_30.09.17", 
@@ -894,7 +994,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 
 //	Page 7a: Main plot
 	cv->Clear();
-	draw_single_ratio("hDown_28", "hUp_28", "hDownUp_28", "Ratio Down/Up Oct 16-Jan 19 (ALL-Apr16);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.65, 0.8);
+	draw_single_ratio("hDown_30", "hUp_30", "hDownUp_30", "Ratio Down/Up Apr 16-Jan 19 (ALL-Mar19);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.65, 0.8);
 	cv->Update();
 	cv->Print(pname);
 
@@ -982,10 +1082,10 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->Divide(2, 2);
 
 	cv->cd(1);
-	draw_single_ratio("hMid_30", "hUp_30", "hMidUp_30", "Ratio Mid/Up Apr 16-Jan 19 (Everything);Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", 0.6, 0.9);
+	draw_single_ratio("hMid_30", "hUp_30", "hMidUp_30", "Ratio Mid/Up Apr 16-Jan 19 (ALL-Mar19);Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", 0.6, 0.9);
 
 	cv->cd(2);
-	draw_single_ratio("hMid_28", "hUp_28", "hMidUpAll", "Ratio Mid/Up Oct 16-Jan 19 (ALL-Apr16);Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", 0.6, 0.9);
+	draw_single_ratio("hMid_62", "hUp_62", "hMidUp_62", "Ratio Mid/Up Apr 16-Mar 19 (Everything);Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", 0.6, 0.9);
 
 	cv->cd(3);
 	draw_single_ratio("hMid_01.04.16_30.09.17", "hUp_01.04.16_30.09.17", "hMidUp_01.04.16_30.09.17", 
@@ -1028,16 +1128,16 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->Divide(2, 2);
 
 	cv->cd(1);
-	draw_single_ratio("hSum2", "hSum4", "hRatio_24", "Unnormalized Ratio Oct 16-Jul 17/May 18 -Jan 19;Positron energy, MeV", 0.8, 1.4);
+	draw_single_ratio("hSum2", "hSum4", "hRatio_24", "Unnormalized Ratio Oct 16-Jul 17/May 18-Jan 19;Positron energy, MeV", 0.8, 1.4);
 
 	cv->cd(2);
-	draw_single_ratio("hSum3", "hSum4", "hRatio_34", "Unnormalized Ratio Aug 17-Mar 18/May-Jan 19;Positron energy, MeV", 0.8, 1.4);
+	draw_single_ratio("hSum3", "hSum4", "hRatio_34", "Unnormalized Ratio Aug 17-Mar 18/May 18-Jan 19;Positron energy, MeV", 0.8, 1.4);
 
 	cv->cd(3);
 	draw_single_ratio("hSum2", "hSum3", "hRatio_23", "Unnormalized Ratio Oct 16-Jul 17/Aug 17-Mar 18;Positron energy, MeV", 0.8, 1.4);
 
 	cv->cd(4);
-	draw_single_ratio("hSum4", "hSum", "hRatio_4All", "Unnormalized Ratio May 18-Jan 19/apr 16-Jan 19;Positron energy, MeV", 0.8, 1.4);
+	draw_single_ratio("hSum4", "hSum", "hRatio_4All", "Unnormalized Ratio May 18-Jan 19/Apr 16-Mar 19;Positron energy, MeV", 0.8, 1.4);
 
 	cv->Update();
 	cv->Print(pname);
@@ -1045,7 +1145,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 //	Page 9a: after shutdown / before shutdown - use proper periods.
 	cv->Clear();
 	draw_normalized_ratio("20.09.17", "20.12.17", "05.04.17", "07.07.17", "hNRatioAfter2Before", 
-		"Normalized ratio after shutdown / before shutdown;Positron energy, MeV", 0.9, 1.4, bgScale);
+		"Normalized ratio after shutdown / before shutdown;Positron energy, MeV", 0.9, 1.4, bgScale, Nscale);
 	cv->Update();
 	cv->Print(pname);
 
@@ -1081,9 +1181,37 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5)
 	cv->Update();
 	cv->Print(pname);
 
-//		Reactor Off
+//		Reactor Off 1
 	cv->Clear();
-	draw_signal_spectra("10.07.17", "18.08.17", bgScale);
+	draw_signal_spectra("10.07.17", "18.08.17", bgScale, Nscale);
+	cv->Update();
+	cv->Print(pname);
+
+//		Reactor Off 2
+	cv->Clear();
+	draw_signal_spectra("12.01.19", "17.02.19", bgScale, Nscale);
+	cv->Update();
+	cv->Print(pname);
+
+//		Reactor Off 1+2
+	cv->Clear();
+	draw_signal_spectra2("10.07.17", "18.08.17", "12.01.19", "17.02.19", bgScale, Nscale);
+	cv->Update();
+	cv->Print(pname);
+
+//		Reactor Off 1+2 up
+	cv->Clear();
+	draw_signal_spectra2("10.07.17", "18.08.17", "12.01.19", "17.02.19", bgScale, Nscale, "u");
+	cv->Update();
+	cv->Print(pname);
+//		Reactor Off 1+2 mid
+	cv->Clear();
+	draw_signal_spectra2("10.07.17", "18.08.17", "12.01.19", "17.02.19", bgScale, Nscale, "m");
+	cv->Update();
+	cv->Print(pname);
+//		Reactor Off 1+2 down
+	cv->Clear();
+	draw_signal_spectra2("10.07.17", "18.08.17", "12.01.19", "17.02.19", bgScale, Nscale, "d");
 	cv->Update();
 	cv->Print(pname);
 

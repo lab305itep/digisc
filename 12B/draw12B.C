@@ -15,9 +15,63 @@ class MyRandom {
 	};
 };
 
-void draw12B(const char *mcname, int from, int to, double kRndm = 0, double kScale = 1.0)
+TChain *create_chain(const char *name, int from, int to)
 {
-	gROOT->ProcessLine(".L create_chain.C+");
+	TChain *ch;
+	char str[1024];
+	int i;
+	FILE *f_stat;
+	int *rc_stat;
+	char *ptr;
+	int num;
+	
+	f_stat = fopen("stat_all.txt", "rt");
+	if (!f_stat) {
+		printf("Can not open stat file!\n");
+		return NULL;
+	}
+	
+	rc_stat = (int *) malloc((to - from + 1) * sizeof(int));
+	if (!rc_stat) {
+		printf("No memory !\n");
+		return NULL;
+	}
+	memset(rc_stat, 0, (to - from + 1) * sizeof(int));
+	for (;;) {
+		ptr = fgets(str, sizeof(str), f_stat);
+		if (!ptr) break;
+		ptr = strtok(str, " \t");
+		if (!ptr) continue;
+		if (!isdigit(ptr[0])) continue;
+		num = strtol(ptr, NULL, 10);
+		if (num < from || num > to) continue;
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		if (!isdigit(ptr[0])) continue;
+		rc_stat[num - from] = strtol(ptr, NULL, 10);
+	}
+	fclose(f_stat);
+	
+	ch = new TChain(name, name);
+	for (i=from; i<=to; i++) {
+		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon2n4/%3.3dxxx/muon_%6.6d.root", i/1000, i);
+		num = access(str, R_OK);	// R_OK = 4 - test read access
+		if (num) continue;
+		ch->AddFile(str, 0);
+	}
+	printf("%Ld entries found.\n", ch->GetEntries());
+	
+	free(rc_stat);
+	
+	return ch;
+}
+
+void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
+{
+	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n4/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
+
+//	gROOT->ProcessLine(".L create_chain.C+");
 	gStyle->SetOptStat(0);
 	gStyle->SetOptFit(1);
 	
@@ -78,4 +132,15 @@ void draw12B(const char *mcname, int from, int to, double kRndm = 0, double kSca
 	lg->Draw();
 	cv->cd(2);
 	hExpT->Fit("expo");
+	
+	sprintf(str, "12B_74_rndm_%5.3f_scale_%5.3f.png", kRndm, kScale);
+	cv->SaveAs(str);
+	
+	sprintf(str, "12B_74_rndm_%5.3f_scale_%5.3f.root", kRndm, kScale);
+	TFile *fOut = new TFile(str, "RECREATE");
+	fOut->cd();
+	hExp->Write();
+	hMC->Write();
+	hExpT->Write();
+	fOut->Close();
 }

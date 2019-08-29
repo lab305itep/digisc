@@ -57,7 +57,7 @@
 #define EDGEPMARK		1.0		// Minimum energy to flag event with edge hits
 #define MCNEUTRONSIGGMA		20.0		// Sigma for neutron based longitudinal correction for MC
 #define NBOTTOMLAYERS		2		// Use two bottom SiPM layers as additional VETO
-#define ENERGY_CORRECTION	0.95		// Energy correction to be applied for experimental data
+//#define ENERGY_CORRECTION	0.95		// Energy correction to be applied for experimental data
 //	fine time
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
@@ -77,6 +77,8 @@
 #define FLG_NOCONFIRM2		 0x80000	// do not search PMT confirmation for 1 pixel SiPM signals
 #define FLG_NOPMTCORR		0x100000	// do not correct PMT energy of cluster for out of cluster SiPM hits
 #define FLG_PMTTIMECUT		0x200000	// Cut PMT and Veto by time
+#define FLG_CONFIRMSIPM		0x400000	// Confirm all SiPM hits
+
 
 using namespace std;
 
@@ -95,6 +97,7 @@ int					iFlags;
 int					MaxEvents;
 int					IsMc;				// MC run flag
 double					AttenuationLength;
+double					EnergyCorrection;
 
 TRandom2 *				Random;
 TFile *					OutputFile;
@@ -466,7 +469,7 @@ void CleanByConfirmation2(ReadDigiDataUser *user)
 	N = user->nhits();
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm) {
 //		commented out - search for confirmation for all SiPm hits
-//		if (user->npix(i) >= MINSIPMPIXELS2) continue;		// that's enough
+		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
 		if (j < N) continue;
 		HitFlag[i] = -1;
@@ -474,7 +477,7 @@ void CleanByConfirmation2(ReadDigiDataUser *user)
 //		"early" hits
 	for (i=0; i<N; i++) if (HitFlag[i] == -100)
 	{
-//		if (user->npix(i) >= MINSIPMPIXELS2) continue;		// that's enough
+		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
 		if (j < N) continue;
 		HitFlag[i] = -1;
@@ -507,20 +510,20 @@ void CleanByTime(ReadDigiDataUser *user)
 void CorrectEnergy(void)
 {
 	int i;
-	DanssEvent.VetoCleanEnergy *= ENERGY_CORRECTION;
-	DanssEvent.BottomLayersEnergy *= ENERGY_CORRECTION;
-	DanssEvent.PmtCleanEnergy *= ENERGY_CORRECTION;
-	DanssEvent.SiPmEnergy *= ENERGY_CORRECTION;
-	DanssEvent.SiPmCleanEnergy *= ENERGY_CORRECTION;
-	DanssEvent.SiPmEarlyEnergy *= ENERGY_CORRECTION;
-	DanssEvent.PositronEnergy *= ENERGY_CORRECTION;
-	DanssEvent.TotalEnergy *= ENERGY_CORRECTION;
-	DanssEvent.PositronSiPmEnergy *= ENERGY_CORRECTION;
-	DanssEvent.PositronPmtEnergy *= ENERGY_CORRECTION;
-	DanssEvent.AnnihilationEnergy *= ENERGY_CORRECTION;
-	DanssEvent.AnnihilationMax *= ENERGY_CORRECTION;
+	DanssEvent.VetoCleanEnergy *= EnergyCorrection;
+	DanssEvent.BottomLayersEnergy *= EnergyCorrection;
+	DanssEvent.PmtCleanEnergy *= EnergyCorrection;
+	DanssEvent.SiPmEnergy *= EnergyCorrection;
+	DanssEvent.SiPmCleanEnergy *= EnergyCorrection;
+	DanssEvent.SiPmEarlyEnergy *= EnergyCorrection;
+	DanssEvent.PositronEnergy *= EnergyCorrection;
+	DanssEvent.TotalEnergy *= EnergyCorrection;
+	DanssEvent.PositronSiPmEnergy *= EnergyCorrection;
+	DanssEvent.PositronPmtEnergy *= EnergyCorrection;
+	DanssEvent.AnnihilationEnergy *= EnergyCorrection;
+	DanssEvent.AnnihilationMax *= EnergyCorrection;
 	
-	for (i=0; i<DanssEvent.NHits; i++) HitArray.E[i] *= ENERGY_CORRECTION;
+	for (i=0; i<DanssEvent.NHits; i++) HitArray.E[i] *= EnergyCorrection;
 }
 
 void CreateDeadList(char *fname)
@@ -907,6 +910,7 @@ void Help(void)
 	printf("-calib filename.txt --- file with energy calibration. No default.\n");
 	printf("-deadlist filename.txt --- file with explicit list of dead channels.\n");
 	printf("-dump gTime --- dump an event with this gTime.\n");
+	printf("-ecorr EnergyCorrection --- 0.95 by default.\n");
 	printf("-events number --- stop after processing this number of events. Default - do not stop.\n");
 	printf("-file filename.txt --- file with a list of files for processing. No default.\n");
 	printf("-flag FLAGS --- analysis flag mask. Default - 0. Recognized flags:\n");
@@ -920,6 +924,8 @@ void Help(void)
 	printf("\t 0x40000 --- do not require confirmation for all hits;\n");
 	printf("\t 0x80000 --- do not require confirmation for SiPM single pixel hits;\n");
 	printf("\t0x100000 --- do not correct PMT cluster energy for out of cluster SiPM hits.\n");
+	printf("\t0x200000 --- Check PMT and VETO time.\n");
+	printf("\t0x400000 --- Confirm all SiPM hits.\n");
 	printf("-help --- print this message and exit.\n");
 	printf("-mcdata --- this is Monte Carlo data - create McTruth branch.\n");
 	printf("-seed SEED --- seed for random number generator.\n");
@@ -957,6 +963,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	iFlags = 0;
 	MaxEvents = -1;
 	IsMc = 0;
+	EnergyCorrection = 0.95;
 
 	for (i=1; i<argc; i++) {
 		if (!strcmp(argv[i], "-output")) {
@@ -968,12 +975,15 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		} else if (!strcmp(argv[i], "-deadlist")) {
 			i++;
 			DeadListName = (char *)argv[i];
-		} else if (!strcmp(argv[i], "-flag")) {
+		} else if (!strcmp(argv[i], "-ecorr")) {
 			i++;
-			iFlags = strtol(argv[i], NULL, 0);
+			EnergyCorrection = strtod(argv[i], NULL);
 		} else if (!strcmp(argv[i], "-events")) {
 			i++;
 			MaxEvents = strtol(argv[i], NULL, 0);
+		} else if (!strcmp(argv[i], "-flag")) {
+			i++;
+			iFlags = strtol(argv[i], NULL, 0);
 		} else if (!strcmp(argv[i], "-mcdata")) {
 			IsMc = 1;
 		} else if (!strcmp(argv[i], "-alen")) {

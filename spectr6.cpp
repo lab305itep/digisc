@@ -87,7 +87,7 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 int main(int argc, char **argv)
 {
 #include "positions.h"
-	const int mask = 0x801E;
+	const int mask = 0x803E;
 	int i;
 	int N;
 	

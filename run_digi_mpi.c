@@ -107,7 +107,7 @@ found:
 	tcalib = (fnum < 5469) ? "tcalib_cmnew_ss-d.calib" : "tcalib_5512_ss-d.calib";
 	
 	sprintf(str, "./digi_evtbuilder6_v%d -no_hit_tables -file %s -output %s/%3.3dxxx/danss_%6.6d.root "
-		"-flag 0x50002 -tcalib %s", iver, clist, tdir, fnum/1000, fnum, tcalib);
+		"-flag 0x250002 -ecorr 1.0 -tcalib %s", iver, clist, tdir, fnum/1000, fnum, tcalib);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		delete list file
