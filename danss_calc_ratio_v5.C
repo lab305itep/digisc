@@ -85,8 +85,8 @@ int sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, dou
 		dt = hConst->GetBinContent(1) / 1000.0;	// seconds * 10^3
 		tSum += dt;
 		hSum->Add(hSig);
-		hSub->Add(hBgnd, positions[i].bgnd * bgScale * Nscale);
-		hSub->Add(&fBgndN, dt);
+		hSub->Add(hBgnd, positions[i].bgnd * bgScale);
+		hSub->Add(&fBgndN, dt * Nscale);
 		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale * Nscale);
 	}
 	hSum->Add(hSub, -1);
@@ -189,6 +189,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	char strs[128];
 	char strl[1024];
 	double val, err;
+	double valb[3], errb[3];
 	int Cnt, n;
 	TLatex txt;
 
@@ -254,7 +255,12 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	hUpSub->SetLineColor(kBlack);
 	hUpSub->SetFillColor(kGray);
 	hUpSub->Draw("same,hist,e");
-	lg->AddEntry(hUpSub, "Background for Up position", "l");
+	valb[0] = hUpSub->IntegralAndError(hUpSub->FindBin(1.001), hUpSub->FindBin(7.999), errb[0]);
+	valb[1] = hMidSub->IntegralAndError(hMidSub->FindBin(1.001), hMidSub->FindBin(7.999), errb[1]);
+	valb[2] = hDownSub->IntegralAndError(hDownSub->FindBin(1.001), hDownSub->FindBin(7.999), errb[2]);
+	sprintf(strs, "Bgnd Up: %5.1f #pm%3.1f (Mid: %5.1f #pm%3.1f, Down: %5.1f #pm%3.1f)", 
+		valb[0], errb[0], valb[1], errb[1], valb[2], errb[2]);
+	lg->AddEntry(hUpSub, strs, "l");
 
 	hUp->Draw("axis,same");
 	lg->Draw();
@@ -270,6 +276,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	char strs[128];
 	char strl[1024];
 	double val, err;
+	double valb[3], errb[3];
 	int Cnt, n;
 	TLatex txt;
 	const double OtherBlockFraction = 0.0060;	// Distances to other reactors: 160, 336 and 478 m
@@ -311,7 +318,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	hMid->SetLineColor(kGreen);
 	hMid->SetFillColor(kGreen-10);
 	hMid->Draw("same,hist,e");
-	val = hMid->IntegralAndError(hUp->FindBin(1.001), hMid->FindBin(7.999), err);
+	val = hMid->IntegralAndError(hMid->FindBin(1.001), hMid->FindBin(7.999), err);
 	sprintf(strs, " Mid: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hMid, strs, "l");
 
@@ -328,14 +335,19 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	hDown->SetLineColor(kBlue);
 	hDown->SetFillColor(kBlue-10);
 	hDown->Draw("same,hist,e");
-	val = hDown->IntegralAndError(hUp->FindBin(1.001), hDown->FindBin(7.999), err);
+	val = hDown->IntegralAndError(hDown->FindBin(1.001), hDown->FindBin(7.999), err);
 	sprintf(strs, "Down: %d events %6.1f #pm%5.1f / day", n, val, err);
 	lg->AddEntry(hDown, strs, "l");
 
 	hUpSub->SetLineColor(kBlack);
 	hUpSub->SetFillColor(kGray);
 	hUpSub->Draw("same,hist,e");
-	lg->AddEntry(hUpSub, "Background for Up position", "l");
+	valb[0] = hUpSub->IntegralAndError(hUpSub->FindBin(1.001), hUpSub->FindBin(7.999), errb[0]);
+	valb[1] = hMidSub->IntegralAndError(hMidSub->FindBin(1.001), hMidSub->FindBin(7.999), errb[1]);
+	valb[2] = hDownSub->IntegralAndError(hDownSub->FindBin(1.001), hDownSub->FindBin(7.999), errb[2]);
+	sprintf(strs, "Bgnd Up: %5.1f #pm%3.1f (Mid: %5.1f #pm%3.1f, Down: %5.1f #pm%3.1f)", 
+		valb[0], errb[0], valb[1], errb[1], valb[2], errb[2]);
+	lg->AddEntry(hUpSub, strs, "l");
 
 	hUp->Draw("axis,same");
 	lg->Draw();
@@ -353,6 +365,7 @@ void draw_tail_hist(const char *title, const char *posmask)
 	TPaveStats *pv;
 	double y1, y2;
 	TLatex txt;
+	double val[2], err[2];
 
 	lg = new TLegend(0.35, 0.65, 0.60, 0.9);
 	sprintf(strs, "hTailN_%s", posmask);
@@ -371,8 +384,12 @@ void draw_tail_hist(const char *title, const char *posmask)
 	hC->GetXaxis()->SetRange(hC->FindBin(8.001), hC->FindBin(15.999));
 	hC->SetMinimum(0);
 	hC->Fit("pol1", "", "", 10, 16);
+	val[1] = hC->GetFunction("pol1")->Integral(1, 8) / hC->GetBinWidth(1);
+	err[1] = hC->GetFunction("pol1")->IntegralError(1, 8) / hC->GetBinWidth(1);
 	hN->SetLineColor(kBlue);
 	hN->Fit("pol1", "", "sames", 10, 16);
+	val[0] = hN->GetFunction("pol1")->Integral(1, 8) / hN->GetBinWidth(1);
+	err[0] = hN->GetFunction("pol1")->IntegralError(1, 8) / hN->GetBinWidth(1);
 	gPad->Update();
 	pv = (TPaveStats *)hC->FindObject("stats");
 	pv->SetLineColor(kRed);
@@ -389,10 +406,10 @@ void draw_tail_hist(const char *title, const char *posmask)
 	lg->AddEntry(hN, "Neutrino", "l");
 	lg->AddEntry(hC, "Cosmic", "l");
 	lg->Draw();
-	sprintf(strs, "Neutrino 1-7 MeV = %5.1f events/day", hN->GetFunction("pol1")->Integral(1, 7) / hN->GetBinWidth(1));
+	sprintf(strs, "Neutrino 1-8 MeV=%5.1f#pm%3.1f evt/day", val[0], err[0]);
 	txt.SetTextColor(kBlue);
 	txt.DrawLatex(11, 0.5*hC->GetMaximum(), strs);
-	sprintf(strs, "Cosmic 1-7 MeV = %5.1f events/day", hC->GetFunction("pol1")->Integral(1, 7) / hC->GetBinWidth(1));
+	sprintf(strs, "Cosmic 1-8 MeV=%5.1f#pm%3.1f evt/day", val[1], err[1]);
 	txt.SetTextColor(kRed);
 	txt.DrawLatex(11, 0.42*hC->GetMaximum(), strs);
 }
@@ -632,7 +649,7 @@ double CalcHistRatio(TH1 *hA, TH1 *hB, int binFirst, int binLast, double &err)
 		Sab += a * b / (ea * ea);
 		Sb2 += b * b / (ea * ea);
 	}
-	err = 1 / sqrt(2 * Sb2);
+	err = 1 / sqrt(Sb2);
 //	printf("Sab = %f, Sb2 = %f, err = %f, val = %f\n", Sab, Sb2, err, Sab / Sb2);
 	return Sab / Sb2;
 }
@@ -697,6 +714,29 @@ const char *posmask = "umd")
 	txt.DrawLatex(5, 0.43*hN->GetMaximum(), strs);
 }
 
+void draw_off_ratio(const char *name, const char *title)
+{
+	char str[1024];
+	
+	sprintf(str, "hOff_%s_c", name);
+	TH1 *h = (TH1 *)gROOT->FindObject(str);
+	sprintf(str, "hOffCosm_%s_c", name);
+	TH1 *hc = (TH1 *)gROOT->FindObject(str);
+	if (!h || !hc) {
+		printf("Histogramm(s) hOff*%s_c not found!\n", name);
+		return;
+	}
+	sprintf(str, "hOffRatio_%s_c", name);
+	TH1* hR = (TH1*) h->Clone(str);
+	hR->SetTitle(title);
+	hR->Divide(h, hc);
+	hR->GetXaxis()->SetRange(hR->FindBin(0.001), hR->FindBin(8.999));
+	hR->GetYaxis()->SetLabelSize(0.06);
+	hR->SetMinimum(-0.05);
+	hR->SetMaximum(0.2);
+	hR->Fit("pol0", "", "", 1, 8);
+	hR->Write();
+}
 
 int sum_accidental(TH1D *h, const char *posmask, const char *pfrom = NULL, const char *pto = NULL)
 {
@@ -1212,6 +1252,24 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 //		Reactor Off 1+2 down
 	cv->Clear();
 	draw_signal_spectra2("10.07.17", "18.08.17", "12.01.19", "17.02.19", bgScale, Nscale, "d");
+	cv->Update();
+	cv->Print(pname);
+	
+//		Illustrate Off fits by cosmics
+	cv->Clear();
+	cv->Divide(2, 2);
+	cv->cd(1);
+	draw_off_ratio("10.07.17_18.08.17_12.01.19_17.02.19_umd", 
+		"Neutrino to visible cosmics ratio, reactor off;MeV;R");
+	cv->cd(2);
+	draw_off_ratio("10.07.17_18.08.17_12.01.19_17.02.19_u", 
+		"Neutrino to visible cosmics ratio UP, reactor off;MeV;R");
+	cv->cd(3);
+	draw_off_ratio("10.07.17_18.08.17_12.01.19_17.02.19_m", 
+		"Neutrino to visible cosmics ratio MIDDLE, reactor off;MeV;R");
+	cv->cd(4);
+	draw_off_ratio("10.07.17_18.08.17_12.01.19_17.02.19_d", 
+		"Neutrino to visible cosmics ratio DOWN, reactor off;MeV;R");
 	cv->Update();
 	cv->Print(pname);
 
