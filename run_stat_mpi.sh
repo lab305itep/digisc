@@ -6,5 +6,5 @@
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/stat.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/stat.err
 cd /home/itep/alekseev/igor
-mpirun --mca btl ^tcp run_stat_mpi 59310 147
+mpirun --mca btl ^tcp run_stat_mpi 59260 152
 exit 0
