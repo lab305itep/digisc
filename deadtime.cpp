@@ -51,6 +51,7 @@ int IsVeto(struct DanssEventStruct7 *Event)
 
 int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
 {
+	if (DanssEvent->VetoCleanHits > 0) return 0;
 	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
 		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;
 	return 0;
@@ -132,7 +133,7 @@ int main(int argc, char **argv)
 	
 	first = strtol(argv[1], NULL, 10);
 	last = strtol(argv[2], NULL, 10);
-	sprintf(fmt, "dead_%6.6d_%6.6d.txt", first, last);
+	sprintf(fmt, "%s/deadtime/dead_%6.6d_%6.6d.txt", argv[3], first, last);
 	fOut = fopen(fmt, "wt");
 	if (!fOut) return 20;
 	sprintf(fmt, "%s/%%3.3dxxx/danss_%%6.6d.root", argv[3]);

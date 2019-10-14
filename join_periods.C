@@ -14,7 +14,7 @@ void join_periods(const char *newname, const char *perioddir)
 	TSystemDirectory *dir = new TSystemDirectory("MyDir", perioddir);
 	TList *files = dir->GetListOfFiles();
 	if (!files) return;
-	N = files->GetEntries() - 2;
+	N = files->GetEntries();
 	if (N <= 0) {
 		printf("%s - nothing to do\n", perioddir);
 	}
@@ -25,6 +25,7 @@ void join_periods(const char *newname, const char *perioddir)
 	for (i=0; i<N; i++) {
 		fSys = (TSystemFile *) files->At(i);
 		if (!fSys) continue;
+//		printf("%d: %s\n", i, fSys->GetName());
 		ptr = (char *) fSys->GetName();
 		if (ptr[0] == '.') continue;	// skip . and ..
 		sprintf(str, "%s/%s", perioddir, ptr);

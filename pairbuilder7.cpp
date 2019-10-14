@@ -124,6 +124,7 @@ void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
 int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
 //	"(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3"
 {
+	if (DanssEvent->VetoCleanHits > 0) return 0;	// never kill VETO trigger
 	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
 		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;
 	return 0;
