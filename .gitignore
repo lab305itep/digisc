@@ -1,0 +1,8 @@
+*.pdf
+*.root
+*.png
+*.gif
+*.log
+*.so
+*.pcm
+*_C.d
