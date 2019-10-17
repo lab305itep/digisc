@@ -1,13 +1,137 @@
 //	Global parameters
-#define NEBINS	128
-#include "positions.h"
+#define NEBINS 128
+#define MAXPOSITIONS 1000
+//#include "positions.h"
+struct PositionsStruct {
+	char name[32];
+	int first;
+	int last;
+	int period;
+	double power;
+	double bgnd;
+	double total;
+	double dead;
+	double eff;
+} positions[MAXPOSITIONS];
+int PosEntries;
+struct StatStruct {
+	double Cnt;
+	double days;
+	double power;
+	double dead;
+	double eff;
+};
+
 TFile *fData;
 // Fast neutron corrections 
 const char *NeutronCorrN = "0.003475-0.000152*x";
 const char *NeutronCorrC = "0.01138-0.000437*x";
 const double rOffCosmCorr = 0.91;
 const double OtherBlockFraction = 0.0060;	// Neutrino fraction of other blocks. Distances to other reactors: 160, 336 and 478 m
-const double ERange[2] = {1.001, 6.999};
+const double ERange[2] = {0.751, 6.999};
+
+int GlobalPeriod(int run)
+{
+	if (run < 5000) return 1;		// April-June 2016
+	if (run < 24000) return 2;		// October 2016 - July 2017: till the end of Campaign 4
+	if (run < 37000) return 3;		// August 2017 - March 2018: Campaign 5 till detector repair
+	if (run < 56000) return 4;		// May 2018 - January 2019: after detector repair till the end of  Campaign 5
+	return 5;				// Campaign 6
+}
+
+int readPositions(const char *fname)
+{
+	FILE *f;
+	char str[1024];
+	char *ptr;
+	
+	PosEntries = 0;
+	f = fopen(fname, "rt");
+	if (!f) return 0;
+	for(;;) {
+		ptr = fgets(str, sizeof(str), f);
+		if (!ptr) break;
+		ptr = strtok(str, " \t");
+		if (!ptr || ptr[0] == '*') continue;
+		if (!strchr("udmrs", ptr[0])) continue;
+		strncpy(positions[PosEntries].name, ptr, sizeof(positions[PosEntries].name));
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].first = strtol(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].last = strtol(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].period = (ptr[0] == 'F') ? GlobalPeriod(positions[PosEntries].first) : 0;
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].power = strtod(ptr, NULL);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].bgnd = 1.55 * strtod(ptr, NULL);	// we use this coef to keep to the old definition
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].total = strtod(ptr, NULL);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].dead = strtod(ptr, NULL);
+		ptr = strtok(NULL, " \t");
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		positions[PosEntries].eff = strtod(ptr, NULL);
+		PosEntries++;
+		if (PosEntries == MAXPOSITIONS) {
+			printf("Warning ! MAXPOSITIONS = %d reached\n", MAXPOSITIONS);
+			break;
+		}
+	}
+	fclose(f);
+	return PosEntries;
+}
+
+int GetPrefix(const char *name)
+{
+	int i;
+	const char *List[] = {"hUp_", "hMid_", "hDown_"};
+	for (i = 0; i < sizeof(List) / sizeof(List[0]); i++) if (!strncmp(name, List[i], strlen(List[i]))) break;
+	if (i == sizeof(List) / sizeof(List[0])) return 0;
+	return i+1;
+}
+
+//	Try to find scale correction from power, efficiency, dead time for
+//	histogramms ration A/B. Return 1.0 if this is not an option.
+double GetEffScale(const char *nameA, const char *nameB)
+{
+	char str[1024];
+	char * ptr;
+	int iA, iB;
+	
+	iA = GetPrefix(nameA);
+	if (!iA) return 1.0;
+	iB = GetPrefix(nameB);
+	if (!iB) return 1.0;
+	ptr = strchr(nameA, '_');
+	if (!ptr) return 1.0;
+	sprintf(str, "hConst%s", ptr);
+	TH1D *hCA = (TH1D*) gROOT->FindObject(str);
+	if (!hCA) return 1.0;
+	ptr = strchr(nameB, '_');
+	if (!ptr) return 1.0;
+	sprintf(str, "hConst%s", ptr);
+	TH1D *hCB = (TH1D*) gROOT->FindObject(str);
+	if (!hCB) return 1.0;
+	
+	double PwrA = hCA->GetBinContent(6 + iA);
+	double PwrB = hCB->GetBinContent(6 + iB);
+	double DeadA = hCA->GetBinContent(9 + iA);
+	double DeadB = hCB->GetBinContent(9 + iB);
+	double EffA = hCA->GetBinContent(12 + iA);
+	double EffB = hCB->GetBinContent(12 + iB);
+	
+	double k = PwrB * EffB * (1 - DeadB) / (PwrA * EffA * (1 - DeadA));
+	return k;
+}
 
 void change_file_suffix(char *to, int len, const char *from, const char *where, const char *what)
 {
@@ -53,7 +177,8 @@ int is_in_date_range(const char *name, const char *from, const char *to)
 }
 
 //  Make sum of spectra over large number of points
-double sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, double bgScale = 1.0, double Nscale = 1.0, double *days = NULL)
+double sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, double bgScale = 1.0, 
+	double Nscale = 1.0, struct StatStruct *stat = NULL)
 {
 	int N;
 	TH1D *hSig;
@@ -65,14 +190,20 @@ double sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, 
 	double dt;
 	char *ptr;
 	double Cnt;
+	double days;
+	double power;
+	double total;
+	double dead;
+	double eff;
 	TF1 fBgndN("fBgndN", NeutronCorrN, 0, 100);
 	TF1 fBgndC("fBgndC", NeutronCorrC, 0, 100);
 
-	N = sizeof(positions) / sizeof(positions[0]);
+	power = total = dead = eff = 0;
 	hSum->Reset();
 	hSub->Reset();
 	tSum = 0;
-	for (i=0; i<N; i++) {
+	if (stat) memset(stat, 0, sizeof(struct StatStruct));
+	for (i=0; i<PosEntries; i++) {
 		ptr = strchr(posmask, positions[i].name[0]);
 		if (!(ptr && ((1 << positions[i].period) & permask))) continue;
 		sprintf(str, "%s_hSig-diff", positions[i].name);
@@ -88,17 +219,29 @@ double sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, int permask, 
 		hSub->Add(hBgnd, positions[i].bgnd * bgScale);
 		hSub->Add(&fBgndN, dt * Nscale);
 		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale * Nscale);
+		power += positions[i].power * positions[i].total;
+		eff += positions[i].eff * positions[i].total;
+		total += positions[i].total;
+		dead += positions[i].dead;
 	}
 	hSum->Add(hSub, -1);
-	if (days) *days = tSum / 86.4;
+	days = tSum / 86.4;
 	if (tSum == 0) return 0;
 	Cnt = hSum->Integral();
 	hSum->Scale(86.4 / tSum);
 	hSub->Scale(86.4 / tSum);
+	if (total > 0 && stat) {
+		stat->days = days;
+		stat->Cnt = Cnt;
+		stat->power = power / total;
+		stat->dead = dead / total;
+		stat->eff = eff / total;
+	}
 	return Cnt;
 }
 
-double sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *pfrom, const char *pto, double bgScale = 1.0, double Nscale = 1.0, double *days = NULL)
+double sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *pfrom, const char *pto, double bgScale = 1.0, 
+	double Nscale = 1.0, struct StatStruct *stat = NULL)
 {
 	int N;
 	TH1D *hSig;
@@ -110,14 +253,20 @@ double sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *
 	double dt;
 	char *ptr;
 	double Cnt;
+	double days;
+	double power;
+	double total;
+	double dead;
+	double eff;
 	TF1 fBgndN("fBgndN", NeutronCorrN, 0, 100);
 	TF1 fBgndC("fBgndC", NeutronCorrC, 0, 100);
 
-	N = sizeof(positions) / sizeof(positions[0]);
+	power = total = dead = eff = 0;
 	hSum->Reset();
 	hSub->Reset();
 	tSum = 0;
-	for (i=0; i<N; i++) if (is_in_date_range(positions[i].name, pfrom, pto) && positions[i].period) {	// ignore reactor not @100%
+	if (stat) memset(stat, 0, sizeof(struct StatStruct));
+	for (i=0; i<PosEntries; i++) if (is_in_date_range(positions[i].name, pfrom, pto) && positions[i].period) {	// ignore reactor not @100%
 		ptr = strchr(posmask, positions[i].name[0]);
 		if (!(ptr && positions[i].period)) continue;
 		sprintf(str, "%s_hSig-diff", positions[i].name);
@@ -133,13 +282,24 @@ double sum_of_spectral(TH1D *hSum, TH1D *hSub, const char *posmask, const char *
 		hSub->Add(hBgnd, positions[i].bgnd * bgScale);
 		hSub->Add(&fBgndN, dt * Nscale);
 		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale * Nscale);
+		power += positions[i].power * positions[i].total;
+		eff += positions[i].eff * positions[i].total;
+		total += positions[i].total;
+		dead += positions[i].dead;
 	}
 	hSum->Add(hSub, -1);
-	if (days) *days = tSum / 86.4;
+	days = tSum / 86.4;
 	if (tSum == 0) return 0;
 	Cnt = hSum->Integral();
 	hSum->Scale(86.4 / tSum);
 	hSub->Scale(86.4 / tSum);
+	if (total > 0 && stat) {
+		stat->days = days;
+		stat->Cnt = Cnt;
+		stat->power = power / total;
+		stat->dead = dead / total;
+		stat->eff = eff / total;
+	}
 	return Cnt;
 }
 
@@ -190,9 +350,15 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	char strl[1024];
 	double val, err;
 	double valb[3], errb[3];
-	double Cnt, n[3], days[3];
+	double Cnt;
 	int i;
-	const char *ConstLabels[] = {"UpCnt", "MidCnt", "DownCnt", "UpDays", "MidDays", "DownDays"};
+	struct StatStruct stat[3];
+	const char *ConstLabels[] = {
+		"UpCnt", "MidCnt", "DownCnt", "UpDays", "MidDays", "DownDays",
+		"UpPwr", "MidPwr", "DownPwr", "UpDead", "MidDead", "DownDead",
+		"UpEff", "MidEff", "DownEff"
+	};
+	int NL;
 	TLatex txt;
 
 	cv->Clear();
@@ -203,8 +369,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	sprintf(strs, "hUpSub_%d", periodmask);
 	sprintf(strl, "Background spectrum %s, UP;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hUpSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n[0] = sum_of_spectra(hUp, hUpSub, "u", periodmask, bgScale, Nscale, &days[0]);
-	Cnt = n[0];
+	Cnt = sum_of_spectra(hUp, hUpSub, "u", periodmask, bgScale, Nscale, &stat[0]);
 	TH1D *hTmp = (TH1D *) hUp->Clone("hTmp");	// keep to subtract block #3
 	hUp->Add(hTmp, -OtherBlockFraction);
 	hUp->Write();
@@ -215,7 +380,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	hUp->SetTitle(title);
 	hUp->Draw("hist,e");
 	val = hUp->IntegralAndError(hUp->FindBin(1.001), hUp->FindBin(7.999), err);
-	sprintf(strs, "  Up: %7.0f events %6.1f #pm%5.1f / day", n[0], val, err);
+	sprintf(strs, "  Up: %7.0f events %6.1f #pm%5.1f / day", stat[0].Cnt, val, err);
 	lg->AddEntry(hUp, strs, "l");
 
 	sprintf(strs, "hMid_%d", periodmask);
@@ -224,8 +389,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	sprintf(strs, "hMidSub_%d", periodmask);
 	sprintf(strl, "Background spectrum %s, MIDDLE;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hMidSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n[1] = sum_of_spectra(hMid, hMidSub, "m", periodmask, bgScale, Nscale, &days[1]);
-	Cnt += n[1];
+	Cnt += sum_of_spectra(hMid, hMidSub, "m", periodmask, bgScale, Nscale, &stat[1]);
 	hMid->Add(hTmp, -OtherBlockFraction);
 	hMid->Write();
 	hMidSub->Write();
@@ -233,7 +397,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	hMid->SetFillColor(kGreen-10);
 	hMid->Draw("same,hist,e");
 	val = hMid->IntegralAndError(hUp->FindBin(1.001), hMid->FindBin(7.999), err);
-	sprintf(strs, " Mid: %7.0f events %6.1f #pm%5.1f / day", n[1], val, err);
+	sprintf(strs, " Mid: %7.0f events %6.1f #pm%5.1f / day", stat[1].Cnt, val, err);
 	lg->AddEntry(hMid, strs, "l");
 
 	sprintf(strs, "hDown_%d", periodmask);
@@ -242,8 +406,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	sprintf(strs, "hDownSub_%d", periodmask);
 	sprintf(strl, "Background spectrum %s, DOWN;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hDownSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n[2] = sum_of_spectra(hDown, hDownSub, "d", periodmask, bgScale, Nscale, &days[2]);
-	Cnt += n[2];
+	Cnt += sum_of_spectra(hDown, hDownSub, "d", periodmask, bgScale, Nscale, &stat[2]);
 	hDown->Add(hTmp, -OtherBlockFraction);
 	hDown->Write();
 	hDownSub->Write();
@@ -251,7 +414,7 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	hDown->SetFillColor(kBlue-10);
 	hDown->Draw("same,hist,e");
 	val = hDown->IntegralAndError(hUp->FindBin(1.001), hDown->FindBin(7.999), err);
-	sprintf(strs, "Down: %7.0f events %6.1f #pm%5.1f / day", n[2], val, err);
+	sprintf(strs, "Down: %7.0f events %6.1f #pm%5.1f / day", stat[2].Cnt, val, err);
 	lg->AddEntry(hDown, strs, "l");
 
 	hUpSub->SetLineColor(kBlack);
@@ -271,12 +434,16 @@ void draw_spectra_page(TCanvas *cv, const char *title, int periodmask, double bg
 	cv->Update();
 	
 	sprintf(strs, "hConst_%d", periodmask);
-	sprintf(strl, "Integrals and days: %s", title);
-	TH1D *hConst = new TH1D(strs, strl, 6, 0, 6);
-	for (i=0; i<6; i++) hConst->GetXaxis()->SetBinLabel(i+1, ConstLabels[i]);
+	sprintf(strl, "Statistics: %s", title);
+	NL = sizeof(ConstLabels)/sizeof(char *);
+	TH1D *hConst = new TH1D(strs, strl, NL, 0, NL);
+	for (i=0; i<NL; i++) hConst->GetXaxis()->SetBinLabel(i+1, ConstLabels[i]);
 	for (i=0; i<3; i++) {
-		hConst->SetBinContent(i+1, n[i]);
-		hConst->SetBinContent(i+4, days[i]);
+		hConst->SetBinContent(i+1, stat[i].Cnt);
+		hConst->SetBinContent(i+4, stat[i].days);
+		hConst->SetBinContent(i+7, stat[i].power);
+		hConst->SetBinContent(i+10, stat[i].dead);
+		hConst->SetBinContent(i+13, stat[i].eff);
 	}
 	hConst->Write();
 
@@ -290,11 +457,17 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	char strl[1024];
 	double val, err;
 	double valb[3], errb[3];
-	double Cnt, n[3], days[3];
+	double Cnt;
 	int i;
 	TLatex txt;
 	const double OtherBlockFraction = 0.0060;	// Distances to other reactors: 160, 336 and 478 m
-	const char *ConstLabels[] = {"UpCnt", "MidCnt", "DownCnt", "UpDays", "MidDays", "DownDays"};
+	struct StatStruct stat[3];
+	const char *ConstLabels[] = {
+		"UpCnt", "MidCnt", "DownCnt", "UpDays", "MidDays", "DownDays",
+		"UpPwr", "MidPwr", "DownPwr", "UpDead", "MidDead", "DownDead",
+		"UpEff", "MidEff", "DownEff"
+	};
+	int NL;
 
 	cv->Clear();
 	lg = new TLegend(0.35, 0.65, 0.9, 0.9);
@@ -304,8 +477,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	sprintf(strs, "hUpSub_%s_%s", pfrom, pto);
 	sprintf(strl, "Background spectrum %s, UP;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hUpSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n[0] = sum_of_spectral(hUp, hUpSub, "u", pfrom, pto, bgScale, Nscale, &days[0]);
-	Cnt = n[0];
+	Cnt = sum_of_spectral(hUp, hUpSub, "u", pfrom, pto, bgScale, Nscale, &stat[0]);
 	TH1D *hTmp = (TH1D *) hUp->Clone("hTmp");	// keep to subtract block #3
 	hUp->Add(hTmp, -OtherBlockFraction);
 	hUp->Write();
@@ -316,7 +488,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	hUp->SetTitle(title);
 	hUp->Draw("hist,e");
 	val = hUp->IntegralAndError(hUp->FindBin(1.001), hUp->FindBin(7.999), err);
-	sprintf(strs, "  Up: %7.0f events %6.1f #pm%5.1f / day", n[0], val, err);
+	sprintf(strs, "  Up: %7.0f events %6.1f #pm%5.1f / day", stat[0].Cnt, val, err);
 	lg->AddEntry(hUp, strs, "l");
 
 	sprintf(strs, "hMid_%s_%s", pfrom, pto);
@@ -325,8 +497,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	sprintf(strs, "hMidSub_%s_%s", pfrom, pto);
 	sprintf(strl, "Background spectrum %s, MIDDLE;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hMidSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n[1] = sum_of_spectral(hMid, hMidSub, "m", pfrom, pto, bgScale, Nscale, &days[1]);
-	Cnt += n[1];
+	Cnt += sum_of_spectral(hMid, hMidSub, "m", pfrom, pto, bgScale, Nscale, &stat[1]);
 	hMid->Add(hTmp, -OtherBlockFraction);
 	hMid->Write();
 	hMidSub->Write();
@@ -334,7 +505,7 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	hMid->SetFillColor(kGreen-10);
 	hMid->Draw("same,hist,e");
 	val = hMid->IntegralAndError(hMid->FindBin(1.001), hMid->FindBin(7.999), err);
-	sprintf(strs, " Mid: %7.0f events %6.1f #pm%5.1f / day", n[1], val, err);
+	sprintf(strs, " Mid: %7.0f events %6.1f #pm%5.1f / day", stat[1].Cnt, val, err);
 	lg->AddEntry(hMid, strs, "l");
 
 	sprintf(strs, "hDown_%s_%s", pfrom, pto);
@@ -343,15 +514,14 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	sprintf(strs, "hDownSub_%s_%s", pfrom, pto);
 	sprintf(strl, "Background spectrum %s, DOWN;Positron energy, MeV;Events / (day * 125 keV)", title);
 	TH1D *hDownSub = new TH1D(strs, strl, NEBINS, 0, 16);
-	n[2] = sum_of_spectral(hDown, hDownSub, "d", pfrom, pto, bgScale, Nscale, &days[2]);
-	Cnt += n[2];
+	Cnt += sum_of_spectral(hDown, hDownSub, "d", pfrom, pto, bgScale, Nscale, &stat[2]);
 	hDown->Add(hTmp, -OtherBlockFraction);
 	hDown->Write();
 	hDown->SetLineColor(kBlue);
 	hDown->SetFillColor(kBlue-10);
 	hDown->Draw("same,hist,e");
 	val = hDown->IntegralAndError(hDown->FindBin(1.001), hDown->FindBin(7.999), err);
-	sprintf(strs, "Down: %7.0f events %6.1f #pm%5.1f / day", n[2], val, err);
+	sprintf(strs, "Down: %7.0f events %6.1f #pm%5.1f / day", stat[2].Cnt, val, err);
 	lg->AddEntry(hDown, strs, "l");
 
 	hUpSub->SetLineColor(kBlack);
@@ -371,12 +541,16 @@ void draw_spectra_pagel(TCanvas *cv, const char *title, const char *pfrom, const
 	cv->Update();
 
 	sprintf(strs, "hConst_%s_%s", pfrom, pto);
-	sprintf(strl, "Integrals and days for %s", title);
-	TH1D *hConst = new TH1D(strs, strl, 6, 0, 6);
-	for (i=0; i<6; i++) hConst->GetXaxis()->SetBinLabel(i+1, ConstLabels[i]);
+	sprintf(strl, "Statistics: %s", title);
+	NL = sizeof(ConstLabels)/sizeof(char *);
+	TH1D *hConst = new TH1D(strs, strl, NL, 0, NL);
+	for (i=0; i<NL; i++) hConst->GetXaxis()->SetBinLabel(i+1, ConstLabels[i]);
 	for (i=0; i<3; i++) {
-		hConst->SetBinContent(i+1, n[i]);
-		hConst->SetBinContent(i+4, days[i]);
+		hConst->SetBinContent(i+1, stat[i].Cnt);
+		hConst->SetBinContent(i+4, stat[i].days);
+		hConst->SetBinContent(i+7, stat[i].power);
+		hConst->SetBinContent(i+10, stat[i].dead);
+		hConst->SetBinContent(i+13, stat[i].eff);
 	}
 	hConst->Write();
 
@@ -452,6 +626,7 @@ void draw_single_ratio(const char *nameA, const char *nameB, const char *name, c
 	hAB->SetName(name);
 	hAB->SetTitle(title);
 	hAB->Divide(hA, hB);
+	hAB->Scale(GetEffScale(nameA, nameB));
 	hAB->SetLineColor(kBlue);
 	hAB->Write();	
 	hAB->SetMinimum(min);
@@ -466,7 +641,7 @@ void draw_normalized_ratio(const char* beginA, const char *endA, const char* beg
 	const char *name, const char *title, double min=0.6, double max=1.2, double bgScale = 1.0, double Nscale = 1.0)
 {
 	char strs[128];
-	double daysAU, daysAM, daysAD, daysBU, daysBM, daysBD;
+	struct StatStruct daysAU, daysAM, daysAD, daysBU, daysBM, daysBD;
 //	int i;
 //	const char posmask[3][3] = {"u", "m", "d"};
 	const double Nfactor[3] = {1.0, (11.7*11.7)/(10.7*10.7), (12.7*12.7)/(10.7*10.7)};
@@ -503,15 +678,15 @@ void draw_normalized_ratio(const char* beginA, const char *endA, const char* beg
 	hBD->Add(hTmpB, -OtherBlockFraction);
 //		Add spectra with R^2 weights
 	hTmpA->Reset();
-	hTmpA->Add(hAU, Nfactor[0]*daysAU);
-	hTmpA->Add(hAM, Nfactor[1]*daysAM);
-	hTmpA->Add(hAD, Nfactor[2]*daysAD);
-	hTmpA->Scale(1.0 / (daysAU + daysAM + daysAD));
+	hTmpA->Add(hAU, Nfactor[0]*daysAU.days);
+	hTmpA->Add(hAM, Nfactor[1]*daysAM.days);
+	hTmpA->Add(hAD, Nfactor[2]*daysAD.days);
+	hTmpA->Scale(1.0 / (daysAU.days + daysAM.days + daysAD.days));
 	hTmpB->Reset();
-	hTmpB->Add(hBU, Nfactor[0]*daysBU);
-	hTmpB->Add(hBM, Nfactor[1]*daysBM);
-	hTmpB->Add(hBD, Nfactor[2]*daysBD);
-	hTmpB->Scale(1.0 / (daysBU + daysBM + daysBD));
+	hTmpB->Add(hBU, Nfactor[0]*daysBU.days);
+	hTmpB->Add(hBM, Nfactor[1]*daysBM.days);
+	hTmpB->Add(hBD, Nfactor[2]*daysBD.days);
+	hTmpB->Scale(1.0 / (daysBU.days + daysBM.days + daysBD.days));
 //		Draw
 	hAB->Divide(hTmpA, hTmpB);
 	hAB->SetLineColor(kBlue);
@@ -807,7 +982,7 @@ void draw_accidental(const char *pfrom = NULL, const char *pto = NULL)
 
 	sprintf(strs, "AccUp_%s_%s", pfrom, pto);
 	sprintf(strl, "Accidental background spectrum %s-%s, UP;Positron energy, MeV;Events / (day * 125 keV)", 
-		(pfrom) ? pfrom : "Apr 16", (pto) ? pto : "Mar 19");
+		(pfrom) ? pfrom : "Apr 16", (pto) ? pto : "Apr 19");
 	TH1D *hUp = new TH1D(strs, strl, NEBINS, 0, 16);
 	n = sum_accidental(hUp, "u", pfrom, pto);
 	hUp->Write();
@@ -869,7 +1044,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 		"01.09.17", "01.10.17", "01.11.17", "01.12.17", "01.01.18", 
 		"01.02.18", "01.04.18", "01.06.18", "01.07.18", "01.08.18", 
 		"01.09.18", "01.10.18", "01.11.18", "01.12.18", "08.01.19",
-		"02.03.19"
+		"02.03.19", "31.03.19", "30.04.19"
 	}; 
 	gStyle->SetOptStat(0);
 	gStyle->SetOptFit(1111);
@@ -879,6 +1054,8 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	gStyle->SetPadLeftMargin(0.2);
 	gStyle->SetPadBottomMargin(0.2);
 //	gStyle->SetLineWidth(2);
+
+	readPositions("stat_pos.txt");
 	
 	cv = new TCanvas("CV", "Results", 2400, 1200);
 	fData = new TFile(fname);
@@ -892,7 +1069,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	txt = new TLatex();
 	
 //	Page 1:	Spectra All
-	draw_spectra_page(cv, "Apr 16-Mar 19", 0x3E, bgScale, Nscale);
+	draw_spectra_page(cv, "Apr 16-Apr 19", 0x3E, bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 1a:	Spectra All but April-June 16.
@@ -931,11 +1108,11 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	cv->Print(pname);
 
 //	Page 5:	Spectra March 18-January 19
-	draw_spectra_page(cv, "May-Jan 19", 0x10, bgScale, Nscale);
+	draw_spectra_page(cv, "May 18-Jan 19", 0x10, bgScale, Nscale);
 	cv->Print(pname);
 
 //	Page 5:	Spectra March 19 start of campaign 6
-	draw_spectra_page(cv, "Mar 19", 0x20, bgScale, Nscale);
+	draw_spectra_page(cv, "Feb-Apr 19", 0x20, bgScale, Nscale);
 	cv->Print(pname);
 
 //********* two-months periods spectra pages (scan...)
@@ -965,6 +1142,8 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	cv->Print(pname);
 	draw_spectra_pagel(cv, "Nov 18-Jan 19", "02.11.18", "06.01.19", bgScale, Nscale);
 	cv->Print(pname);
+	draw_spectra_pagel(cv, "Feb-Apr 19", "25.02.19", "30.04.19", bgScale, Nscale);
+	cv->Print(pname);
 //********* one-month - no print
 	for (i = 0; i < sizeof(monthlist) / sizeof(monthlist[0]) - 1; i++) {
 		sprintf(str, "%s - %s", monthlist[i], monthlist[i+1]);
@@ -976,7 +1155,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	cv->Divide(3, 2);
 
 	cv->cd(1);
-	TH1D *hSum = new TH1D("hSum", "Positron spectrum Apr 16 - Mar 19;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
+	TH1D *hSum = new TH1D("hSum", "Positron spectrum Apr 16 - Apr 19;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
 	TH1D *hSumSub = new TH1D("hSumSub", "Background spectrum Apr 16 - Jan 19;Positron energy, MeV;Events / (day * 125 keV)", NEBINS, 0, 16);
 	sum_of_spectra(hSum, hSumSub, "umdrs", 0x3E, bgScale, Nscale);
 	hSum->Write();
@@ -1027,7 +1206,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 
 	cv->Update();
 	cv->Print(pname);
-	
+
 	printf("Ratio pages\n");
 //	Page 7:	Down/Up
 	cv->Clear();
@@ -1052,7 +1231,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	cv->Divide(2, 2);
 
 	cv->cd(1);
-	draw_single_ratio("hDown_62", "hUp_62", "hDownUp_62", "Ratio Down/Up Apr 16-Mar 19 (Everything);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
+	draw_single_ratio("hDown_62", "hUp_62", "hDownUp_62", "Ratio Down/Up Apr 16-Apr 19 (Everything);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
 
 	cv->cd(2);
 	draw_single_ratio("hDown_28", "hUp_28", "hDownUp_28", "Ratio Down/Up Oct 16-Jan 19 (ALL-Apr16-Mar19);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
@@ -1063,7 +1242,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 
 	cv->cd(4);
 	draw_single_ratio("hDown_01.10.17_09.01.19", "hUp_01.10.17_09.01.19", "hDownUp_01.10.17_09.01.19", 
-		"Ratio Down/Up Oct 17-Jan 19 (After PLB);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
+		"Ratio Down/Up Oct 17-Jan 19 (After PLB, before 6th campaign);Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", 0.6, 0.9);
 
 	cv->Update();
 	cv->Print(pname);
@@ -1161,7 +1340,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	draw_single_ratio("hMid_30", "hUp_30", "hMidUp_30", "Ratio Mid/Up Apr 16-Jan 19 (ALL-Mar19);Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", 0.6, 0.9);
 
 	cv->cd(2);
-	draw_single_ratio("hMid_62", "hUp_62", "hMidUp_62", "Ratio Mid/Up Apr 16-Mar 19 (Everything);Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", 0.6, 0.9);
+	draw_single_ratio("hMid_62", "hUp_62", "hMidUp_62", "Ratio Mid/Up Apr 16-Apr 19 (Everything);Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", 0.6, 0.9);
 
 	cv->cd(3);
 	draw_single_ratio("hMid_01.04.16_30.09.17", "hUp_01.04.16_30.09.17", "hMidUp_01.04.16_30.09.17", 
@@ -1179,19 +1358,19 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	cv->Divide(3, 2);
 
 	cv->cd(1);
-	draw_single_ratio("hDownUp_2", "hDownUp_30", "hDownUp2_2_30", "Double ratio Down/Up Apr-Jun 16 / All;Positron energy, MeV", 0.7, 1.3);
+	draw_single_ratio("hDownUp_2", "hDownUp_62", "hDownUp2_2_62", "Double ratio Down/Up Apr-Jun 16 / All;Positron energy, MeV", 0.7, 1.3);
 
 	cv->cd(2);
-	draw_single_ratio("hDownUp_4", "hDownUp_30", "hDownUp2_4_30", "Double ratio Down/Up Oct 16 - Jul 17 / All;Positron energy, MeV", 0.7, 1.3);
+	draw_single_ratio("hDownUp_4", "hDownUp_62", "hDownUp2_4_62", "Double ratio Down/Up Oct 16 - Jul 17 / All;Positron energy, MeV", 0.7, 1.3);
 
 	cv->cd(3);
-	draw_single_ratio("hDownUp_8", "hDownUp_30", "hDownUp2_8_30", "Double ratio Down/Up Aug 17 - Mar 18 / All;Positron energy, MeV", 0.7, 1.3);
+	draw_single_ratio("hDownUp_8", "hDownUp_62", "hDownUp2_8_62", "Double ratio Down/Up Aug 17 - Mar 18 / All;Positron energy, MeV", 0.7, 1.3);
 
 	cv->cd(4);
-	draw_single_ratio("hDownUp_16", "hDownUp_30", "hDownUp2_16_30", "Double ratio Down/Up May 18 - Jan 19 / All;Positron energy, MeV", 0.7, 1.3);
+	draw_single_ratio("hDownUp_16", "hDownUp_62", "hDownUp2_16_62", "Double ratio Down/Up May 18 - Jan 19 / All;Positron energy, MeV", 0.7, 1.3);
 
 	cv->cd(5);
-	draw_single_ratio("hDownUp_01.04.16_30.09.17", "hDownUp_30", "hDownUp2_PLB_30", "Double ratio Down/Up PLB / All;Positron energy, MeV", 0.7, 1.3);
+	draw_single_ratio("hDownUp_01.04.16_30.09.17", "hDownUp_62", "hDownUp2_PLB_62", "Double ratio Down/Up PLB / All;Positron energy, MeV", 0.7, 1.3);
 
 	cv->cd(6);
 	draw_single_ratio("hDownUp_01.04.16_30.09.17", "hDownUp_01.10.17_09.01.19", "hDownUp2_PLB_postPLB", "Double ratio Down/Up PLB / post PLB;Positron energy, MeV", 0.7, 1.3);
@@ -1316,6 +1495,7 @@ void danss_calc_ratio_v5(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	cv->Print(pname);
 
 //****************	Write file	*****************//
+fin:
 	sprintf(str, "%s]", pname);
 	cv->Print(str);
 	fData->Close();
