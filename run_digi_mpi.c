@@ -100,14 +100,22 @@ found:
 	fclose(flist);
 //		The run itself
 	if (iver == 3) {
-		setenv("DANSSRAWREC_HOME", "lib_v3.0", 1);
+		setenv("DANSSRAWREC_HOME", "lib_v3.1", 1);
 	} else {
 		setenv("DANSSRAWREC_HOME", "lib_v2.1", 1);
 	}
-	tcalib = (fnum < 5469) ? "tcalib_cmnew_ss-d.calib" : "tcalib_5512_ss-d.calib";
+	if (fnum < 5469) {
+		tcalib = "tcalib_2210_5468.calib";
+	} else 	if (fnum < 59261) {
+		tcalib = "tcalib_5469_59260.calib";
+	} else 	if (fnum < 61541) {
+		tcalib = "tcalib_59261_61540.calib";
+	} else {
+		tcalib = "tcalib_61541_XXXXX.calib";
+	}
 	
 	sprintf(str, "./digi_evtbuilder6_v%d -no_hit_tables -file %s -output %s/%3.3dxxx/danss_%6.6d.root "
-		"-flag 0x250002 -ecorr 1.0 -tcalib %s", iver, clist, tdir, fnum/1000, fnum, tcalib);
+		"-flag 0x250002 -tcalib %s", iver, clist, tdir, fnum/1000, fnum, tcalib);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		delete list file

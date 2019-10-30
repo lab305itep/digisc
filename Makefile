@@ -1,5 +1,5 @@
 DIGI_V2 = lib_v2.1
-DIGI_V3 = lib_v3.0
+DIGI_V3 = lib_v3.1
 #CLIB = -lgcc -lstdc++
 CLIB = 
 ROOTLIB = $(shell root-config --libs)

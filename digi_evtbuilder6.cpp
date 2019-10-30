@@ -910,7 +910,7 @@ void Help(void)
 	printf("-calib filename.txt --- file with energy calibration. No default.\n");
 	printf("-deadlist filename.txt --- file with explicit list of dead channels.\n");
 	printf("-dump gTime --- dump an event with this gTime.\n");
-	printf("-ecorr EnergyCorrection --- 0.95 by default.\n");
+	printf("-ecorr EnergyCorrection --- 0.935 by default.\n");
 	printf("-events number --- stop after processing this number of events. Default - do not stop.\n");
 	printf("-file filename.txt --- file with a list of files for processing. No default.\n");
 	printf("-flag FLAGS --- analysis flag mask. Default - 0. Recognized flags:\n");
@@ -963,7 +963,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	iFlags = 0;
 	MaxEvents = -1;
 	IsMc = 0;
-	EnergyCorrection = 0.95;
+	EnergyCorrection = 0.935;
 
 	for (i=1; i<argc; i++) {
 		if (!strcmp(argv[i], "-output")) {

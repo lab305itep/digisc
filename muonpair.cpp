@@ -46,12 +46,12 @@
 //#define CORR_PMT_P1	0.929	// cluster energy correction from MC
 //#define CORR_SIPM_P0	0.187	// cluster energy correction from MC + 34 keV from SiPM to PMT comparison
 //#define CORR_SIPM_P1	0.920	// cluster energy correction from MC
-#define CORR_P0		0.137	// Positron energy correction from MC 
-#define CORR_P1		0.975	// Positron energy correction from MC
-#define CORR_PMT_P0	0.126	// Positron energy correction from MC
-#define CORR_PMT_P1	0.947	// Positron energy correction from MC
-#define CORR_SIPM_P0	0.114	// Positron energy correction from MC
-#define CORR_SIPM_P1	0.996	// Positron energy correction from MC
+//#define CORR_P0		0.137	// Positron energy correction from MC 
+//#define CORR_P1		0.975	// Positron energy correction from MC
+//#define CORR_PMT_P0	0.126	// Positron energy correction from MC
+//#define CORR_PMT_P1	0.947	// Positron energy correction from MC
+//#define CORR_SIPM_P0	0.114	// Positron energy correction from MC
+//#define CORR_SIPM_P1	0.996	// Positron energy correction from MC
 
 #define iMaxDataElements 3000
 
@@ -86,6 +86,7 @@ void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
 int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
 //	"(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3"
 {
+	if (DanssEvent->VetoCleanHits > 0) return 0;	// never kill VETO trigger
 	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
 		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;
 	return 0;
@@ -196,10 +197,10 @@ void MakePair(
 
 	DanssPair->NPHits = PromptEvent->NHits;
 	DanssPair->NDHits = DelayedEvent->NHits;
-	
-	DanssPair->ClusterEnergy = (DanssPair->ClusterEnergy - CORR_P0) / CORR_P1;
-	DanssPair->ClusterPmtEnergy = (DanssPair->ClusterPmtEnergy - CORR_PMT_P0) / CORR_PMT_P1;
-	DanssPair->ClusterSiPmEnergy = (DanssPair->ClusterSiPmEnergy - CORR_SIPM_P0) / CORR_SIPM_P1;
+//		31/10/19 - We don't need this correction for 12B electrons !!!
+//	DanssPair->ClusterEnergy = (DanssPair->ClusterEnergy - CORR_P0) / CORR_P1;
+//	DanssPair->ClusterPmtEnergy = (DanssPair->ClusterPmtEnergy - CORR_PMT_P0) / CORR_PMT_P1;
+//	DanssPair->ClusterSiPmEnergy = (DanssPair->ClusterSiPmEnergy - CORR_SIPM_P0) / CORR_SIPM_P1;
 }
 
 void SetCriteria(void)
