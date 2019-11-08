@@ -62,7 +62,7 @@
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
 #define TCUT		10			// fine time cut, ns for SiPM
-#define TCUTPMT		20			// fine time cut, ns for PMT and VETO
+#define TCUTPMT		30			// fine time cut, ns for PMT and VETO
 #define NOFINETIME	10000			// something out of range
 //	Flags
 #define FLG_PRINTALL		       1	// do large debuggging printout
@@ -79,6 +79,7 @@
 #define FLG_PMTTIMECUT		0x200000	// Cut PMT and Veto by time
 #define FLG_CONFIRMSIPM		0x400000	// Confirm all SiPM hits
 
+#define MAXADCBOARD	60
 
 using namespace std;
 
@@ -116,8 +117,9 @@ struct DanssExtraStruct	{
 
 } 					DanssExtra;
 int 					HitFlag[iMaxDataElements];	// array to flag out SiPM hits
-TH1D *					hTimeDelta[iMaxAddress_AdcBoard][iNChannels_AdcBoard];
-int					DeadList[iMaxAddress_AdcBoard][iNChannels_AdcBoard];
+TH1D *					hTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
+TH1D *					hPMTTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
+int					DeadList[MAXADCBOARD][iNChannels_AdcBoard];
 struct HitStruct {
 	float			E[iMaxDataElements];
 	float			T[iMaxDataElements];
@@ -545,7 +547,7 @@ void CreateDeadList(char *fname)
 		i = strtol(str, &ptr, 10) - 1;
 		ptr++;
 		j = strtol(ptr, NULL, 10);
-		if (i >= 0 && i < iMaxAddress_AdcBoard && j >= 0 && j < iNChannels_AdcBoard) DeadList[i][j] = 1;
+		if (i >= 0 && i < MAXADCBOARD && j >= 0 && j < iNChannels_AdcBoard) DeadList[i][j] = 1;
 	}
 	fclose(f);
 }
@@ -701,13 +703,17 @@ void DumpEvent(ReadDigiDataUser *user)
 
 void FindFineTime(ReadDigiDataUser *user)
 {
-	float tsum;
-	float asum;
-	float e;
-	int i, k, N;
+	double tsum;
+	double asum;
+	double e;
+	int i, k, n, N;
+	double PMTsumT;
+	double PMTsumA;
 	
 	tsum = asum = 0;
+	PMTsumT = PMTsumA = 0;
 	k = 0;
+	n = 0;
 	N = user->nhits();
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0) {
 		switch(user->type(i)) {
@@ -716,6 +722,11 @@ void FindFineTime(ReadDigiDataUser *user)
 			if (user->npix(i) < MINSIPMPIXELS) e = 0;
 			break;
 		case bPmt:
+			e = user->e(i);
+			PMTsumT += user->t_raw(i) * e;
+			PMTsumA += e;
+			n++;
+			break;
 		case bVeto:
 			e = user->e(i);
 			break;
@@ -734,6 +745,12 @@ void FindFineTime(ReadDigiDataUser *user)
 	if (k > 1 && (iFlags & FLG_DTHIST)) for (i=0; i<N; i++) 
 		if (HitFlag[i] >= 0 && !(user->type(i) == bSiPm && user->npix(i) < MINSIPMPIXELS2) && user->e(i) > MINENERGY4TIME && user->t_raw(i) > 0) 
 		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+//		time relative to PMT - we need some common calibration of delays
+	if ((iFlags & FLG_DTHIST) && PMTsumA > 0) {
+		PMTsumT /= PMTsumA;
+		for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->t_raw(i) > 0 && (user->type(i) != bPmt || n > 1)) 
+			hPMTTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - PMTsumT);
+	}
 }
 
 void StoreHits(ReadDigiDataUser *user)
@@ -1073,10 +1090,13 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	globalTimeWrapped = 0;
 	memset(&DanssInfo, 0, sizeof(struct DanssInfoStruct4));
 	
-	if (iFlags & FLG_DTHIST) for (i=0; i<iMaxAddress_AdcBoard; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
+	if (iFlags & FLG_DTHIST) for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
 		sprintf(strs, "hDT%2.2dc%2.2d", i+1, j);
 		sprintf(strl, "Time delta distribution for channel %2.2d.%2.2d;ns", i+1, j);
 		hTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
+		sprintf(strs, "hDTP%2.2dc%2.2d", i+1, j);
+		sprintf(strl, "Time delta distribution for channel %2.2d.%2.2d versus PMT;ns", i+1, j);
+		hPMTTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
 	}
 	hCrossTalk = new TH1D("hCrossTalk", "Croos talk distribution;Pixels/Ph.e.", 280, 0.8, 2.2);
 #ifndef DIGI_V2
@@ -1187,7 +1207,10 @@ void ReadDigiDataUser::finishUserProc()
 
 	if (OutputTree) OutputTree->Write();
 	if (InfoTree) InfoTree->Write();
-	if ((iFlags & FLG_DTHIST) && OutputFile) for (i=0; i<iMaxAddress_AdcBoard; i++) for (j=0; j<iNChannels_AdcBoard; j++) hTimeDelta[i][j]->Write();
+	if ((iFlags & FLG_DTHIST) && OutputFile) for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
+		if (hTimeDelta[i][j]->GetEntries() > 0) hTimeDelta[i][j]->Write();
+		if (hPMTTimeDelta[i][j]->GetEntries() > 0) hPMTTimeDelta[i][j]->Write();
+	}
 	hCrossTalk->Write();
 #ifndef DIGI_V2
 	if (IsMc) {

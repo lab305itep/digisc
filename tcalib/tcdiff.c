@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void Load(double d[50][64][2], char *fname)
+void Load(double d[60][64][2], char *fname)
 {
 	int i, j;
 	FILE *f;
@@ -24,7 +24,7 @@ void Load(double d[50][64][2], char *fname)
 	fclose(f);
 }
 
-void Save(double d[50][64][2], char *fname)
+void Save(double d[60][64][2], char *fname)
 {
 	int i, j;
 	FILE *f;
@@ -39,8 +39,8 @@ void Save(double d[50][64][2], char *fname)
 int main(int argc, char **argv)
 {
 	int i, j, k;
-	double A[50][64][2];
-	double B[50][64][2];
+	double A[60][64][2];
+	double B[60][64][2];
 	
 	if (argc < 4) return 10;
 	memset(A, 0, sizeof(A));
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 	Load(A, argv[1]);
 	Load(B, argv[2]);
 //	printf("%f/%f %f/%f ", A[1][1][0], A[1][1][1], B[1][1][0], B[1][1][1]);
-	for (i=0; i<50; i++) for (j=0; j<64; j++) {
+	for (i=0; i<60; i++) for (j=0; j<64; j++) {
 		A[i][j][0] -= B[i][j][0];
 		A[i][j][1] += B[i][j][1];
 	}

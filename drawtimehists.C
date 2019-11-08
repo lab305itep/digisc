@@ -22,29 +22,32 @@ int Open(const char *name)
 	return 0;
 }
 
-void Draw(int update = 1)
+int Draw(int update = 1)
 {
 	char str[128];
 	int i;
 	TH1 *h;
+	int cnt = 0;
 	
-	if (!RootFile->IsOpen()) return;
+	if (!RootFile->IsOpen()) return 0;
 	cv = (TCanvas *) gROOT->FindObject("CVT");
 	if (!cv) cv = new TCanvas("CVT", "Canvas", 1500, 1200);
 	cv->Clear();
 	cv->Divide(4, 4);
 	for (i=0; i<16; i++) {
 		cv->cd(i+1);
-		sprintf(str, "hDT%2.2dc%2.2d", UnitNumber, ChannelNumber + i);
+		sprintf(str, "hDTP%2.2dc%2.2d", UnitNumber, ChannelNumber + i);
 		h = (TH1 *) RootFile->Get(str);
 		if (h) {
 			h->Draw();
 			hSum->Add(h);
+			cnt++;
+			if (h->GetEntries() > 1000 && RepFile) 
+				fprintf(RepFile, "Channel=%2.2d.%2.2d  DT=%6.1f\n", UnitNumber, ChannelNumber + i, h->GetMean());
 		}
-		if (h->GetEntries() > 1000 && RepFile) 
-			fprintf(RepFile, "Channel=%2.2d.%2.2d  DT=%6.1f\n", UnitNumber, ChannelNumber + i, h->GetMean());
 	}
 	if (update) cv->Update();
+	return cnt;
 }
 
 void Next(void)
@@ -73,6 +76,8 @@ void Print(const char *name)
 {
 	char str[1024];
 	char *ptr;
+	int irc; 
+	
 	strncpy(str, name, sizeof(str)-10);
 	ptr = strrchr(str, '.');
 	if (!ptr) ptr = strchr(str, '\0');
@@ -84,9 +89,9 @@ void Print(const char *name)
 	cv->Print(str);
 	*ptr = '\0';
 	hSum = new TH1D("hTimeSum", "Average time distribution", 250, -25, 25);
-	for (UnitNumber = 1; UnitNumber < 48; UnitNumber++) for (ChannelNumber = 0; ChannelNumber<64; ChannelNumber += 16) {
-		Draw(1);
-		cv->Print(str);
+	for (UnitNumber = 1; UnitNumber < 60; UnitNumber++) for (ChannelNumber = 0; ChannelNumber<64; ChannelNumber += 16) {
+		irc = Draw(1);
+		if (irc) cv->Print(str);
 	}
 	cv->Clear();
 	gStyle->SetOptFit(1);
