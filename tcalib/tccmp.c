@@ -32,6 +32,7 @@ int main(int argc, char **argv)
 	double A[60][64][2];
 	double B[60][64][2];
 	int Cnt[2];
+	double Ssum;
 	
 	if (argc < 3) return 10;
 	memset(A, 0, sizeof(A));
@@ -41,13 +42,16 @@ int main(int argc, char **argv)
 	thr = 0.3;
 	if (argc > 3) thr = strtod(argv[3], NULL);
 	Cnt[0] = Cnt[1] = 0;
+	Ssum = 0;
 	for (i=0; i<60; i++) for (j=0; j<64; j++) if (A[i][j][1] && B[i][j][1]) {
 		Cnt[0]++;
+		Ssum += (A[i][j][0] - B[i][j][0]) * (A[i][j][0] - B[i][j][0]);
 		if (fabs(A[i][j][0] - B[i][j][0]) > thr) {
 			printf("Channel = %2.2d.%2.2d  difference = %f\n", i, j, A[i][j][0] - B[i][j][0]);
 			Cnt[1]++;
 		}
 	}
 	printf("Total: %d,   Errors: %d\n", Cnt[0], Cnt[1]);
+	if (Cnt[0] > 100) printf("RMS = %f\n", sqrt(Ssum/Cnt[0]));
 	return 0;
 }

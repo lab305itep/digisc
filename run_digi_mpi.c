@@ -5,7 +5,8 @@
 #include <mpi.h>
 #include <unistd.h>
 
-#define TMPDIR "/home/clusters/rrcmpi/alekseev/igor/tmp/"
+#define TMPDIR "/home/clusters/rrcmpi/alekseev/igor/tmp"
+#define HITINFODIR "/home/clusters/rrcmpi/alekseev/igor/hitcheck"
 
 //	argv[1] - the first digi file number
 int main(int argc, char *argv[]) 
@@ -14,6 +15,7 @@ int main(int argc, char *argv[])
 	char str[4096];
 	char clist[1024];
 	char fname[1024];
+	char hitinfo[1024];
 	FILE *flist;
 	int fnum;
 	time_t t0, t1;
@@ -100,22 +102,34 @@ found:
 	fclose(flist);
 //		The run itself
 	if (iver == 3) {
-		setenv("DANSSRAWREC_HOME", "lib_v3.1", 1);
+		setenv("DANSSRAWREC_HOME", "lib_v3.2", 1);
 	} else {
 		setenv("DANSSRAWREC_HOME", "lib_v2.1", 1);
 	}
 	if (fnum < 5469) {
 		tcalib = "tcalib_2210_5468.calib";
+	} else 	if (fnum < 5807) {
+		tcalib = "tcalib_5469_5806.calib";
+	} else 	if (fnum < 6003) {
+		tcalib = "tcalib_5807_6002.calib";
+	} else 	if (fnum < 6837) {
+		tcalib = "tcalib_6003_6836.calib";
+	} else 	if (fnum < 7635) {
+		tcalib = "tcalib_6837_7634.calib";
+	} else 	if (fnum < 37500) {
+		tcalib = "tcalib_7635_37499.calib";
 	} else 	if (fnum < 59261) {
-		tcalib = "tcalib_5469_59260.calib";
+		tcalib = "tcalib_37500_59260.calib";
 	} else 	if (fnum < 61541) {
 		tcalib = "tcalib_59261_61540.calib";
 	} else {
 		tcalib = "tcalib_61541_XXXXX.calib";
 	}
 	
+	sprintf(hitinfo, "%s/%3.3dxxx/hits_%6.6d.txt.bz2", HITINFODIR, fnum/1000, fnum);
+	
 	sprintf(str, "./digi_evtbuilder6_v%d -no_hit_tables -file %s -output %s/%3.3dxxx/danss_%6.6d.root "
-		"-flag 0x250002 -tcalib %s", iver, clist, tdir, fnum/1000, fnum, tcalib);
+		"-flag 0x250002 -tcalib %s -hitinfo %s", iver, clist, tdir, fnum/1000, fnum, tcalib, hitinfo);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		delete list file

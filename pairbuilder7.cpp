@@ -345,14 +345,8 @@ int main(int argc, char **argv)
 	EventChain->SetBranchAddress("HitE", &HitArray[2].E);
 	EventChain->SetBranchAddress("HitT", &HitArray[2].T);
 	EventChain->SetBranchAddress("HitType", &HitArray[2].type);
-	if (!(strstr(argv[1], "mc") || strstr(argv[2], "mc") || strstr(argv[1], "MC") || strstr(argv[2], "MC"))) {
-		RawChain = new TChain("RawHits");
-		RawChain->SetBranchAddress("RawHits", &RawHits);
-	} else {
-		RawChain = NULL;
-		printf("MC-run - no noise check !\n");
-	}
-//	EventChain->AddFriend("RawHits");
+	RawChain = new TChain("RawHits");
+	RawChain->SetBranchAddress("RawHits", &RawHits);
 	InfoChain = new TChain("DanssInfo");
 	InfoChain->SetBranchAddress("Info", &DanssInfo);
 
@@ -375,7 +369,7 @@ int main(int argc, char **argv)
 			ptr = strchr(str, '\n');
 			if (ptr) *ptr = '\0';
 			EventChain->Add(str);
-			if (RawChain) RawChain->Add(str);
+			RawChain->Add(str);
 			InfoChain->Add(str);
 		}
 		fclose(fList);
@@ -389,10 +383,13 @@ int main(int argc, char **argv)
 	}
 
 	nEvt = EventChain->GetEntries();
-	rEvt = (RawChain) ? RawChain->GetEntries() : 0;
-	if (RawChain && rEvt != nEvt) {
+	rEvt = RawChain->GetEntries();
+	if (rEvt > 0 && rEvt != nEvt) {
 		printf("Event chain (%d) and RawHits chain (%d) do not match\n",  nEvt, rEvt); 
 		goto fin;
+	} else if (rEvt == 0) {
+		delete RawChain;
+		RawChain = NULL;
 	}
 //	printf("EventChain: %d   RawHits: %d\n", nEvt, rEvt);
 	memset(PairCnt, 0, sizeof(PairCnt));
@@ -406,7 +403,7 @@ int main(int argc, char **argv)
 			PickUpCnt++;
 			continue;	// ignore PickUp events
 		}
-//	Shower	
+//	Shower
 		if (IsShower(&DanssEvent)) memcpy(&Shower, &DanssEvent, sizeof(struct DanssEventStruct7));
 //	Veto
 		if (IsVeto(&DanssEvent)) {

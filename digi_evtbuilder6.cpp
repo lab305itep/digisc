@@ -77,36 +77,40 @@
 #define FLG_NOCONFIRM2		 0x80000	// do not search PMT confirmation for 1 pixel SiPM signals
 #define FLG_NOPMTCORR		0x100000	// do not correct PMT energy of cluster for out of cluster SiPM hits
 #define FLG_PMTTIMECUT		0x200000	// Cut PMT and Veto by time
-#define FLG_CONFIRMSIPM		0x400000	// Confirm all SiPM hits
+#define FLG_CONFIRMSIPM		0x400000	// do not confirm all SiPM hits
 
 #define MAXADCBOARD	60
+#define TAGMASK		((1L<<45) - 1)
+#define TIMEHISTMINENERGY	10		// Minimum sum energy in SiPm + Pmt + Veto to fill time hists (not divided by 2)
+#define TIMEHISTMINHITS		4		// Minimum number of hits in SiPm + Pmt + Veto to fill time hists
 
 using namespace std;
 
 // Globals:
 
-long long				iNevtTotal;
-long long				upTime;
-long long				fileFirstTime;
-long long				fileLastTime;
-long long				dumpgTime;
-int					globalTimeWrapped;
-int                                     progStartTime;
-char *					chTimeCalibration;
-char *					chOutputFile;
-int					iFlags;
-int					MaxEvents;
-int					IsMc;				// MC run flag
-double					AttenuationLength;
-double					EnergyCorrection;
+long long			iNevtTotal;
+long long			upTime;
+long long			fileFirstTime;
+long long			fileLastTime;
+long long			dumpgTime;
+int				globalTimeWrapped;
+int                             progStartTime;
+char *				chTimeCalibration;
+char *				chOutputFile;
+int				iFlags;
+int				MaxEvents;
+int				IsMc;				// MC run flag
+double				AttenuationLength;
+double				EnergyCorrection;
 
-TRandom2 *				Random;
-TFile *					OutputFile;
-TTree *					OutputTree;
-TTree *					InfoTree;
-struct DanssEventStruct7		DanssEvent;
-struct DanssInfoStruct4			DanssInfo;
-struct DanssMcStruct			DanssMc;
+TRandom2 *			Random;
+TFile *				OutputFile;
+TTree *				OutputTree;
+TTree *				InfoTree;
+TTree *				RawHitsTree;
+struct DanssEventStruct7	DanssEvent;
+struct DanssInfoStruct4		DanssInfo;
+struct DanssMcStruct		DanssMc;
 struct DanssExtraStruct	{
 	float SiPmEnergy;
 	int SiPmHits;
@@ -115,23 +119,166 @@ struct DanssExtraStruct	{
 	float VetoEnergy;
 	int VetoHits;
 
-} 					DanssExtra;
-int 					HitFlag[iMaxDataElements];	// array to flag out SiPM hits
-TH1D *					hTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
-TH1D *					hPMTTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
-int					DeadList[MAXADCBOARD][iNChannels_AdcBoard];
+} 				DanssExtra;
+int 				HitFlag[iMaxDataElements];	// array to flag out SiPM hits
+TH1D *				hTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
+TH1D *				hPMTTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
+double				PmtFineTime;
+int				DeadList[MAXADCBOARD][iNChannels_AdcBoard];
 struct HitStruct {
 	float			E[iMaxDataElements];
 	float			T[iMaxDataElements];
 	struct HitTypeStruct 	type[iMaxDataElements];
-}					HitArray;
+}	HitArray;
+
+struct RawStruct {
+	unsigned short PmtCnt;
+	unsigned short VetoCnt;
+	unsigned short SiPmCnt;
+} RawHits;
+struct RawArrayStruct {
+	long long tag;
+	struct RawStruct data;
+};
+struct RawArrayStruct *RawHitsArray;
+int RawHitsPtr;
+int RawHitsCnt;
 
 TH1D *hCrossTalk;
+TH1D *hPMTAmpl[iNChannels_AdcBoard];
 
 #ifndef DIGI_V2
 	TH1D *hEtoEMC;
 	TH1D *hNPEtoEMC;
 #endif
+/********************************************************************************************************************/
+/************************	Raw hits - fight with the pickup			*****************************/
+/********************************************************************************************************************/
+
+/*      Open data file either directly or via zcat etc, depending on the extension      */
+FILE* OpenTextDataFile(const char *fname) 
+{
+	char cmd[1024];
+	FILE *f;
+
+	if (strstr(fname, ".bz2")) {
+		sprintf(cmd, "bzcat %s", fname);
+    	        f = popen(cmd, "r");
+        } else if (strstr(fname, ".gz")) {
+                sprintf(cmd, "zcat %s", fname);
+                f = popen(cmd, "r");
+        } else if (strstr(fname, ".xz")) {
+                sprintf(cmd, "xzcat %s", fname);
+    	        f = popen(cmd, "r");
+        } else {
+                f = fopen(fname, "rb");
+        }
+        return f;
+}
+
+// Initialize Raw hits Array from file return number of triggers read
+int RawHitsArrayInit(const char *RawHitsFileName)
+{
+	FILE *f;
+	int size;
+	char *ptr;
+	char str[1024];
+	char str_copy[1024];
+	void *mptr;
+	
+	RawHitsCnt = 0;
+	RawHitsPtr = 0;
+	f = OpenTextDataFile(RawHitsFileName);
+	if (!f) {
+		printf("Can not open file %s: %m\n", RawHitsFileName);
+		goto fin;
+	}
+	size = 2000000;
+	RawHitsArray = (struct RawArrayStruct *) malloc(size * sizeof(struct RawArrayStruct));
+	if (!RawHitsArray) {
+		printf("Can not allocate memory: %m\n");
+		goto fin;
+	}
+	for (;;) {
+		ptr = fgets(str, sizeof(str), f);
+		if (!ptr) break;	// EOF
+		strcpy(str_copy, str);
+		ptr = strtok(str, " \t");
+		if (!ptr) continue;
+		if (!isdigit(ptr[0])) continue;
+		if (RawHitsCnt >= size) {	// we need larger array
+			mptr = realloc(RawHitsArray, size + 1000000);
+			if (!mptr) {
+				printf("Can not allocate memory: %m\n");
+				goto fin;
+			}
+			size += 1000000;
+			RawHitsArray = (struct RawArrayStruct *)mptr;
+		}
+		RawHitsArray[RawHitsCnt].tag = TAGMASK & strtoll(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) {
+			printf("Bad string: %s [file %s]\n", str_copy, RawHitsFileName);
+			continue;
+		}
+		RawHitsArray[RawHitsCnt].data.PmtCnt = strtol(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) {
+			printf("Bad string: %s [file %s]\n", str_copy, RawHitsFileName);
+			continue;
+		}
+		RawHitsArray[RawHitsCnt].data.VetoCnt = strtol(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t");
+		if (!ptr) {
+			printf("Bad string: %s [file %s]\n", str_copy, RawHitsFileName);
+			continue;
+		}
+		RawHitsArray[RawHitsCnt].data.SiPmCnt = strtol(ptr, NULL, 10);
+		RawHitsCnt++;
+	}
+fin:
+	if (f) pclose(f);
+	if (!RawHitsCnt && RawHitsArray) {
+		free(RawHitsArray);
+		RawHitsArray = NULL;
+	}
+	return RawHitsCnt;
+}
+
+void FindRawHits(void)
+{
+	long long gtA;
+	long long gtB;
+
+	memset(&RawHits, 0, sizeof(RawHits));
+	gtA = TAGMASK & DanssEvent.globalTime;
+	for (; RawHitsPtr < RawHitsCnt; RawHitsPtr++) {
+			gtB = RawHitsArray[RawHitsPtr].tag;
+			if (gtB == gtA) break;
+		} 
+		if (gtB != gtA) {	// try to start from the beginning
+			for (RawHitsPtr = 0; RawHitsPtr < RawHitsCnt; RawHitsPtr++) {
+				gtB = RawHitsArray[RawHitsPtr].tag;
+				if (gtB == gtA) break;
+			}
+		}
+		if (gtB == gtA) {		// trigger found
+			memcpy(&RawHits, &RawHitsArray[RawHitsPtr].data, sizeof(struct RawStruct));
+		} else {			// trigger is somehow missing
+			printf("Trigger %Ld not found.\n", gtA);
+		}
+}
+
+int IsPickUp(void)
+{
+//	"(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3"
+	if (DanssEvent.VetoCleanHits > 0) return 0;	// never kill VETO trigger
+	if ((RawHits.PmtCnt > 0 && 1.0 * DanssEvent.PmtCleanHits / RawHits.PmtCnt < 0.3) ||
+		1.0 * DanssEvent.SiPmHits / RawHits.SiPmCnt < 0.3) return 1;
+	return 0;
+}
+
+
 /********************************************************************************************************************/
 /************************	Analysis functions					*****************************/
 /********************************************************************************************************************/
@@ -701,6 +848,17 @@ void DumpEvent(ReadDigiDataUser *user)
 	f->Close();
 }
 
+void FillTimeHists(ReadDigiDataUser *user) 
+{
+	int i, N;
+	N = user->nhits();
+	for (i=0; i<N; i++) if (!(user->type(i) == bSiPm && user->npix(i) < MINSIPMPIXELS2) && user->e(i) > MINENERGY4TIME && user->t_raw(i) > 0) {
+		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+//		time relative to PMT - we need some common calibration of delays
+		if (PmtFineTime > 0) hPMTTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - PmtFineTime);
+	}
+}
+
 void FindFineTime(ReadDigiDataUser *user)
 {
 	double tsum;
@@ -741,16 +899,8 @@ void FindFineTime(ReadDigiDataUser *user)
 #ifndef DIGI_V2
 		if (DanssEvent.trigType == masterTrgRandom) DanssEvent.fineTime = 200;	// some fixed good time
 #endif
-
-	if (k > 1 && (iFlags & FLG_DTHIST)) for (i=0; i<N; i++) 
-		if (HitFlag[i] >= 0 && !(user->type(i) == bSiPm && user->npix(i) < MINSIPMPIXELS2) && user->e(i) > MINENERGY4TIME && user->t_raw(i) > 0) 
-		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - DanssEvent.fineTime);
-//		time relative to PMT - we need some common calibration of delays
-	if ((iFlags & FLG_DTHIST) && PMTsumA > 0) {
-		PMTsumT /= PMTsumA;
-		for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->t_raw(i) > 0 && (user->type(i) != bPmt || n > 1)) 
-			hPMTTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - PMTsumT);
-	}
+	PmtFineTime = -1;
+	if (n >= 2 && PMTsumA > 2) PmtFineTime = PMTsumT / PMTsumA;
 }
 
 void StoreHits(ReadDigiDataUser *user)
@@ -806,6 +956,7 @@ void SumClean(ReadDigiDataUser *user)
 	case bPmt:
 		DanssEvent.PmtCleanHits++;
 		DanssEvent.PmtCleanEnergy += user->e(i);
+		if (user->e(i) > 0) hPMTAmpl[user->adcChan(i)]->Fill(user->signal(i) / user->e(i));
 //		DanssEvent.PmtCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->pmtAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
 		break;
 	case bVeto:
@@ -924,13 +1075,13 @@ void Help(void)
 	printf("Process events and create root-tree with event parameters.\n");
 	printf("\tOptions:\n");
 	printf("-alen AttenuationLength --- signal attenuation length in cm. Default - 300 cm.\n");
-	printf("-calib filename.txt --- file with energy calibration. No default.\n");
-	printf("-deadlist filename.txt --- file with explicit list of dead channels.\n");
-	printf("-dump gTime --- dump an event with this gTime.\n");
+	printf("-calib filename.txt     --- file with energy calibration. No default.\n");
+	printf("-deadlist filename.txt  --- file with explicit list of dead channels.\n");
+	printf("-dump gTime             --- dump an event with this gTime.\n");
 	printf("-ecorr EnergyCorrection --- 0.935 by default.\n");
-	printf("-events number --- stop after processing this number of events. Default - do not stop.\n");
-	printf("-file filename.txt --- file with a list of files for processing. No default.\n");
-	printf("-flag FLAGS --- analysis flag mask. Default - 0. Recognized flags:\n");
+	printf("-events number          --- stop after processing this number of events. Default - do not stop.\n");
+	printf("-file filename.txt      --- file with a list of files for processing. No default.\n");
+	printf("-flag FLAGS             --- analysis flag mask. Default - 0. Recognized flags:\n");
 	printf("\t       1 --- do debugging printout of events;\n");
 	printf("\t       2 --- create delta time histograms;\n");
 	printf("\t   0x100 --- do energy correction based on MC taking into account number of hits in the cluster;\n");
@@ -943,11 +1094,12 @@ void Help(void)
 	printf("\t0x100000 --- do not correct PMT cluster energy for out of cluster SiPM hits.\n");
 	printf("\t0x200000 --- Check PMT and VETO time.\n");
 	printf("\t0x400000 --- Confirm all SiPM hits.\n");
-	printf("-help --- print this message and exit.\n");
-	printf("-mcdata --- this is Monte Carlo data - create McTruth branch.\n");
-	printf("-seed SEED --- seed for random number generator.\n");
-	printf("-output filename.root --- output file name. Without this key output file is not written.\n");
-	printf("-tcalib filename.txt --- file with the time calibration.\n");
+	printf("-help                   --- print this message and exit.\n");
+	printf("-hitinfo hitinfo.txt[.bz2] --- add raw hits information tree.\n");
+	printf("-mcdata                 --- this is Monte Carlo data - create McTruth branch.\n");
+	printf("-seed SEED              --- seed for random number generator.\n");
+	printf("-output filename.root   --- output file name. Without this key output file is not written.\n");
+	printf("-tcalib filename.txt    --- file with the time calibration.\n");
 }
 
 /***
@@ -966,6 +1118,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	char strs[128];
 	char strl[1024];
 	char *DeadListName;
+	char *RawHitsFileName;
 	
 	int RandomSeed = 17321;
 	AttenuationLength = 300;
@@ -981,6 +1134,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	MaxEvents = -1;
 	IsMc = 0;
 	EnergyCorrection = 0.935;
+	RawHitsFileName = NULL;
+	RawHitsTree = NULL;
+	RawHitsArray = NULL;
 
 	for (i=1; i<argc; i++) {
 		if (!strcmp(argv[i], "-output")) {
@@ -1001,6 +1157,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		} else if (!strcmp(argv[i], "-flag")) {
 			i++;
 			iFlags = strtol(argv[i], NULL, 0);
+		} else if (!strcmp(argv[i], "-hitinfo")) {
+			i++;
+			RawHitsFileName = (char *)argv[i];
 		} else if (!strcmp(argv[i], "-mcdata")) {
 			IsMc = 1;
 		} else if (!strcmp(argv[i], "-alen")) {
@@ -1082,6 +1241,10 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			"position/I:"		// Danss Position type
 			"height/F"		// Danss average height
 		);
+		if (RawHitsFileName && RawHitsArrayInit(RawHitsFileName)) {
+			RawHitsTree = new TTree("RawHits", "RawHits");
+			RawHitsTree->Branch("RawHits", &RawHits, "PmtCnt/s:VetoCnt/s:SiPmCnt/s");
+		}
 	}
 	iNevtTotal = 0;
 	upTime = 0;
@@ -1099,6 +1262,11 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		hPMTTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
 	}
 	hCrossTalk = new TH1D("hCrossTalk", "Croos talk distribution;Pixels/Ph.e.", 280, 0.8, 2.2);
+	for (j=0; j<iNChannels_AdcBoard; j++) {
+		sprintf(strs, "hPMTAmpl%2.2d", j);
+		sprintf(strl, "PMT amplification: ADC integral units per MeV %2.2d", j);
+		hPMTAmpl[j] = new TH1D(strs, strl, 1000, 500, 1500);
+	}
 #ifndef DIGI_V2
 	if (IsMc) {
 		hEtoEMC = new TH1D("hEtoEMC", "Measured to MC truth energy ratio", 100, 0, 3);
@@ -1149,6 +1317,7 @@ int ReadDigiDataUser::processUserEvent()
 #endif
 	if (IsMc) mcTruth(DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
 
+	FindRawHits();
 	CleanZeroes(this);
 	SumEverything(this);
 	if (!(iFlags & FLG_NOCLEANNOISE)) CleanNoise(this);
@@ -1167,7 +1336,12 @@ int ReadDigiDataUser::processUserEvent()
 		return -1;
 	}
 
-  	if ((DanssEvent.SiPmCleanHits > 0 && DanssEvent.PmtCleanHits > 0) || DanssEvent.VetoCleanHits > 0
+	if ((iFlags & FLG_DTHIST) && !IsPickUp() &&
+		(DanssEvent.PmtCleanEnergy + DanssEvent.SiPmCleanEnergy + DanssEvent.VetoCleanEnergy > TIMEHISTMINENERGY) &&
+		(DanssEvent.PmtCleanHits + DanssEvent.SiPmCleanHits + DanssEvent.VetoCleanHits > TIMEHISTMINHITS))
+		FillTimeHists(this);
+
+	if ((DanssEvent.SiPmCleanHits > 0 && DanssEvent.PmtCleanHits > 0) || DanssEvent.VetoCleanHits > 0
 #ifndef DIGI_V2
 		|| DanssEvent.trigType == masterTrgRandom
 #endif
@@ -1175,13 +1349,12 @@ int ReadDigiDataUser::processUserEvent()
 		iNevtTotal++;
 		DanssInfo.events++;
 		if (OutputTree) OutputTree->Fill();
+		if (RawHitsTree) RawHitsTree->Fill();
 	}
 
 	if (MaxEvents > 0 && iNevtTotal >= MaxEvents) return -1;
-  	return 0;
+	return 0;
 }
-
-//------------------------------->
 
 /***
  *
@@ -1212,6 +1385,9 @@ void ReadDigiDataUser::finishUserProc()
 		if (hPMTTimeDelta[i][j]->GetEntries() > 0) hPMTTimeDelta[i][j]->Write();
 	}
 	hCrossTalk->Write();
+	for (j=0; j<iNChannels_AdcBoard; j++) if (hPMTAmpl[j]->GetEntries() > 0) hPMTAmpl[j]->Write();
+	if (RawHitsTree) RawHitsTree->Write();
+	if (RawHitsArray) free(RawHitsArray);
 #ifndef DIGI_V2
 	if (IsMc) {
 		hEtoEMC->Write();

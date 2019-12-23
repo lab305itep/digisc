@@ -28,7 +28,7 @@ if [ x${TMP}  != x ] ; then
 	OUTFILE=$ROOT_DIR/`basename $RUN`
 	OUTFILE=${OUTFILE/.bz2/}
 	OUTFILE=${OUTFILE/.digi/.root}
-	export DANSSRAWREC_HOME=lib_v3.1
+	export DANSSRAWREC_HOME=lib_v3.2
 	BUILDER=./digi_evtbuilder6_v3
 	mkdir -p $ROOT_DIR
 	$BUILDER -file $LISTFILE -output $OUTFILE -flag $FLAGS -mcdata -deadlist deadlist_12850.txt $ARGS 
@@ -37,12 +37,12 @@ else
 #	Try V3 first:
 	RUN=digi_v3.0/${RUNNUMBER:0:3}xxx/danss_data_${RUNNUMBER}_phys.digi.bz2
 	if [ -f $RUN ] ; then
-		export DANSSRAWREC_HOME=lib_v3.1
+		export DANSSRAWREC_HOME=lib_v3.2
 		BUILDER=./digi_evtbuilder6_v3
 	else 
 		RUN=digi_rad/${RUNNUMBER:0:3}xxx/danss_data_${RUNNUMBER}_phys.digi.bz2
 		if [ -f $RUN ] ; then
-			export DANSSRAWREC_HOME=lib_v3.1
+			export DANSSRAWREC_HOME=lib_v3.2
 			BUILDER=./digi_evtbuilder6_v3
 		else 
 			RUN=digi_v2.1/${RUNNUMBER:0:3}xxx/danss_data_${RUNNUMBER}_phys_rawrec.digi.bz2
