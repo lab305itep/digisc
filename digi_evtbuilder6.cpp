@@ -7,7 +7,7 @@
  * Description:   Calculate different event parameters and put to root file
  *
  ***/
-
+#include <libgen.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -207,7 +207,7 @@ int RawHitsArrayInit(const char *RawHitsFileName)
 		if (!ptr) continue;
 		if (!isdigit(ptr[0])) continue;
 		if (RawHitsCnt >= size) {	// we need larger array
-			mptr = realloc(RawHitsArray, size + 1000000);
+			mptr = realloc(RawHitsArray, (size + 1000000) * sizeof(struct RawArrayStruct));
 			if (!mptr) {
 				printf("Can not allocate memory: %m\n");
 				goto fin;
@@ -572,9 +572,13 @@ void CleanZeroes(ReadDigiDataUser *user)
 
 	N = user->nhits();
 	for (i=0; i<N; i++) if ((user->type(i) == bSiPm && user->npix(i) <= 0) || (!isfinite(user->e(i))) ||
-		user->e(i) <= 0 || user->t_raw(i) < -1000 || user->isBadChannel(user->chanIndex(i)) || DeadList[user->adc(i)-1][user->adcChan(i)]) HitFlag[i] = -1;
+		user->e(i) <= 0 || user->t_raw(i) < -1000 || user->isBadChannel(user->chanIndex(i)) || DeadList[user->adc(i)-1][user->adcChan(i)]) {
+		HitFlag[i] = -1;
+		DanssInfo.Cuts[0]++;
+	}
 }
 
+//	Clean small energy hits - not used in main analisys
 void CleanNoise(ReadDigiDataUser *user)
 {
 	int i, N;
@@ -583,16 +587,20 @@ void CleanNoise(ReadDigiDataUser *user)
 	for (i=0; i<N; i++) switch (user->type(i)) {
 	case bSiPm:
 		if (user->npix(i) < MINSIPMPIXELS) HitFlag[i] = -1;
+		DanssInfo.Cuts[1]++;
 		break;
 	case bPmt:
 		if (user->e(i) < MINPMTENERGY) HitFlag[i] = -1;
+		DanssInfo.Cuts[1]++;
 		break;
 	case bVeto:
 		if (user->e(i) < MINVETOENERGY) HitFlag[i] = -1;
+		DanssInfo.Cuts[1]++;
 		break;
 	}
 }
 
+//	Check SiPM to PMT confirmation and vice versa - not used in main analisys
 void CleanByConfirmation(ReadDigiDataUser *user)
 {
 	int i, j, N;
@@ -602,15 +610,17 @@ void CleanByConfirmation(ReadDigiDataUser *user)
 	case bSiPm:
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
 		if (j == N) HitFlag[i] = -1;
+		DanssInfo.Cuts[2]++;
 		break;
 	case bPmt:
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bSiPm && IsInModule(j, i, user)) break;
 		if (j == N) HitFlag[i] = -1;
+		DanssInfo.Cuts[2]++;
 		break;
 	}
 }
 
-/*	Clean SiPM only if npix == 1 and no PMT confirmation	*/
+/*	Clean only SiPM by PMT confirmation	*/
 void CleanByConfirmation2(ReadDigiDataUser *user)
 {
 	int i, j, N;
@@ -622,6 +632,8 @@ void CleanByConfirmation2(ReadDigiDataUser *user)
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
 		if (j < N) continue;
 		HitFlag[i] = -1;
+		DanssInfo.Cuts[3]++;
+		if (user->npix(i) < MINSIPMPIXELS2) DanssInfo.Cuts[4]++;
 	}
 //		"early" hits
 	for (i=0; i<N; i++) if (HitFlag[i] == -100)
@@ -642,11 +654,17 @@ void CleanByTime(ReadDigiDataUser *user)
 	if (DanssEvent.fineTime != NOFINETIME) {
 		for (i=0; i<N; i++) switch (user->type(i)) {
 		case bSiPm:
-			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) HitFlag[i] = -1;
+			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) {
+				HitFlag[i] = -1;
+				DanssInfo.Cuts[5]++;
+			}
 			break;
 		case bPmt:
 		case bVeto:
-			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUTPMT && (iFlags & FLG_PMTTIMECUT)) HitFlag[i] = -1;
+			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUTPMT && (iFlags & FLG_PMTTIMECUT)) {
+				HitFlag[i] = -1;
+				DanssInfo.Cuts[6]++;
+			}
 			break;
 		}
 		tearly = DanssEvent.fineTime - SIPMEARLYTIME;
@@ -698,7 +716,6 @@ void CreateDeadList(char *fname)
 	}
 	fclose(f);
 }
-
 
 void DebugFullPrint(ReadDigiDataUser *user)
 {
@@ -932,6 +949,9 @@ void StoreHits(ReadDigiDataUser *user)
 		j++;
 	}
 	DanssEvent.NHits = j;
+	
+	DanssInfo.hits[0] += N;
+	DanssInfo.hits[1] += j;
 }
 
 void SumClean(ReadDigiDataUser *user)
@@ -1093,7 +1113,7 @@ void Help(void)
 	printf("\t 0x80000 --- do not require confirmation for SiPM single pixel hits;\n");
 	printf("\t0x100000 --- do not correct PMT cluster energy for out of cluster SiPM hits.\n");
 	printf("\t0x200000 --- Check PMT and VETO time.\n");
-	printf("\t0x400000 --- Confirm all SiPM hits.\n");
+	printf("\t0x400000 --- do not confirm all SiPM hits.\n");
 	printf("-help                   --- print this message and exit.\n");
 	printf("-hitinfo hitinfo.txt[.bz2] --- add raw hits information tree.\n");
 	printf("-mcdata                 --- this is Monte Carlo data - create McTruth branch.\n");
@@ -1115,7 +1135,7 @@ void Help(void)
 void ReadDigiDataUser::initUserData(int argc, const char **argv)
 {
 	int i, j;
-	char strs[128];
+	char strs[1024];
 	char strl[1024];
 	char *DeadListName;
 	char *RawHitsFileName;
@@ -1183,6 +1203,12 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	if (chTimeCalibration) init_Tds();
 
 	if (chOutputFile) {
+		strncpy(strs, chOutputFile, sizeof(strs));
+		sprintf(strl, "mkdir -p %s", dirname(strs));
+		if (system(strl)) {
+			printf("Can not crete target directory: %m\n");
+			exit(10);
+		}
 		OutputFile = new TFile(chOutputFile, "RECREATE");
 		if (!OutputFile->IsOpen()) throw "Panic - can not open output file!";
 		OutputTree = new TTree("DanssEvent", "Danss event tree");
@@ -1239,7 +1265,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			"stopTime/I:"		// linux stop time, seconds
 			"events/I:"		// number of events
 			"position/I:"		// Danss Position type
-			"height/F"		// Danss average height
+			"height/F:"		// Danss average height
+			"hits[2]/L:"		// total hits [before/after]
+			"Cuts[20]/L"		// Cuts statistics
 		);
 		if (RawHitsFileName && RawHitsArrayInit(RawHitsFileName)) {
 			RawHitsTree = new TTree("RawHits", "RawHits");
@@ -1290,8 +1318,8 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 int ReadDigiDataUser::processUserEvent()
 {
 	float fineTime;
-
-  	if( ttype() != 1 ) return 0;
+	
+	if( ttype() != 1 ) return 0;
 	
 	memset(HitFlag, 0, nhits() * sizeof(int));
 	memset(&DanssEvent, 0, sizeof(struct DanssEventStruct7));

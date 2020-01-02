@@ -330,6 +330,15 @@ struct DanssInfoStruct4 {
 	int		events;			// number of events
 	int		position;		// Danss Position type
 	float		height;			// Danss average height
+	long long	hits[2];		// Hits: [0 - all in Digi, 1 - good hits]
+	long long	Cuts[20];		// Cut statistics:
+		// 0 - zero or dead channel
+		// 1 - small amplitude
+		// 2 - SiPM <-> PMT mutual confirmation
+		// 3 - All hits in SiPM confirmation by PMT
+		// 4 - single pixel SiPM hits confirmation by PMT
+		// 5 - SiPM time window
+		// 6 - PMT time window
 };
 
 struct DanssPairStruct {

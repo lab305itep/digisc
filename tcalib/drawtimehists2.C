@@ -5,7 +5,7 @@ TH1D *hSum[MAXBRD][MAXCHAN];
 TF1 *fPol1;
 TF1 *fPolGaus;
 
-void Print(int first, int last, const char *dirname)
+void Print(int first, int last, const char *dirname, const char *hist)
 {
 	char str[1024];
 	const char *ptr;
@@ -27,7 +27,7 @@ void Print(int first, int last, const char *dirname)
 	} else {
 		ptr++;
 	}
-	sprintf(str, "%s_%d_%d", ptr, first, last);
+	sprintf(str, "%s_%s_%d_%d", hist, ptr, first, last);
 	TString s(str);
 	fRep = fopen((s+".log").Data(), "wt");
 	if (!fRep) {
@@ -74,7 +74,7 @@ void Print(int first, int last, const char *dirname)
 	fclose(fRep);
 }
 
-void AddFromFile(int num, const char *dirname)
+void AddFromFile(int num, const char *dirname, const char *hist)
 {
 	char str[1024];
 	TH1D *h;
@@ -84,7 +84,7 @@ void AddFromFile(int num, const char *dirname)
 	TFile *f = new TFile(str);
 	if (!f->IsOpen()) return;
 	for (i=0; i<MAXBRD; i++) for (j=0; j<MAXCHAN; j++) {
-		sprintf(str, "hDTP%2.2dc%2.2d", i, j);
+		sprintf(str, "%s%2.2dc%2.2d", hist, i, j);
 		h = (TH1D*) f->Get(str);
 		if (!h) continue;
 		hSum[i][j]->Add(h);
@@ -92,20 +92,20 @@ void AddFromFile(int num, const char *dirname)
 	f->Close();
 }
 
-void MakeHists(void)
+void MakeHists(const char *hist)
 {
 	int i, j;
 	char strs[128];
 	char strl[1024];
 	for (i=0; i<MAXBRD; i++) for (j=0; j<MAXCHAN; j++) {
-		sprintf(strs, "hDTP%2.2dc%2.2dSum", i, j);
+		sprintf(strs, "%s%2.2dc%2.2dSum", hist, i, j);
 		sprintf(strl, "Channel %2.2d.%2.2d versus PMT;ns", i, j);
 		hSum[i][j] = new TH1D(strs, strl, 250, -25, 25);
 	}
 }
 
 //	Sum hDTPUUcNN hists in the range and make .log and .pdf
-void drawtimehists2(int first, int last, const char *dirname)
+void drawtimehists2(int first, int last, const char *dirname, const char *hist)
 {
 	int i;
 //	gStyle->SetOptStat(1001110);
@@ -117,7 +117,7 @@ void drawtimehists2(int first, int last, const char *dirname)
 	gStyle->SetTitleFontSize(0.08);
 	fPol1 = new TF1("fPol1", "pol1", -50, 50);
 	fPolGaus = new TF1("fPolGaus", "pol1(0) + gaus(2)", -50, 50);
-	MakeHists();
-	for (i=first; i<=last; i++) AddFromFile(i, dirname);
-	Print(first, last, dirname);
+	MakeHists(hist);
+	for (i=first; i<=last; i++) AddFromFile(i, dirname, hist);
+	Print(first, last, dirname, hist);
 }

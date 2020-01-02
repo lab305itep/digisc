@@ -8,13 +8,14 @@
 cd /home/itep/alekseev/igor
 . /home/clusters/rrcmpi/danss/bin/danss_profile.sh
 
-LIST=`find digi_MC/ -name "*.digi.bz2" -not -path "*Shielding*" -print`
+LIST=`find digi_MC/DataTakingPeriod01/RadSources -name "*90cm*.digi.bz2" -print`
+#LIST=`find digi_/digi_MC -name "*.digi.bz2" -not -path "*Shielding*" -print`
 #LIST=`find digi_MC/DataTakingPeriod01/Shielding/ -name "mc_*.digi.bz2" -print`
 
 for f in $LIST ; do
 	OD=`dirname ${f/"digi_MC/"/}`
-	mkdir -p /home/clusters/rrcmpi/alekseev/igor/root6n5/MC/$OD
-	./evtbuilder5 $f 0x70000 /home/clusters/rrcmpi/alekseev/igor/root6n5/MC/$OD
+#	mkdir -p /home/clusters/rrcmpi/alekseev/igor/root6n6/MC/$OD
+	./evtbuilder5 $f 0x70000 /home/clusters/rrcmpi/alekseev/igor/root6n6/MC/$OD
 done
 
 exit 0

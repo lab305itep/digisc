@@ -1,4 +1,4 @@
-DIGI_V2 = lib_v2.1
+DIGI_V2 = lib_v2.0
 DIGI_V3 = lib_v3.2
 #CLIB = -lgcc -lstdc++
 CLIB = 
@@ -6,11 +6,9 @@ ROOTLIB = $(shell root-config --libs)
 ROOTINC = $(shell root-config --cflags)
 DIGILIB = -lReadDigiData
 
-All: digi_evtbuilder6_v2 digi_evtbuilder6_v3 pairbuilder7 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
+All: digi_evtbuilder6_v3 pairbuilder7 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
     run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi rootcheck deadchannels \
     hittree run_hits_mpi cmbuilder spectr6 background_calc_72g
-
-1st: digi_evtbuilder6_v2 digi_evtbuilder6_v3
 
 digi_evtbuilder6_v2: digi_evtbuilder6.cpp
 	g++ -DDIGI_V2 -O3 -o $@ $^ ${ROOTINC} -I${DIGI_V2} ${CLIB} ${ROOTLIB} -L${DIGI_V2} ${DIGILIB} -lMinuit
