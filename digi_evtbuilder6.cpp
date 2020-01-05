@@ -271,6 +271,7 @@ void FindRawHits(void)
 
 int IsPickUp(void)
 {
+	if (!RawHitsArray) return 0;		// no RawHits information
 //	"(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3"
 	if (DanssEvent.VetoCleanHits > 0) return 0;	// never kill VETO trigger
 	if ((RawHits.PmtCnt > 0 && 1.0 * DanssEvent.PmtCleanHits / RawHits.PmtCnt < 0.3) ||
@@ -1280,6 +1281,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	fileLastTime = -1;
 	globalTimeWrapped = 0;
 	memset(&DanssInfo, 0, sizeof(struct DanssInfoStruct4));
+	memset(&RawHits, 0, sizeof(RawHits));
 	
 	if (iFlags & FLG_DTHIST) for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
 		sprintf(strs, "hDT%2.2dc%2.2d", i+1, j);
@@ -1345,7 +1347,7 @@ int ReadDigiDataUser::processUserEvent()
 #endif
 	if (IsMc) mcTruth(DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
 
-	FindRawHits();
+	if (RawHitsArray) FindRawHits();
 	CleanZeroes(this);
 	SumEverything(this);
 	if (!(iFlags & FLG_NOCLEANNOISE)) CleanNoise(this);

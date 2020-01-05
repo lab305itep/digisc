@@ -8,7 +8,7 @@
 cd /home/itep/alekseev/igor
 . /home/clusters/rrcmpi/danss/bin/danss_profile.sh
 
-LIST=`find digi_MC/DataTakingPeriod01/RadSources -name "*90cm*.digi.bz2" -print`
+LIST=`find digi_MC/DataTakingPeriod01/RadSources -name "*92cm*.digi.bz2" -print`
 #LIST=`find digi_/digi_MC -name "*.digi.bz2" -not -path "*Shielding*" -print`
 #LIST=`find digi_MC/DataTakingPeriod01/Shielding/ -name "mc_*.digi.bz2" -print`
 
