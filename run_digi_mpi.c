@@ -106,25 +106,8 @@ found:
 	} else {
 		setenv("DANSSRAWREC_HOME", "lib_v2.1", 1);
 	}
-	if (fnum < 5469) {
-		tcalib = "tcalib_2210_5468.calib";
-	} else 	if (fnum < 5807) {
-		tcalib = "tcalib_5469_5806.calib";
-	} else 	if (fnum < 6003) {
-		tcalib = "tcalib_5807_6002.calib";
-	} else 	if (fnum < 6837) {
-		tcalib = "tcalib_6003_6836.calib";
-	} else 	if (fnum < 7635) {
-		tcalib = "tcalib_6837_7634.calib";
-	} else 	if (fnum < 37500) {
-		tcalib = "tcalib_7635_37499.calib";
-	} else 	if (fnum < 59261) {
-		tcalib = "tcalib_37500_59260.calib";
-	} else 	if (fnum < 61541) {
-		tcalib = "tcalib_59261_61540.calib";
-	} else {
-		tcalib = "tcalib_61541_XXXXX.calib";
-	}
+	tcalib = getenv("TCALIB");
+	if (!tcalib) tcalib = "tcalib_sorted.txt";
 	
 	sprintf(hitinfo, "%s/%3.3dxxx/hits_%6.6d.txt.bz2", HITINFODIR, fnum/1000, fnum);
 	

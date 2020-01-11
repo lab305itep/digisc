@@ -26,13 +26,13 @@ int main(int argc, char **argv)
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 //		The run itself
-	sprintf(str, "root -l -b -q \"tstat.C(%d, %d, \\\"%s%2.2dc\\\")\" > tstat_%s%2.2d.txt",
-		first, last, prefix, serial + 1, prefix, serial + 1);
+	sprintf(str, "root -l -b -q \"tstat.C(%d, %d, \\\"%s%2.2dc\\\")\"",
+		first, last, prefix, serial + 1);
 	irc = system(str);
 	if (irc) printf("Run for module %d: error %d returned: %m\n", serial, irc);
 //		time and print
 	t1 = time(NULL);
-	printf("Module %d: elapsed time %d s:\n", serial, t1 - t0);
+	printf("Module %d: elapsed time %d s:\n", serial+1, t1 - t0);
 fin:
 	MPI_Finalize();
 }

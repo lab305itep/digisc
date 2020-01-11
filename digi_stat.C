@@ -6,7 +6,6 @@ void digi_statone(int num, const char *root_dir)
 	FILE *fff;
 	TCut ct;
 	
-//	TCut cNoise("PmtCleanEnergy/SiPmCleanEnergy < 0.4 && SiPmHits > 60");
 	TCut cNoise("((PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3) && VetoCleanHits == 0");
 	TCut cVeto("VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0");
 	TCut cDVeto("PmtCleanEnergy + SiPmCleanEnergy > 40");
@@ -14,19 +13,19 @@ void digi_statone(int num, const char *root_dir)
 	sprintf(fname, "/home/clusters/rrcmpi/alekseev/igor/%s/%3.3dxxx/danss_%6.6d.root", root_dir, num/1000, num);
 	fff = fopen(fname, "rb");
 	if (!fff) {
-		printf("%6d 0 file %s not found\n", num, fname);
+		printf("%6d   0 file %s not found\n", num, fname);
 		return;
 	}
 	fclose(fff);
 	TFile *f = new TFile(fname);
 	if (!f->IsOpen()) {
-		printf("%6d 0 file %s not found\n", num, fname);
+		printf("%6d   0 file %s not opened\n", num, fname);
 		return;
 	}
 
 	TTree *info = (TTree *) f->Get("DanssInfo");
 	if (!info) {
-		printf("%6d 0 file %s - no info\n", num, fname);
+		printf("%6d   0 file %s - no info tree\n", num, fname);
 		return;
 	}
 	info->GetEntry(0);
@@ -38,12 +37,12 @@ void digi_statone(int num, const char *root_dir)
 	
 	TTree *evt = (TTree *) f->Get("DanssEvent");
 	if (!evt) {
-		printf("%6d 0 file %s - no events\n", num, fname);
+		printf("%6d   0 file %s - no event tree\n", num, fname);
 		return;
 	}
 	TTree *hits = (TTree *) f->Get("RawHits");
 	if (!hits) {
-		printf("RawHits tree not found in %s\n", fname);
+		printf("%6d   0 RawHits tree not found in %s\n", num, fname);
 		return;
 	}
 	evt->AddFriend(hits);

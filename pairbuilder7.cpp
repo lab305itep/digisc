@@ -2,6 +2,7 @@
  *	DANSS data analysis - build time correlated pairs and random pairs		*
  ****************************************************************************************/
 
+#include <libgen.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -293,6 +294,7 @@ int main(int argc, char **argv)
 	TFile *fOut;
 	FILE *fList;
 	char str[1024];
+	char strl[1600];
 	long long iEvt, nEvt, rEvt;
 	int PairCnt[2];
 	int PickUpCnt;
@@ -305,6 +307,13 @@ int main(int argc, char **argv)
 		printf("Usage: %s list_file.txt|input_file.root output_file.root\n", argv[0]);
 		printf("Will process files in the list_file and create root-file\n");
 		return 10;
+	}
+
+	strncpy(str, argv[2], sizeof(str));
+	sprintf(strl, "mkdir -p %s", dirname(str));
+	if (system(strl)) {
+		printf("Can not crete target directory: %m\n");
+		return -5;
 	}
 
 	fOut = new TFile(argv[2], "RECREATE");

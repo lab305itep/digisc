@@ -34,18 +34,70 @@
 #include "TH1.h"
 #include "TH2.h"
 
-#define MAXMODULE	47
+#define MAXMODULE	51
 #define MAXCHANNEL	64
 #define MINEVENTS	1000000
 #define MINHITS		500
 
+
+//	Translate module and channel numbers to Period 0 settings
+void ModTranslate(int Period, int hMod, int hChan, int &mod, int &chan)
+{
+	chan = hChan;	// no channel translation so far
+	
+	switch (Period) {
+	case 1:
+		mod = (hMod == 4) ? 47 : hMod;
+		break;
+	case 2:
+		switch (hMod) {
+		case 4:
+			mod = 47;	// module 4 is the replacement of 47
+			break;
+		case 24:
+			mod = (hChan < 16) ? 25 : 24;	// connector 0 of 25 was moved to 24
+			break;
+		case 25:
+			mod = 20;	// module 25 is the replacement of 20
+			break;
+		case 51:
+			mod = 13;	// module 51 is the replacement of 13
+			break;
+		default:
+			mod = hMod;
+			break;
+		}
+		break;
+	default:
+		mod = hMod;
+		break;
+	}
+}
+
 void process(int run, const char *fmt, FILE *fOut)
 {
-	const unsigned short ChanMask[MAXMODULE][4] = {
+/*
+    We have these variations of the board assigments so far:
+    0 - initial variation, used in MC : runs 2210  - 59260
+    1 - board 47 replaced by board 4  : runs 61541 - 69739
+    2 - board 13 repalced by board 51 : runs 69765 - XXXXXX
+        board 20 repalced by board 25
+        and connector 25.0 moved to 24.0 
+    Boards appearence/disappearence:
+    47 - 59260 - last run
+    4  - 61541 - first run
+    13 - 69739 - last run
+    51 - 69765 - first run
+    20 - 69739 - last run
+    25.1 --> 24.1 - 69765 - first run
+    20 --> 25 - 69765 - first run
+*/
+	const unsigned short ChanMask[][MAXMODULE][4] = {{
+//			Runs 2210 - 61540
 		{0, 0, 0, 0},				// 1 - ignore PMT
 		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 2
 		{0, 0, 0, 0},				// 3 - ignore VETO
-		{0, 0, 0, 0},				// 4 - no WFD
+		{0, 0, 0, 0},				// 4 - not now
 		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 5
 		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 6
 		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 7
@@ -88,8 +140,116 @@ void process(int run, const char *fmt, FILE *fOut)
 		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 44 - 2/3 on connector 2
 		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 45
 		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 46
-		{0x7FFF, 0, 0, 0}			// 47 - only one connector
-	};
+		{0x7FFF, 0, 0, 0},			// 47 - only one connector
+		{0, 0, 0, 0},				// 48 - never used
+		{0, 0, 0, 0},				// 49 - never used
+		{0, 0, 0, 0},				// 50 - never used
+		{0, 0, 0, 0}				// 51 - not now
+	}, {	// 	Runs 61541 - 69764
+		{0, 0, 0, 0},				// 1 - ignore PMT
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 2
+		{0, 0, 0, 0},				// 3 - ignore VETO
+		{0x7FFF, 0, 0, 0},			// 4 - one connector, replacement of 47
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 5
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 6
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 7
+		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 8 - 2/3 on connector 1
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 9
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 10
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 11
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 12
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 13
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 14
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 15
+		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 16 - 2/3 on connector 3
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 17
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 18
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 19
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 20 - 2/3 on connector 4
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 21
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 22
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 23
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 24
+		{0x36DB, 0, 0, 0},			// 25 - only one connector 2/3 filled
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 26
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 27
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 28
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 29
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 30
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 31
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 32
+		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 33 - 2/3 on connector 1
+		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 34 - 2/3 on connector 2
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 35
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 36 - 2/3 on connector 4
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 37
+		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 38 - 2/3 on connector 2
+		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 39 - 2/3 on connector 3
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 40
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 41
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 42
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 43
+		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 44 - 2/3 on connector 2
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 45
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 46
+		{0, 0, 0, 0},				// 47 - broken
+		{0, 0, 0, 0},				// 48 - never used
+		{0, 0, 0, 0},				// 49 - never used
+		{0, 0, 0, 0},				// 50 - never used
+		{0, 0, 0, 0}				// 51 - not now
+	}, {	//		Runs 69765 - XXXXXX
+		{0, 0, 0, 0},				// 1 - ignore PMT
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 2
+		{0, 0, 0, 0},				// 3 - ignore VETO
+		{0x7FFF, 0, 0, 0},			// 4 - one connector, replacement of 47
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 5
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 6
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 7
+		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 8 - 2/3 on connector 1
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 9
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 10
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 11
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 12
+		{0, 0, 0, 0},				// 13 - broken
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 14
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 15
+		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 16 - 2/3 on connector 3
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 17
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 18
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 19
+		{0, 0, 0, 0},				// 20 - broken
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 21
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 22
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 23
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 24
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 25 - replacement of 20 - 2/3 on connector 4
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 26
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 27
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 28
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 29
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 30
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 31
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 32
+		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 33 - 2/3 on connector 1
+		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 34 - 2/3 on connector 2
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 35
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 36 - 2/3 on connector 4
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 37
+		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 38 - 2/3 on connector 2
+		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 39 - 2/3 on connector 3
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 40
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 41
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 42
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 43
+		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 44 - 2/3 on connector 2
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 45
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 46
+		{0, 0, 0, 0},				// 47 - broken
+		{0, 0, 0, 0},				// 48 - never used
+		{0, 0, 0, 0},				// 49 - never used
+		{0, 0, 0, 0},				// 50 - never used
+		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF}	// 51 - replacement of 13
+	}};
 
 	TTree *DanssEvent;
 	TH1 *h;
@@ -99,6 +259,16 @@ void process(int run, const char *fmt, FILE *fOut)
 	int i, j;
 	int ptr;
 	int Cnt[2];
+	int Period;
+	int mod, chan;
+
+	if (run < 61541) {
+		Period = 0;
+	} else if (run < 69765) {
+		Period = 1;
+	} else {
+		Period = 2;
+	}
 
 	sprintf(str, fmt, run/1000, run);
 	if (access(str, R_OK)) return;
@@ -116,12 +286,14 @@ void process(int run, const char *fmt, FILE *fOut)
 	ptr = 0;
 	Cnt[0] = Cnt[1] = 0;
 	
-	for (i=0; i<MAXMODULE; i++) for (j=0; j<MAXCHANNEL; j++) if (ChanMask[i][j/16] & (1 << (j&15))) {
+	for (i=0; i<MAXMODULE; i++) for (j=0; j<MAXCHANNEL; j++) if (ChanMask[Period][i][j/16] & (1 << (j&15))) {
 		sprintf(str, "hDT%2.2dc%2.2d", i+1, j);
 		h = (TH1 *) f->Get(str);
 		if (!h || h->GetEntries() < MINHITS) {
 			Cnt[1]++;
-			ptr += sprintf(&lstr[ptr], " %2.2d.%2.2d", i+1, j);
+//	Translation
+			ModTranslate(Period, i + 1, j, mod, chan);
+			ptr += sprintf(&lstr[ptr], " %2.2d.%2.2d", mod, chan);
 		} else {
 			Cnt[0]++;
 		}
@@ -146,7 +318,7 @@ int main(int argc, char **argv)
 	
 	first = strtol(argv[1], NULL, 10);
 	last = strtol(argv[2], NULL, 10);
-	sprintf(fmt, "deadchan_%6.6d_%6.6d.txt", first, last);
+	sprintf(fmt, "%s/deadchan/deadchan_%6.6d_%6.6d.txt", argv[3], first, last);
 	fOut = fopen(fmt, "wt");
 	if (!fOut) return 20;
 	sprintf(fmt, "%s/%%3.3dxxx/danss_%%6.6d.root", argv[3]);

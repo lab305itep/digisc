@@ -20,6 +20,8 @@ if [ $# -gt 3 ] ; then
 	ARGS="$@"
 fi
 
+TCALIB=tcalib_sorted.txt
+
 TMP=${FN//[0-9]/}
 if [ x${TMP}  != x ] ; then
 	RUN=$FN
@@ -31,7 +33,7 @@ if [ x${TMP}  != x ] ; then
 	export DANSSRAWREC_HOME=lib_v3.2
 	BUILDER=./digi_evtbuilder6_v3
 	mkdir -p $ROOT_DIR
-	$BUILDER -file $LISTFILE -output $OUTFILE -flag $FLAGS -mcdata -deadlist deadlist_12850.txt $ARGS 
+	$BUILDER -file $LISTFILE -output $OUTFILE -flag $FLAGS -tcalib $TCALIB -mcdata -deadlist deadlist_12850.txt $ARGS 
 else
 	RUNNUMBER=`printf "%6.6d" $FN`
 #	Try V3 first:
@@ -58,14 +60,8 @@ else
 
 	LISTFILE="${RUNNUMBER}.list"
 	echo $RUN > $LISTFILE
-	if [ $FN -lt 5469 ] ; then
-		TCALIB=tcalib_cmnew_ss-b.calib
-	else
-		TCALIB=tcalib_5512_ss-d.calib
-	fi
 	mkdir -p $ROOT_DIR
-	$BUILDER -no_hit_tables -file $LISTFILE -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
-#	$BUILDER -no_hit_tables -file $LISTFILE -tcalib $TCALIB -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
+	$BUILDER -no_hit_tables -file $LISTFILE -tcalib $TCALIB -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
 	
 fi
 

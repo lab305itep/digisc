@@ -1027,6 +1027,14 @@ void SumEverything(ReadDigiDataUser *user)
  *
  * Return value: -
  *
+ *  Read time calibration file of the format:
+ *  BB.CC NNNNNN MMMMMM FFFF
+ *  BB - board number
+ *  CC - channel number
+ *  NNNNNN - run range begin
+ *  MMMMMM - run range end
+ *  FFFF   - flaot number of the delay
+ *
  ***/
 
 void ReadDigiDataUser::init_Tds()
@@ -1036,6 +1044,8 @@ void ReadDigiDataUser::init_Tds()
 	char *ptr;
 	int i, k;
 	int iAdcNum, iAdcChan;
+	int iFirst, iLast;
+	double val;
 
 //	Set all zeroes
 	for(i = 100; i < iNElements; i++) {
@@ -1056,30 +1066,23 @@ void ReadDigiDataUser::init_Tds()
 	for(;;) {
 		ptr = fgets(str, sizeof(str), f);
 		if (!ptr) break;		// EOF or error
-		if (str[0] != 'C') {
+		if (strlen(str) < 2) continue;	// empty line
+		if (!isdigit(str[0])) {
 			printf("Time calibration: %s", str);
 			continue;	// Comment ?
 		}
-		ptr = strstr(str, "Channel=");
-		if (!ptr) {
-			printf("Time calibration no Channel=: %s", str);
-			continue;		// strange string
-		}
-		ptr += strlen("Channel=");
-		i = 100 * (strtod(ptr, NULL) + 0.002);
-    		iAdcNum = i / 100;
-    		iAdcChan = i % 100;
-    		if(!isAdcChannelExist(iAdcNum, iAdcChan)) {	// non-existing channel - strange
+		i = 100 * (strtod(ptr, &ptr) + 0.002);
+		iAdcNum = i / 100;
+		iAdcChan = i % 100;
+		iFirst = strtol(ptr, &ptr, 10);
+		iLast = strtol(ptr, &ptr, 10);
+		val = strtod(ptr, &ptr);
+		if (iFirst > runnumber() || iLast < runnumber()) continue;	// not for our run
+		if(!isAdcChannelExist(iAdcNum, iAdcChan)) {	// non-existing channel - strange
 			printf("Time calibration wrong channel i=%d (%d.%d): %s", i, iAdcNum, iAdcChan, str);
 			continue;
 		}
-		ptr = strstr(str, "DT=");
-		if (!ptr) {		// strange string	
-			printf("Time calibration no value DT=: %s", str);
-			continue;
-		}
-		ptr += strlen("DT=");
-		setTd(i, strtod(ptr, NULL));
+		setTd(i, val);
 		k++;
 	}
 
