@@ -1,7 +1,8 @@
-#define NVAR	63
+#define NVAR	173
 void calc_eff(const char *run_file = NULL)
 {
-	const int MCTotal = 15000000;	// MC events played
+	const int MCTotal = 2000000;	// MC events played
+	const char * vardir = "vars_4.0"; 
 	int i;
 	char str[1024];
 	double eff[NVAR];
@@ -17,7 +18,7 @@ void calc_eff(const char *run_file = NULL)
 //		gROOT->ProcessLine(str);
 //	}
 	for (i=0; i<NVAR; i++) {
-		sprintf(str, "varlists/var_%d_spfuel.root", i);
+		sprintf(str, "%s/var_%d_spfuel.root", vardir, i);
 		f = new TFile(str);
 		h = (TH1D *) f->Get("hMC");
 		if (!h) {
@@ -27,7 +28,7 @@ void calc_eff(const char *run_file = NULL)
 		eff[i] = h->Integral(9, 64) / MCTotal;
 	}
 	
-	fEff = fopen("eff.txt", "wt");
+	fEff = fopen("eff_4.0.txt", "wt");
 	if (!fEff) {
 		printf("can not open file eff.txt: %m\n");
 		return;
@@ -41,7 +42,7 @@ void calc_eff(const char *run_file = NULL)
 			printf("can not open file %s: %m\n", run_file);
 			return;
 		}
-		fOut = fopen("run_eff.txt", "wt");
+		fOut = fopen("run_eff_4.0.txt", "wt");
 		if (!fOut) {
 			printf("can not open file run_eff.txt: %m\n");
 			return;

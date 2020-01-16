@@ -39,7 +39,7 @@
 
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
 #define MAXTDIFF	50.0	// us
-#define MINPOSE		0.75	// MeV
+#define MINPOSE		0.5	// MeV
 #define MAXPOSE		20.0	// MeV
 #define AGAMMAN		0	// number of annihilation gamma hits (0 no requirement)
 #define MINNEUTE	3.0	// MeV

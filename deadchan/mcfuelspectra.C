@@ -25,7 +25,7 @@ class MyRandom {
 void mcfuelspectra(const char *pfile, const char *hfile)
 {
 	const double kScale = 1.0;
-	const double kRndm = 0.17;
+	const double kRndm = 0.12;
 	char str[1024];
 	
 	TCut cX("PositronX[0] < 0 || (PositronX[0] > 2 && PositronX[0] < 94)");

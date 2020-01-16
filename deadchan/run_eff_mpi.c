@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	vardir = getenv("VAR_DIR");
 	if (!vardir) vardir = "varlists/";
 	
-	setenv("DANSSRAWREC_HOME", "../lib_v3.0", 1);
+	setenv("DANSSRAWREC_HOME", "../lib_v3.2", 1);
 //			Run digi
 	sprintf(str, "../digi_evtbuilder6_v3 -no_hit_tables -file %s -output %s/var_%d_fuel.root -flag 0x70000 -ecorr 1.0 -mcdata -deadlist %s/%d.list", 
 		fuellist, rootdir, serial, vardir, serial);

@@ -55,7 +55,7 @@ TChain *create_chain(const char *name, int from, int to)
 	ch = new TChain(name, name);
 	for (i=from; i<=to; i++) {
 		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon2n4/%3.3dxxx/muon_%6.6d.root", i/1000, i);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon7n7/%3.3dxxx/muon_%6.6d.root", i/1000, i);
 		num = access(str, R_OK);	// R_OK = 4 - test read access
 		if (num) continue;
 		ch->AddFile(str, 0);
@@ -69,7 +69,7 @@ TChain *create_chain(const char *name, int from, int to)
 
 void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 {
-	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n4/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
+	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n7/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
 
 //	gROOT->ProcessLine(".L create_chain.C+");
 	gStyle->SetOptStat(0);

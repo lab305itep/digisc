@@ -115,9 +115,15 @@ int main(int argc, char **argv)
 		fprintf(fOut, "%6d %4d\n", fnum, i);
 	}
 	
-	for (i=0; i<Vcnt; i++) {
-		sprintf(buf, "%s/%d.list", argv[3], i);
-		voc[i]->Dump(buf);
+	sprintf(buf, "mkdir -p %s", argv[3]);
+	i = system(buf);
+	if (i) {
+		printf("Can not create directory %s : %m\n", argv[3]);
+	} else {
+		for (i=0; i<Vcnt; i++) {
+			sprintf(buf, "%s/%d.list", argv[3], i);
+			voc[i]->Dump(buf);
+		}
 	}
 	
 	printf("%d variations found\n", Vcnt);

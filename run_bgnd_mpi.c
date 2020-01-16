@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	rnum += serial;
 //		The run itself
-	sprintf(str, "./background_calc_72g %d", rnum);
+	sprintf(str, "./background_calc %d", rnum);
 	irc = system(str);
 	if (irc) printf("Period %d: error %d returned: %m\n", rnum, irc);
 //		time and print
