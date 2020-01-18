@@ -96,7 +96,7 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 	chA->Project(hExp->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndm->GetName(), str, "gtDiff > 500");
 	sprintf(str, "MyRandom::GausAdd(PositronEnergy, %6.4f)", kRndm);
-	tMC->Project(hMC->GetName(), "PositronEnergy");
+	tMC->Project(hMC->GetName(), str);
 	chA->Project(hExpT->GetName(), "gtDiff / 1000.0");
 	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0");
 	
@@ -133,7 +133,7 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 	cv->cd(2);
 	hExpT->Fit("expo");
 	
-	sprintf(str, "12B_74_rndm_%5.3f_scale_%5.3f.png", kRndm, kScale);
+	sprintf(str, "12B_77_rndm_%5.3f_scale_%5.3f.png", kRndm, kScale);
 	cv->SaveAs(str);
 	
 	sprintf(str, "12B_74_rndm_%5.3f_scale_%5.3f.root", kRndm, kScale);

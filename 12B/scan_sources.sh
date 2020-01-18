@@ -3,14 +3,26 @@
 #PBS -q mpi
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/scan_12B.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/scan_12B.err
-#PBS -l nodes=39
+#PBS -l nodes=52
 #PBS -l walltime=24:00:00
 cd /home/itep/alekseev/igor/12B
 
 #root -l -b -q "draw12B.C(2210, 57000, 0.17)"
 
-
 mpirun --mca btl ^tcp run_many 'root -l -b -q'\
+	'"draw12B.C(2210, 71210, 0.07, 0.970)"'\
+	'"draw12B.C(2210, 71210, 0.07, 0.975)"'\
+	'"draw12B.C(2210, 71210, 0.07, 0.980)"'\
+	'"draw12B.C(2210, 71210, 0.07, 0.985)"'\
+	'"draw12B.C(2210, 71210, 0.07, 0.990)"'\
+	'"draw12B.C(2210, 71210, 0.07, 0.995)"'\
+	'"draw12B.C(2210, 71210, 0.07, 1.000)"'\
+	'"draw12B.C(2210, 71210, 0.07, 1.005)"'\
+	'"draw12B.C(2210, 71210, 0.07, 1.010)"'\
+	'"draw12B.C(2210, 71210, 0.07, 1.015)"'\
+	'"draw12B.C(2210, 71210, 0.07, 1.020)"'\
+	'"draw12B.C(2210, 71210, 0.07, 1.025)"'\
+	'"draw12B.C(2210, 71210, 0.07, 1.030)"'\
 	'"draw12B.C(2210, 71210, 0.12, 0.970)"'\
 	'"draw12B.C(2210, 71210, 0.12, 0.975)"'\
 	'"draw12B.C(2210, 71210, 0.12, 0.980)"'\

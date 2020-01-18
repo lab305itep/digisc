@@ -28,6 +28,7 @@ void join_periods(const char *newname, const char *perioddir)
 //		printf("%d: %s\n", i, fSys->GetName());
 		ptr = (char *) fSys->GetName();
 		if (ptr[0] == '.') continue;	// skip . and ..
+		if (strcmp(&ptr[strlen(ptr) - strlen(".root")], ".root")) continue;	// not a root file
 		sprintf(str, "%s/%s", perioddir, ptr);
 		fIn = new TFile(str);
 		if (!fIn->IsOpen()) continue;

@@ -118,7 +118,6 @@ struct DanssExtraStruct	{
 	int PmtHits;
 	float VetoEnergy;
 	int VetoHits;
-
 } 				DanssExtra;
 int 				HitFlag[iMaxDataElements];	// array to flag out SiPM hits
 TH1D *				hTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
@@ -1349,6 +1348,7 @@ int ReadDigiDataUser::processUserEvent()
 	DanssEvent.trigType = masterTriggerType();
 #endif
 	if (IsMc) mcTruth(DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
+//	printf("MCTruth: %f %f %f %f %f\n", DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
 
 	if (RawHitsArray) FindRawHits();
 	CleanZeroes(this);
