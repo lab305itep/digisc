@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		goto fin;
 	}
 //			Plot Spectra
-	sprintf(str, "root -l -b -q 'mcfuelspectra.C(\"%s/var_%d_fuel.root\", \"%s/var_%d_spfuel.root\")'",
+	sprintf(str, "root -b -l -q \"mcfuelspectra.C(\\\"%s/var_%d_fuel.root\\\", \\\"%s/var_%d_spfuel.root\\\", 0.12)\"",
 		pairdir, serial, vardir, serial);
 	irc = system(str);
 	if (irc) {

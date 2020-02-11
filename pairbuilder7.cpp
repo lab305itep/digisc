@@ -60,12 +60,20 @@
 //#define CORR_SIPM_P0	0.187	// Positron energy correction from MC + 34 keV from SiPM to PMT comparison
 //#define CORR_SIPM_P1	0.920	// Positron energy correction from MC
 //	New calibration
-#define CORR_P0		0.130	// Positron energy correction from MC 
-#define CORR_P1		0.976	// Positron energy correction from MC
-#define CORR_PMT_P0	0.125	// Positron energy correction from MC
-#define CORR_PMT_P1	0.948	// Positron energy correction from MC
-#define CORR_SIPM_P0	0.104	// Positron energy correction from MC
-#define CORR_SIPM_P1	0.997	// Positron energy correction from MC
+//#define CORR_P0		0.130	// Positron energy correction from MC 
+//#define CORR_P1		0.976	// Positron energy correction from MC
+//#define CORR_PMT_P0	0.125	// Positron energy correction from MC
+//#define CORR_PMT_P1	0.948	// Positron energy correction from MC
+//#define CORR_SIPM_P0	0.104	// Positron energy correction from MC
+//#define CORR_SIPM_P1	0.997	// Positron energy correction from MC
+//	No correction
+#define CORR_P0		0	// Positron energy correction from MC 
+#define CORR_P1		1.0	// Positron energy correction from MC
+#define CORR_PMT_P0	0	// Positron energy correction from MC
+#define CORR_PMT_P1	1.0	// Positron energy correction from MC
+#define CORR_SIPM_P0	0	// Positron energy correction from MC
+#define CORR_SIPM_P1	1.0	// Positron energy correction from MC
+
 #define SHOWERMIN	800	// 800 MeV shower event threshold
 
 #define iMaxDataElements 3000

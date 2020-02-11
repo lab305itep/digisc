@@ -720,6 +720,23 @@ struct RawHitInfoStruct {
 	unsigned short SiPmCnt;
 };
 
+//		MC struct DANSSEvent
+struct MCEventStruct {
+	double EventID;
+	double ParticleEnergy;
+	double EnergyLoss;
+	double DetectorEnergyLoss;
+	double CopperEnergyLoss;
+	double GdCoverEnergyLoss;
+	double X;
+	double Y;
+	double Z;
+	double DirX;
+	double DirY;
+	double DirZ;
+	double TimelineShift;
+	char   FluxFlag;
+};
 
 #endif /* EVTBUILDER_H */
 

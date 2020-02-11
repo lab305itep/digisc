@@ -11,12 +11,12 @@ class DetVector {
 private:
 	char array[VECLEN];
 public:
-	DetVector(char *str = NULL);
+	DetVector(char *str = NULL, int run = 0);
 	int Diff(DetVector *vec);
 	void Dump(const char *fname);
 };
 
-DetVector::DetVector(char *str)
+DetVector::DetVector(char *str, int run)
 {
 	char *tok;
 	int mod, chan, num;
@@ -28,14 +28,14 @@ DetVector::DetVector(char *str)
 			tok = strtok(NULL, " \t");
 			if (!tok) break;
 			if (tok[2] != '.') {
-				printf("Format error: channel = %s\n", tok);
+				printf("Run %d: Format error: channel = %s\n", run, tok);
 				continue;
 			}
 			mod = 10*(tok[0]-'0') + tok[1] - '0';
 			chan = 10*(tok[3]-'0') + tok[4] - '0';
 			num = 64*mod + chan;
 			if (num < 0 || num >= VECLEN) {
-				printf("Channel %s = %d is out of range [0 - %d]\n", tok, num, VECLEN-1);
+				printf("Run %d: Channel %s = %d is out of range [0 - %d]\n", run, tok, num, VECLEN-1);
 				continue;
 			}
 			array[num] = 1;
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 		fnum = strtol(buf, &ptr, 10);
 		if (!fnum) continue;
 		strcpy(bcopy, ptr);
-		cur = new DetVector(bcopy);
+		cur = new DetVector(bcopy, fnum);
 		for (i=0; i<Vcnt; i++) if (cur->Diff(voc[i]) <= MAXDIFF) break;
 		if (i == Vcnt) {
 			if (Vcnt < MAXVAR) {

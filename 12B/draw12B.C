@@ -133,14 +133,59 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 	cv->cd(2);
 	hExpT->Fit("expo");
 	
-	sprintf(str, "12B_77_rndm_%5.3f_scale_%5.3f.png", kRndm, kScale);
+	sprintf(str, "12B_78_rndm_%5.3f_scale_%5.3f.png", kRndm, kScale);
 	cv->SaveAs(str);
 	
-	sprintf(str, "12B_74_rndm_%5.3f_scale_%5.3f.root", kRndm, kScale);
+	sprintf(str, "12B_78_rndm_%5.3f_scale_%5.3f.root", kRndm, kScale);
 	TFile *fOut = new TFile(str, "RECREATE");
 	fOut->cd();
 	hExp->Write();
 	hMC->Write();
 	hExpT->Write();
 	fOut->Close();
+}
+
+TH2D *makeScan(const char *pattern = "12B_74_rndm_%5.3f_scale_%5.3f.root")
+{
+	const double Rrndm[2] = {0.07, 0.22};
+	const int Nrndm = 4;
+	double Drndm = (Rrndm[1] - Rrndm[0]) / (Nrndm - 1);
+	const double Rscale[2] = {0.97, 1.03};
+	const int Nscale = 13;
+	double Dscale = (Rscale[1] - Rscale[0]) / (Nscale - 1);
+	double kRndm, kScale;
+	int i, j;
+	TH2D *h2d;
+	TFile *f;
+	char strs[128], strl[1024];
+	TH1D *hExp;
+	TH1D *hMC;
+	TH1D *hRat;
+	
+	
+	h2d = new TH2D("h12Bscan", "Scan rndm and scale for 12B;Scale;Rndm", 
+		Nscale, Rscale[0] - Dscale/2, Rscale[1] + Dscale/2, Nrndm, Rrndm[0] - Drndm/2, Rrndm[1] + Drndm/2);
+	for (i=0; i<Nscale; i++) for (j=0; j<Nrndm; j++) {
+		kScale = Rscale[0] + Dscale * i;
+		kRndm = Rrndm[0] + Drndm * j;
+		sprintf(strl, pattern, kRndm, kScale);
+		f = new TFile(strl);
+		if (!f->IsOpen()) return NULL;
+		hExp = (TH1D*) f->Get("hExp12B");
+		hMC = (TH1D*) f->Get("hMC12B");
+		if (!hExp || !hMC) return NULL;
+		hRat = (TH1D*) hExp->Clone("hRat");
+		hRat->Divide(hExp, hMC);
+		hRat->Fit("pol0", "Q0", "", 3.5, 13);
+		h2d->SetBinContent(i+1, j+1, hRat->GetFunction("pol0")->GetChisquare());
+		f->Close();
+		delete f;
+	}
+	
+	f = new TFile("12B-scan.root", "RECREATE");
+	f->cd();
+	h2d->Write();
+	f->Close();
+	
+	return h2d;
 }

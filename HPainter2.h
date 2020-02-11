@@ -24,6 +24,7 @@ public:
 	void Project(TH1 *hist, const char *what, TCut cut);
 //	void Project(TH2 *hist, const char *what, TCut cut);
 //	void Project(TH3 *hist, const char *what, TCut cut);
+	inline unsigned int GetBeginTime(void) { return tBegin; };
 	inline double GetUpTime(void) { return upTime; };
 	inline void SetUpTime(double tm) { upTime = tm; };
 	void SetUpTime(unsigned int t0, unsigned int t1);

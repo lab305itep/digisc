@@ -37,7 +37,7 @@
 #define MAXMODULE	51
 #define MAXCHANNEL	64
 #define MINEVENTS	1000000
-#define MINHITS		500
+#define MINHITS		300
 
 
 //	Translate module and channel numbers to Period 0 settings
@@ -289,7 +289,7 @@ void process(int run, const char *fmt, FILE *fOut)
 	for (i=0; i<MAXMODULE; i++) for (j=0; j<MAXCHANNEL; j++) if (ChanMask[Period][i][j/16] & (1 << (j&15))) {
 		sprintf(str, "hDT%2.2dc%2.2d", i+1, j);
 		h = (TH1 *) f->Get(str);
-		if (!h || h->GetEntries() < MINHITS) {
+		if (!h || h->Integral(101, 150) < MINHITS) {
 			Cnt[1]++;
 //	Translation
 			ModTranslate(Period, i + 1, j, mod, chan);

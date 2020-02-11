@@ -319,6 +319,9 @@ void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_fil
 	case 76:
 		rootdir = (char *)"root6n6";
 		break;
+	case 78:
+		rootdir = (char *)"root6n8";
+		break;
 	default:
 		rootdir = (char *)"root6n4";
 		break;
@@ -564,4 +567,78 @@ void src2mc(const char *expfile, const char *mcfile, const char *newname)
 
 	fExp->Close();
 	fMC->Close();
+}
+
+TH2D *src_scan(const char *src, const char *period)
+{
+	const double Rrndm[2] = {0.07, 0.22};
+	const int Nrndm = 4;
+	double Drndm = (Rrndm[1] - Rrndm[0]) / (Nrndm - 1);
+	const double Rscale[2] = {0.98, 1.04};
+	const int Nscale = 13;
+	double Dscale = (Rscale[1] - Rscale[0]) / (Nscale - 1);
+	double kRndm, kScale;
+	int i, j;
+	TH2D *h2d;
+	TFile *f;
+	char strs[128], strl[1024];
+	TH1D *hExp[Nscale];
+	TH1D *hMC[Nrndm];
+	TH1D *hRat;
+	TH1D *tmp;
+
+	sprintf(strl, "%s-%s-scan.root", src, period);
+	TFile *fOut = new TFile(strl, "RECREATE");
+	if (!fOut->IsOpen()) return NULL;
+	
+	sprintf(strs, "h%sscan", src);
+	sprintf(strl, "Scan rndm and scale for %s;Scale;Rndm", src);
+	h2d = new TH2D(strs, strl, Nscale, Rscale[0] - Dscale/2, Rscale[1] + Dscale/2, Nrndm, Rrndm[0] - Drndm/2, Rrndm[1] + Drndm/2);
+	for (i=0; i<Nscale; i++) {
+		kScale = Rscale[0] + Dscale * i;
+		sprintf(strl, "%s_%s_center_%5.3f_root6n8.root", src, period, kScale);
+		f = new TFile(strl);
+		if (!f->IsOpen()) return NULL;
+		tmp = (TH1D*)f->Get("hExpC");
+		if (!tmp) return NULL;
+		sprintf(strs, "hExp%s_%d", src, i);
+		fOut->cd();
+		hExp[i] = (TH1D*)tmp->Clone(strs);
+		f->Close();
+		delete f;
+	}
+	for (j=0; j<Nrndm; j++) {
+		kScale = Rscale[0] + Dscale * i;
+		kRndm = Rrndm[0] + Drndm * j;
+		sprintf(strl, "%s_MC_center_rndm_%4.2f_root6n8.root", src, kRndm);
+		f = new TFile(strl);
+		if (!f->IsOpen()) return NULL;
+		tmp = (TH1D*)f->Get("hMc");
+		if (!tmp) return NULL;
+		sprintf(strs, "hMC%s_%d", src, j);
+		fOut->cd();
+		hMC[j] = (TH1D*)tmp->Rebin(2, strs);
+		f->Close();
+		delete f;
+	}
+
+	hRat = (TH1D*) hExp[0]->Clone("hRat");
+
+	for (i=0; i<Nscale; i++) for (j=0; j<Nrndm; j++) {
+		hRat->Divide(hExp[i], hMC[j]);
+		if (src[0] == '2') {	// 22Na
+			hRat->Fit("pol0", "Q0", "", 0.6, 2.6);
+		} else {		// 60Co
+			hRat->Fit("pol0", "Q0", "", 0.8, 3.0);
+		}
+		h2d->SetBinContent(i+1, j+1, hRat->GetFunction("pol0")->GetChisquare());
+	}
+
+	fOut->cd();
+	h2d->Write();
+	for (i=0; i<Nscale; i++) hExp[i]->Write();
+	for (j=0; j<Nrndm; j++) hMC[j]->Write();
+	fOut->Close();
+	
+	return h2d;
 }

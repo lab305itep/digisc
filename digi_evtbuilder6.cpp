@@ -108,9 +108,13 @@ TFile *				OutputFile;
 TTree *				OutputTree;
 TTree *				InfoTree;
 TTree *				RawHitsTree;
+TFile *				McFile;
+TTree *				McEventTree;
+int				McEntries;
 struct DanssEventStruct7	DanssEvent;
 struct DanssInfoStruct4		DanssInfo;
 struct DanssMcStruct		DanssMc;
+struct MCEventStruct		McEvent;
 struct DanssExtraStruct	{
 	float SiPmEnergy;
 	int SiPmHits;
@@ -1120,6 +1124,8 @@ void Help(void)
 	printf("-help                   --- print this message and exit.\n");
 	printf("-hitinfo hitinfo.txt[.bz2] --- add raw hits information tree.\n");
 	printf("-mcdata                 --- this is Monte Carlo data - create McTruth branch.\n");
+	printf("-mcfile mc.root         --- this is Monte Carlo data - create McTruth and McEvent branches.\n");
+	printf("          Copy information from mc.root:DANSSEvent tree.\n");
 	printf("-seed SEED              --- seed for random number generator.\n");
 	printf("-output filename.root   --- output file name. Without this key output file is not written.\n");
 	printf("-tcalib filename.txt    --- file with the time calibration.\n");
@@ -1142,6 +1148,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	char strl[1024];
 	char *DeadListName;
 	char *RawHitsFileName;
+	char *McRootFileName;
 	
 	int RandomSeed = 17321;
 	AttenuationLength = 300;
@@ -1160,6 +1167,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	RawHitsFileName = NULL;
 	RawHitsTree = NULL;
 	RawHitsArray = NULL;
+	McRootFileName = NULL;
+	McFile = NULL;
+	McEventTree = NULL;
 
 	for (i=1; i<argc; i++) {
 		if (!strcmp(argv[i], "-output")) {
@@ -1185,6 +1195,10 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			RawHitsFileName = (char *)argv[i];
 		} else if (!strcmp(argv[i], "-mcdata")) {
 			IsMc = 1;
+		} else if (!strcmp(argv[i], "-mcfile")) {
+			IsMc = 1;
+			i++;
+			McRootFileName = (char *)argv[i];
 		} else if (!strcmp(argv[i], "-alen")) {
 			i++;
 			AttenuationLength = strtod(argv[i], NULL);
@@ -1259,7 +1273,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			"McX[3]/F:"		// MC vertex position
 			"DriftTime/F"		// MC time between positron and neutron, us
 		);
-
+		
 		InfoTree = new TTree("DanssInfo", "Run info tree");	
 		InfoTree->Branch("Info", &DanssInfo,  
 			"gTime/L:"		// running time in terms of 125 MHz
@@ -1275,6 +1289,43 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		if (RawHitsFileName && RawHitsArrayInit(RawHitsFileName)) {
 			RawHitsTree = new TTree("RawHits", "RawHits");
 			RawHitsTree->Branch("RawHits", &RawHits, "PmtCnt/s:VetoCnt/s:SiPmCnt/s");
+		}
+
+		if (McRootFileName) {
+			McFile = new TFile(McRootFileName);
+			if (!McFile->IsOpen()) {
+				printf("Can not open raw MC file %s\n", McRootFileName);
+				McFile = NULL;
+			} else {
+				McEventTree = (TTree *) McFile->Get("DANSSEvent");
+				if (!McEventTree) {
+					printf("Tree DANSSEvent not found in %s\n", McRootFileName);
+					McFile->Close();
+					delete McFile;
+					McFile = NULL;
+				} else {
+					if (McEventTree->SetBranchAddress("EventData", &McEvent)) {
+						printf("Branch DANSSEvent.EventData not found in %s\n", McRootFileName);
+						McFile->Close();
+						delete McFile;
+						McFile = NULL;
+						McEventTree = NULL;
+					} else {
+						McEntries = McEventTree->GetEntries();
+						OutputTree->Branch("MCEvent", &McEvent, 
+							"EventID/D:"
+							"ParticleEnergy/D:"
+							"EnergyLoss/D:"
+							"DetectorEnergyLoss/D:"
+							"CopperEnergyLoss/D:"
+							"GdCoverEnergyLoss/D:"
+							"X/D:Y/D:Z/D:"
+							"DirX/D:DirY/D:DirZ/D:"
+							"TimelineShift/D:"
+							"FluxFlag/B");
+					}
+				}
+			}
 		}
 	}
 	iNevtTotal = 0;
@@ -1322,6 +1373,8 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 int ReadDigiDataUser::processUserEvent()
 {
 	float fineTime;
+	int McNum;
+	long long gt;
 	
 	if( ttype() != 1 ) return 0;
 	
@@ -1336,9 +1389,9 @@ int ReadDigiDataUser::processUserEvent()
 		DanssInfo.events = 0;
 	}
 
-	if (fileLastTime > globalTime()) globalTimeWrapped = 1;		// it can't be twice
+	if (fileLastTime > globalTime()) globalTimeWrapped++;
 	DanssEvent.globalTime = globalTime();
-	if (globalTimeWrapped) DanssEvent.globalTime += (1L<<45);
+	if (globalTimeWrapped) DanssEvent.globalTime += (1L<<45) * globalTimeWrapped;
 	fileLastTime = globalTime();
 	DanssEvent.number     = nevt();
 	DanssEvent.unixTime   = absTime();
@@ -1347,7 +1400,21 @@ int ReadDigiDataUser::processUserEvent()
 #else
 	DanssEvent.trigType = masterTriggerType();
 #endif
-	if (IsMc) mcTruth(DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
+	if (IsMc) {
+		mcTruth(DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
+		if (McEventTree) {
+			gt = DanssEvent.globalTime + 10000000;
+			McNum = gt / 125000000;
+			if (McNum >= McEntries) {
+				printf("Bad MC event number %d - more than in the file (%d).\n", McNum, McEntries);
+				memset(&McEvent, 0, sizeof(McEvent));
+			} else {
+				McEventTree->GetEntry(McNum);
+//				printf("Num=%d EventID=%f ParticleEnergy=%f EnergyLoss=%f", 
+//					McNum, McEvent.EventID, McEvent.ParticleEnergy, McEvent.EnergyLoss);
+			}
+		}
+	}
 //	printf("MCTruth: %f %f %f %f %f\n", DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
 
 	if (RawHitsArray) FindRawHits();
@@ -1409,8 +1476,8 @@ void ReadDigiDataUser::finishUserProc()
 		if (InfoTree) InfoTree->Fill();
 	}
 
-	if (OutputFile) OutputFile->cd();
 
+	if (OutputFile) OutputFile->cd();
 	if (OutputTree) OutputTree->Write();
 	if (InfoTree) InfoTree->Write();
 	if ((iFlags & FLG_DTHIST) && OutputFile) for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
@@ -1428,6 +1495,7 @@ void ReadDigiDataUser::finishUserProc()
 	}
 #endif
 	if (OutputFile) OutputFile->Close();
+	if (McFile) McFile->Close();
   
 	printf("Total up time        %Ld seconds\n", upTime / (long long) GLOBALFREQ);
 	printf("Total physics events %Ld\n", iNevtTotal);

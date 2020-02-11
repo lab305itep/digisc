@@ -9,8 +9,11 @@
 #include "HPainter2.h"
 
 #define NEBINS 128
-const char *NeutronCorrN = "0.003475-0.000152*x";
-const char *NeutronCorrC = "0.01138-0.000437*x";
+
+const char *NeutronCorrN = "0.003244-0.000134*x";
+const char *NeutronCorrC = "0.01087-0.000424*x";
+//const char *NeutronCorrN = "0.003475-0.000152*x";
+//const char *NeutronCorrC = "0.01138-0.000437*x";
 //const char *NeutronCorrN = "0.004800-0.000225*x";
 //const char *NeutronCorrC = "0.01773-0.000792*x";
 
@@ -73,6 +76,7 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 	ptr2->Project(hSig,  what, cSig);
 	ptr2->Project(hBgnd, what, cBgnd);
 	hConst->Fill("UpTime", ptr2->GetUpTime());
+	hConst->Fill("StartTime", ptr2->GetBeginTime());
 
 	hSig->Add(&fBgndN, -1.0);
 	hBgnd->Add(&fBgndC, -1.0);

@@ -47,7 +47,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut c20("gtDiff > 2");
         TCut cGamma("AnnihilationEnergy < 1.8 && AnnihilationGammas <= 10");
 	TCut cGammaMax("AnnihilationMax < 0.8");
-        TCut cPe("PositronEnergy > 1");
+        TCut cPe("((PositronHits == 1) ? (PositronEnergy+0.0292)/1.043 : (PositronEnergy-0.1779)/0.9298) > 1");
         TCut cR1("Distance < 45");
         TCut cR2("Distance < 55");
         TCut cR = cR2 && (cRXY || cR1);
