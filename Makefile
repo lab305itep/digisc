@@ -53,7 +53,7 @@ pairbuilder6: pairbuilder6.cpp
 	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
 pairbuilder7: pairbuilder7.cpp
-	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
+	g++ $^ -g -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
 deadtime: deadtime.cpp
 	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}

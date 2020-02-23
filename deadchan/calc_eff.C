@@ -1,10 +1,10 @@
-#define NVAR	172
+#define NVAR	1
 void calc_eff(const char *run_file)
 {
 	const int MCTotal = 2000000;	// MC events played
-	const char * vardir = "varlist_v6.8"; 
-	const char * outname = "run_eff_v6.8.txt";
-	const char * effname = "eff_v6.8.txt";
+	const char * vardir = "varlist_v6.81"; 
+	const char * outname = "run_eff_v6.81.txt";
+	const char * effname = "eff_v6.81.txt";
 	int i;
 	char str[1024];
 	double eff[NVAR];
@@ -20,7 +20,8 @@ void calc_eff(const char *run_file)
 //		gROOT->ProcessLine(str);
 //	}
 	for (i=0; i<NVAR; i++) {
-		sprintf(str, "%s/sp_%d.root", vardir, i);
+//		sprintf(str, "%s/sp_%d.root", vardir, i);
+		sprintf(str, "%s/var_%d_spfuel.root", vardir, i);
 		f = new TFile(str);
 		h = (TH1D *) f->Get("hMC");
 		if (!h) {

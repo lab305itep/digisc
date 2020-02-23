@@ -7,8 +7,8 @@ class MyRandom {
 	static inline double Gaus(double mean = 0, double sigma = 1) {
 		return rnd.Gaus(mean, sigma);
 	};
-	static inline double GausAdd(double val, double sigma) {
-		return rnd.Gaus(val, sqrt(val)*sigma);
+	static inline double GausAdd(double val, double sigma = 0, double csigma = 0) {
+		return rnd.Gaus(val, sqrt(val*sigma*sigma + val*val*csigma*csigma));
 	};
 	static inline double GausAdd2(double val, double sigma) {
 		return rnd.Gaus(val, val*sigma);
@@ -55,7 +55,7 @@ TChain *create_chain(const char *name, int from, int to)
 	ch = new TChain(name, name);
 	for (i=from; i<=to; i++) {
 		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon7n7/%3.3dxxx/muon_%6.6d.root", i/1000, i);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon7n8/%3.3dxxx/muon_%6.6d.root", i/1000, i);
 		num = access(str, R_OK);	// R_OK = 4 - test read access
 		if (num) continue;
 		ch->AddFile(str, 0);
@@ -67,9 +67,9 @@ TChain *create_chain(const char *name, int from, int to)
 	return ch;
 }
 
-void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
+void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRndm2 = 0)
 {
-	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n7/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
+	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n8/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
 
 //	gROOT->ProcessLine(".L create_chain.C+");
 	gStyle->SetOptStat(0);
@@ -83,11 +83,11 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 	if (!fMC->IsOpen()) return;
 	TTree *tMC = (TTree *) fMC->Get("DanssEvent");
 	
-	sprintf(str, "Experiment with ^{12}B cuts, %s;MeV", "ClusterEnergy");
+	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterEnergy", kScale);
 	TH1D *hExp = new TH1D("hExp12B", str, 80, 0, 20);
 	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterEnergy");
 	TH1D *hRndm = new TH1D("hRndm12B", str, 80, 0, 20);
-	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E});MeV", "PositronEnergy", kRndm);
+	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronEnergy", kRndm, kRndm2);
 	TH1D *hMC = new TH1D("hMC12B", str, 80, 0, 20);
 	TH1D *hExpT = new TH1D("hExp12BT", "Time from muon, experiment;ms", 99, 1, 100);
 	TH1D *hRndmT = new TH1D("hRndm12BT", "Time from muon, MC;ms", 99, 1, 100);
@@ -95,7 +95,7 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 	sprintf(str, "ClusterEnergy * %6.4f", kScale);
 	chA->Project(hExp->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndm->GetName(), str, "gtDiff > 500");
-	sprintf(str, "MyRandom::GausAdd(PositronEnergy, %6.4f)", kRndm);
+	sprintf(str, "MyRandom::GausAdd(PositronEnergy, %6.4f, %6.4f)", kRndm, kRndm2);
 	tMC->Project(hMC->GetName(), str);
 	chA->Project(hExpT->GetName(), "gtDiff / 1000.0");
 	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0");
@@ -127,16 +127,16 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 	TLegend *lg = new TLegend(0.6, 0.75, 0.9, 0.9);
 	sprintf(str, "Exp * %6.4f", kScale);
 	lg->AddEntry(hExp, str, "pe");
-	sprintf(str, "MC + %6.4f/#sqrt{E}", kRndm);
+	sprintf(str, "MC + %6.4f/#sqrt{E} #oplus %6.4f", kRndm, kRndm2);
 	lg->AddEntry(hMC, str, "l");
 	lg->Draw();
 	cv->cd(2);
 	hExpT->Fit("expo");
 	
-	sprintf(str, "12B_78_rndm_%5.3f_scale_%5.3f.png", kRndm, kScale);
+	sprintf(str, "12B_78_rndm_%5.3f_%5.3f_scale_%5.3f.png", kRndm, kRndm2, kScale);
 	cv->SaveAs(str);
 	
-	sprintf(str, "12B_78_rndm_%5.3f_scale_%5.3f.root", kRndm, kScale);
+	sprintf(str, "12B_78_rndm_%5.3f_%5.3f_scale_%5.3f.root", kRndm, kRndm2, kScale);
 	TFile *fOut = new TFile(str, "RECREATE");
 	fOut->cd();
 	hExp->Write();
@@ -145,7 +145,17 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0)
 	fOut->Close();
 }
 
-TH2D *makeScan(const char *pattern = "12B_74_rndm_%5.3f_scale_%5.3f.root")
+double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
+{
+	double sum;
+	int i;
+	for (i = binMin; i <= binMax; i++) sum += 
+		(hA->GetBinContent(i) - hB->GetBinContent(i)) * (hA->GetBinContent(i) - hB->GetBinContent(i)) /
+		(hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i));
+	return sum;
+}
+
+TH2D *makeScan(const char *pattern = "12B_78_rndm_%5.3f_scale_%5.3f.root", const char *suffix = "")
 {
 	const double Rrndm[2] = {0.07, 0.22};
 	const int Nrndm = 4;
@@ -161,7 +171,9 @@ TH2D *makeScan(const char *pattern = "12B_74_rndm_%5.3f_scale_%5.3f.root")
 	TH1D *hExp;
 	TH1D *hMC;
 	TH1D *hRat;
-	
+	char str[1024];
+	int binMin, binMax;
+	double chi2;
 	
 	h2d = new TH2D("h12Bscan", "Scan rndm and scale for 12B;Scale;Rndm", 
 		Nscale, Rscale[0] - Dscale/2, Rscale[1] + Dscale/2, Nrndm, Rrndm[0] - Drndm/2, Rrndm[1] + Drndm/2);
@@ -174,15 +186,17 @@ TH2D *makeScan(const char *pattern = "12B_74_rndm_%5.3f_scale_%5.3f.root")
 		hExp = (TH1D*) f->Get("hExp12B");
 		hMC = (TH1D*) f->Get("hMC12B");
 		if (!hExp || !hMC) return NULL;
-		hRat = (TH1D*) hExp->Clone("hRat");
-		hRat->Divide(hExp, hMC);
-		hRat->Fit("pol0", "Q0", "", 3.5, 13);
-		h2d->SetBinContent(i+1, j+1, hRat->GetFunction("pol0")->GetChisquare());
+		binMin = hExp->FindBin(3.501);
+		binMax = hExp->FindBin(12.999);
+		hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
+		chi2 = chi2Diff(hExp, hMC, binMin, binMax);
+		h2d->SetBinContent(i+1, j+1, chi2);
 		f->Close();
 		delete f;
 	}
 	
-	f = new TFile("12B-scan.root", "RECREATE");
+	sprintf(str, "12B-scan-%s.root", suffix);
+	f = new TFile(str, "RECREATE");
 	f->cd();
 	h2d->Write();
 	f->Close();

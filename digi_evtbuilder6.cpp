@@ -44,7 +44,7 @@
 #include "evtbuilder.h"
 
 /***********************	Definitions	****************************/
-#define MYVERSION	"4.20"
+#define MYVERSION	"4.30"
 //	Initial clean parameters
 #define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit
 #define MINSIPMPIXELS2	2			// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
@@ -1163,7 +1163,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	iFlags = 0;
 	MaxEvents = -1;
 	IsMc = 0;
-	EnergyCorrection = 0.935;
+	EnergyCorrection = 0.93;
 	RawHitsFileName = NULL;
 	RawHitsTree = NULL;
 	RawHitsArray = NULL;

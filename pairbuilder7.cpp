@@ -281,6 +281,19 @@ int main(int argc, char **argv)
 //		Hits
 		"NPHits/I:"		// Number of hits in "positron event"
 		"NNHits/I";		// Number of hits in "neutron event"
+//	Copy DANSSEvent tree from the original MC
+	const char MCLeafList[] = 
+		"EventID/D:"
+		"ParticleEnergy/D:"
+		"EnergyLoss/D:"
+		"DetectorEnergyLoss/D:"
+		"CopperEnergyLoss/D:"
+		"GdCoverEnergyLoss/D:"
+		"X/D:Y/D:Z/D:"
+		"DirX/D:DirY/D:DirZ/D:"
+		"TimelineShift/D:"
+		"FluxFlag/B";
+
 	
 	struct DanssPairStruct7		DanssPair;
 	struct DanssEventStruct7	DanssEvent;
@@ -292,14 +305,16 @@ int main(int argc, char **argv)
 	struct DanssInfoStruct		SumInfo;
 	struct HitStruct 		HitArray[3];	// 0 - positron, 1 - neutron, 2 - place for input
 	struct RawHitInfoStruct		RawHits;
+	struct MCEventStruct		MCEvent;
+	struct MCEventStruct		MCEventCopy;
 
 	TChain *EventChain = NULL;
 	TChain *InfoChain = NULL;
 	TChain *RawChain = NULL;
-	TTree *tOut;
-	TTree *tRandom;
-	TTree *InfoOut;
-	TFile *fOut;
+	TTree *tOut = NULL;
+	TTree *tRandom = NULL;
+	TTree *InfoOut = NULL;
+	TFile *fOut = NULL;
 	FILE *fList;
 	char str[1024];
 	char strl[1600];
@@ -310,12 +325,61 @@ int main(int argc, char **argv)
 	int iLoop;
 	float tShift;
 	char *ptr;
+	int IsMC = 0;
 	
 	if (argc < 3) {
 		printf("Usage: %s list_file.txt|input_file.root output_file.root\n", argv[0]);
 		printf("Will process files in the list_file and create root-file\n");
 		return 10;
 	}
+
+	ptr = strrchr(argv[1], '.');
+	if (!ptr) {
+		printf("Strange file extention: .txt or .root expected\n");
+		return 15;
+	}
+
+	EventChain = new TChain("DanssEvent");
+	RawChain = new TChain("RawHits");
+	InfoChain = new TChain("DanssInfo");
+
+	if (!strcmp(ptr, ".txt")) {
+
+		fList = fopen(argv[1], "rt");
+		if (!fList) {
+			printf("Can not open list of files %s: %m\n", argv[1]);
+			return 20;
+		}
+	
+		for(;;) {
+			if (!fgets(str, sizeof(str), fList)) break;
+			ptr = strchr(str, '\n');
+			if (ptr) *ptr = '\0';
+			EventChain->Add(str);
+			RawChain->Add(str);
+			InfoChain->Add(str);
+		}
+		fclose(fList);
+	} else if (!strcmp(ptr, ".root")) {
+		EventChain->Add(argv[1]);
+		if (RawChain) RawChain->Add(argv[1]);
+		InfoChain->Add(argv[1]);
+	} else {
+		printf("Strange file extention: .txt or .root expected\n");
+		return 30;
+	}
+
+	nEvt = EventChain->GetEntries();
+	rEvt = RawChain->GetEntries();
+	if (rEvt > 0 && rEvt != nEvt) {
+		printf("Event chain (%d) and RawHits chain (%d) do not match\n",  nEvt, rEvt); 
+		return 40;
+	} else if (rEvt == 0) {
+		delete RawChain;
+		RawChain = NULL;
+	}
+
+	if(EventChain->GetBranch("MCEvent")) IsMC = 1;
 
 	strncpy(str, argv[2], sizeof(str));
 	sprintf(strl, "mkdir -p %s", dirname(str));
@@ -338,6 +402,7 @@ int main(int argc, char **argv)
 	tOut->Branch("NHitE", HitArray[1].E, "NHitE[NNHits]/F");
 	tOut->Branch("NHitT", HitArray[1].T, "NHitT[NNHits]/F");
 	tOut->Branch("NHitType", HitArray[1].type, "NHitType[NNHits]/I");
+	if (IsMC) tOut->Branch("MCEvent", &MCEventCopy, MCLeafList);
 
 	tRandom = new TTree("DanssRandom", "Random coincidence events");
 	tRandom->Branch("Pair", &DanssPair, LeafList);
@@ -347,6 +412,7 @@ int main(int argc, char **argv)
 	tRandom->Branch("NHitE", HitArray[1].E, "NHitE[NNHits]/F");
 	tRandom->Branch("NHitT", HitArray[1].T, "NHitT[NNHits]/F");
 	tRandom->Branch("NHitType", HitArray[1].type, "NHitType[NNHits]/I");
+	if (IsMC) tRandom->Branch("MCEvent", &MCEventCopy, MCLeafList);
 
 	InfoOut = new TTree("SumInfo", "Summary information");
 	InfoOut->Branch("Info", &SumInfo,  
@@ -357,57 +423,15 @@ int main(int argc, char **argv)
 	);
 	memset(&SumInfo, 0, sizeof(struct DanssInfoStruct));
 
-	EventChain = new TChain("DanssEvent");
 	EventChain->SetBranchAddress("Data", &DanssEvent);
 	EventChain->SetBranchAddress("HitE", &HitArray[2].E);
 	EventChain->SetBranchAddress("HitT", &HitArray[2].T);
 	EventChain->SetBranchAddress("HitType", &HitArray[2].type);
-	RawChain = new TChain("RawHits");
-	RawChain->SetBranchAddress("RawHits", &RawHits);
+	if (IsMC) EventChain->SetBranchAddress("MCEvent", &MCEvent);
+	if (RawChain) RawChain->SetBranchAddress("RawHits", &RawHits);
 	InfoChain = new TChain("DanssInfo");
 	InfoChain->SetBranchAddress("Info", &DanssInfo);
 
-	ptr = strrchr(argv[1], '.');
-	if (!ptr) {
-		printf("Strange file extention: .txt or .root expected\n");
-		goto fin;
-	}
-
-	if (!strcmp(ptr, ".txt")) {
-
-		fList = fopen(argv[1], "rt");
-		if (!fList) {
-			printf("Can not open list of files %s: %m\n", argv[1]);
-			goto fin;
-		}
-	
-		for(;;) {
-			if (!fgets(str, sizeof(str), fList)) break;
-			ptr = strchr(str, '\n');
-			if (ptr) *ptr = '\0';
-			EventChain->Add(str);
-			RawChain->Add(str);
-			InfoChain->Add(str);
-		}
-		fclose(fList);
-	} else if (!strcmp(ptr, ".root")) {
-		EventChain->Add(argv[1]);
-		if (RawChain) RawChain->Add(argv[1]);
-		InfoChain->Add(argv[1]);
-	} else {
-		printf("Strange file extention: .txt or .root expected\n");
-		goto fin;
-	}
-
-	nEvt = EventChain->GetEntries();
-	rEvt = RawChain->GetEntries();
-	if (rEvt > 0 && rEvt != nEvt) {
-		printf("Event chain (%d) and RawHits chain (%d) do not match\n",  nEvt, rEvt); 
-		goto fin;
-	} else if (rEvt == 0) {
-		delete RawChain;
-		RawChain = NULL;
-	}
 //	printf("EventChain: %d   RawHits: %d\n", nEvt, rEvt);
 	memset(PairCnt, 0, sizeof(PairCnt));
 	memset(&Veto, 0, sizeof(Veto));
@@ -449,6 +473,7 @@ int main(int argc, char **argv)
 					CopyHits(&HitArray[0], &HitArray[2], DanssEvent.NHits);
 					Positron.globalTime += tShift * GFREQ2US;	// assume it here !!!
 					MakePair(&Neutron, &Positron, &Veto, &Shower, &DanssPair);
+					memcpy(&MCEventCopy, &MCEvent, sizeof(MCEvent)); // Copy MC DANSSEvent for positron
 //	look backward
 					for (i=iEvt-1;i>=0;i--) {
 						EventChain->GetEntry(i);
@@ -473,6 +498,7 @@ int main(int argc, char **argv)
 						break;
 					}
 					if (i == nEvt) DanssPair.gtToNext = RSHIFT;	// something large
+					
 					if (iLoop) {
 						tRandom->Fill();
 						PairCnt[1]++;
@@ -496,14 +522,13 @@ int main(int argc, char **argv)
 
 	printf("%Ld events processed with %d randomizing loops - %d/%d pairs found. Aquired time %7.0f s. PickUp count = %d\n", 
 		iEvt, NRANDOM, PairCnt[0], PairCnt[1], SumInfo.upTime / GLOBALFREQ, PickUpCnt);
-fin:
+
 	if (EventChain) delete EventChain;
 	if (InfoChain) delete InfoChain;
 	if (RawChain) delete RawChain;
-
-	InfoOut->Write();
-	tOut->Write();
-	tRandom->Write();
-	fOut->Close();
+	if (InfoOut) InfoOut->Write();
+	if (tOut) tOut->Write();
+	if (tRandom) tRandom->Write();
+	if (fOut) fOut->Close();
 	return 0;
 }

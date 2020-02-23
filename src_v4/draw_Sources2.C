@@ -41,8 +41,8 @@ class MyRandom {
 	static inline double Gaus(double mean = 0, double sigma = 1) {
 		return rnd.Gaus(mean, sigma);
 	};
-	static inline double GausAdd(double val, double sigma) {
-		return rnd.Gaus(val, sqrt(val)*sigma);
+	static inline double GausAdd(double val, double sigma = 0, double csigma = 0) {
+		return rnd.Gaus(val, sqrt(val*sigma*sigma + val*val*csigma*csigma));
 	};
 	static inline double GausAdd2(double val, double sigma) {
 		return rnd.Gaus(val, val*sigma);
@@ -197,7 +197,7 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB,
 	}
 }
 
-void draw_MC(TChain *tMc, const char *name, const char *fname, TCut cXY, TCut cZ, double Efit[2], double kRndm = 0.0)
+void draw_MC(TChain *tMc, const char *name, const char *fname, TCut cXY, TCut cZ, double Efit[2], double kRndm = 0.0, double cRndm = 0.0)
 {
 	char str[256];
 	double rAB;
@@ -228,11 +228,11 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, TCut cXY, TCut cZ
 	TCut cn("SiPmCleanHits > 2");
 	TCut cSel = cxyz && cVeto;
 	
-	sprintf(str, "MyRandom::GausAdd((SiPmCleanEnergy+PmtCleanEnergy)/2.0, %6.4f)", kRndm);
+	sprintf(str, "MyRandom::GausAdd((SiPmCleanEnergy+PmtCleanEnergy)/2.0, %6.4f, %6.4f)", kRndm, cRndm);
 	tMc->Project("hMc", str, cSel && cZ && cXY && cn);
-	sprintf(str, "MyRandom::GausAdd(SiPmCleanEnergy, %6.4f)", kRndm);
+	sprintf(str, "MyRandom::GausAdd(SiPmCleanEnergy, %6.4f, %6.4f)", kRndm, cRndm);
 	tMc->Project("hMcSiPM", str, cSel && cZ && cXY && cn);
-	sprintf(str, "MyRandom::GausAdd(PmtCleanEnergy, %6.4f)", kRndm);
+	sprintf(str, "MyRandom::GausAdd(PmtCleanEnergy, %6.4f, %6.4f)", kRndm, cRndm);
 	tMc->Project("hMcPMT", str, cSel && cZ && cXY && cn);
 	tMc->Project("hMcHits", "SiPmCleanHits", cSel && cZ && cXY);
 
@@ -287,7 +287,7 @@ void Add2Chain(TChain *ch, int from, int to, const char *rootdir, int max_files 
 	}
 }
 
-void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_files = 0)
+void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, double cRndm = 0, int max_files = 0)
 {
 	const char *name = "";
 	char fname[1024];
@@ -433,7 +433,7 @@ void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_fil
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.root", rootdir);
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_center_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
+		sprintf(fname, "22Na_MC_center_rndm_%4.2f_%4.2f_%s", Rndm_or_scale, cRndm, rootdir);
 		break;
 	case 1002:	// Na MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
@@ -442,7 +442,7 @@ void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_fil
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_22Na_90cmPos_glbLY_transcode_rawProc_pedSim.root", rootdir);
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_edge_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
+		sprintf(fname, "22Na_MC_edge_rndm_%4.2f_%4.2f_%s", Rndm_or_scale, cRndm, rootdir);
 		break;
 	case 1101:	// Co MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
@@ -451,7 +451,7 @@ void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_fil
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.root", rootdir);
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_center_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
+		sprintf(fname, "60Co_MC_center_rndm_%4.2f_%4.2f_%s", Rndm_or_scale, cRndm, rootdir);
 		break;
 	case 1102:	// Co MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
@@ -460,7 +460,7 @@ void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_fil
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/%s/MC/DataTakingPeriod01/RadSources/mc_60Co_90cmPos_glbLY_transcode_rawProc_pedSim.root", rootdir);
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_edge_rndm_%4.2f_%s", Rndm_or_scale, rootdir);
+		sprintf(fname, "60Co_MC_edge_rndm_%4.2f_%4.2f_%s", Rndm_or_scale, cRndm, rootdir);
 		break;
 	default:
 		printf("%d - unknown\n", iser);
@@ -484,7 +484,7 @@ void draw_Sources2(int iser, double Rndm_or_scale, int version = 74, int max_fil
 		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, cXY, cZ, Rndm_or_scale, Efit, version);
 		break;
 	case 1:	// MC
-		draw_MC(tMc, name, fname, cXY, cZ, Efit, Rndm_or_scale);
+		draw_MC(tMc, name, fname, cXY, cZ, Efit, Rndm_or_scale, cRndm);
 		break;		
 	default:
 		break;
@@ -569,10 +569,20 @@ void src2mc(const char *expfile, const char *mcfile, const char *newname)
 	fMC->Close();
 }
 
-TH2D *src_scan(const char *src, const char *period)
+double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 {
-	const double Rrndm[2] = {0.07, 0.22};
-	const int Nrndm = 4;
+	double sum;
+	int i;
+	for (i = binMin; i <= binMax; i++) sum += 
+		(hA->GetBinContent(i) - hB->GetBinContent(i)) * (hA->GetBinContent(i) - hB->GetBinContent(i)) /
+		(hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i));
+	return sum;
+}
+
+TH2D *src_scan(const char *src, const char *period, double cRndm)
+{
+	const double Rrndm[2] = {0.02, 0.22};
+	const int Nrndm = 5;
 	double Drndm = (Rrndm[1] - Rrndm[0]) / (Nrndm - 1);
 	const double Rscale[2] = {0.98, 1.04};
 	const int Nscale = 13;
@@ -584,15 +594,29 @@ TH2D *src_scan(const char *src, const char *period)
 	char strs[128], strl[1024];
 	TH1D *hExp[Nscale];
 	TH1D *hMC[Nrndm];
-	TH1D *hRat;
 	TH1D *tmp;
+	double Emin, Emax;
+	int binMin, binMax;
+	double chi2;
 
-	sprintf(strl, "%s-%s-scan.root", src, period);
-	TFile *fOut = new TFile(strl, "RECREATE");
+	gStyle->SetOptStat(0);
+
+	TLegend lg(0.6, 0.75, 0.98, 0.88);
+	TLatex txt;
+	TLine ln;
+	ln.SetLineColor(kCyan);
+	ln.SetLineStyle(kDashed);
+	ln.SetLineWidth(2);
+
+
+	sprintf(strl, "%s-%s-%4.2f-scan.", src, period, cRndm);
+	TString name(strl);
+	
+	TFile *fOut = new TFile((name + "root").Data(), "RECREATE");
 	if (!fOut->IsOpen()) return NULL;
 	
 	sprintf(strs, "h%sscan", src);
-	sprintf(strl, "Scan rndm and scale for %s;Scale;Rndm", src);
+	sprintf(strl, "Scan rndm and scale for %s, const=%4.2f;Scale;Rndm", src, cRndm);
 	h2d = new TH2D(strs, strl, Nscale, Rscale[0] - Dscale/2, Rscale[1] + Dscale/2, Nrndm, Rrndm[0] - Drndm/2, Rrndm[1] + Drndm/2);
 	for (i=0; i<Nscale; i++) {
 		kScale = Rscale[0] + Dscale * i;
@@ -606,11 +630,16 @@ TH2D *src_scan(const char *src, const char *period)
 		hExp[i] = (TH1D*)tmp->Clone(strs);
 		f->Close();
 		delete f;
+		sprintf(strl, "%s @ %s center * %5.3f", src, period, kScale);
+		hExp[i]->SetTitle(strl);
+		hExp[i]->SetLineColor(kRed);
+		hExp[i]->SetMarkerColor(kRed);
+		hExp[i]->SetMarkerStyle(kFullStar);
 	}
 	for (j=0; j<Nrndm; j++) {
 		kScale = Rscale[0] + Dscale * i;
 		kRndm = Rrndm[0] + Drndm * j;
-		sprintf(strl, "%s_MC_center_rndm_%4.2f_root6n8.root", src, kRndm);
+		sprintf(strl, "%s_MC_center_rndm_%4.2f_%4.2f_root6n8.root", src, kRndm, cRndm);
 		f = new TFile(strl);
 		if (!f->IsOpen()) return NULL;
 		tmp = (TH1D*)f->Get("hMc");
@@ -620,20 +649,61 @@ TH2D *src_scan(const char *src, const char *period)
 		hMC[j] = (TH1D*)tmp->Rebin(2, strs);
 		f->Close();
 		delete f;
+		sprintf(strl, "%s @ %s center #oplus %5.3f/#sqrt{E} #oplus %5.3f", src, period, kRndm, cRndm);
+		hMC[j]->SetTitle(strl);
+		hMC[j]->SetLineColor(kBlue);
+		hMC[j]->SetLineWidth(2);
 	}
 
-	hRat = (TH1D*) hExp[0]->Clone("hRat");
+	TCanvas cv("CV", "CV", 1280, 1600);
+	cv.SaveAs((name + "pdf[").Data());
+
+	if (src[0] == '2') {	// 22Na
+//		hRat->Fit("pol0", "Q0", "", 0.6, 2.6);
+		Emin = 0.6;
+		Emax = 2.6;
+	} else {		// 60Co
+//		hRat->Fit("pol0", "Q0", "", 0.8, 3.0);
+		Emin = 0.8;
+		Emax = 3.0;
+	}
+	binMin = hExp[0]->FindBin(Emin + 0.001);
+	binMax = hExp[0]->FindBin(Emax - 0.001);
 
 	for (i=0; i<Nscale; i++) for (j=0; j<Nrndm; j++) {
-		hRat->Divide(hExp[i], hMC[j]);
-		if (src[0] == '2') {	// 22Na
-			hRat->Fit("pol0", "Q0", "", 0.6, 2.6);
-		} else {		// 60Co
-			hRat->Fit("pol0", "Q0", "", 0.8, 3.0);
-		}
-		h2d->SetBinContent(i+1, j+1, hRat->GetFunction("pol0")->GetChisquare());
+		hMC[j]->Scale(hExp[i]->Integral(binMin, binMax) / hMC[j]->Integral(binMin, binMax));
+		chi2 = chi2Diff(hExp[i], hMC[j], binMin, binMax);
+		h2d->SetBinContent(i+1, j+1, chi2);
+		hExp[i]->Draw("e");
+		hMC[j]->Draw("hist,same");
+		lg.Clear();
+		lg.AddEntry(hExp[i], hExp[i]->GetTitle(), "lpe");
+		lg.AddEntry(hMC[j], hMC[j]->GetTitle(), "l");
+		lg.Draw();
+		sprintf(strl, "#chi^{2}/N.d.f. = %6.2g / %d", chi2, binMax - binMin);
+		txt.DrawLatex(2, hExp[i]->GetMaximum() / 10.0, strl);
+		ln.DrawLine(Emin, 0, Emin, hExp[i]->GetMaximum() * 0.6);
+		ln.DrawLine(Emax, 0, Emax, hExp[i]->GetMaximum() * 0.6);
+		cv.Update();
+		cv.SaveAs((name + "pdf").Data());
 	}
 
+	h2d->Draw("box");
+	cv.SaveAs((name + "pdf").Data());
+	h2d->Draw("colorz");
+	cv.SaveAs((name + "pdf").Data());
+	h2d->Draw("lego2");
+	cv.SaveAs((name + "pdf").Data());
+	TH1D * hPrjX = h2d->ProjectionX("__X", 2, 2);
+	hPrjX->SetTitle("^{248}Cm scan profile at Rndm = 7%/#sqrt{E}");
+	hPrjX->Draw("e");
+	cv.SaveAs((name + "pdf").Data());
+	TH1D * hPrjY = h2d->ProjectionY("__Y", 7, 7);
+	hPrjY->SetTitle("^{248}Cm scan profile at scale = 1");
+	hPrjY->Draw("e");
+	cv.SaveAs((name + "pdf").Data());
+
+	cv.SaveAs((name + "pdf]").Data());
 	fOut->cd();
 	h2d->Write();
 	for (i=0; i<Nscale; i++) hExp[i]->Write();
