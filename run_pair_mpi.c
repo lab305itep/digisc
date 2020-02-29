@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 		goto fin;
 	}
 //		The run itself
-	sprintf(str, "./pairbuilder7 %s %s", fin, fout);
+	sprintf(str, "./pairbuilder8 %s %s", fin, fout);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		time and print

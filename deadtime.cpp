@@ -35,6 +35,7 @@
 #include "TH2.h"
 
 #include "evtbuilder.h"
+#define masterTrgRandom 2
 
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
 #define AFTERVETO	(long long) (60 * GFREQ2US)
@@ -51,6 +52,7 @@ int IsVeto(struct DanssEventStruct7 *Event)
 
 int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
 {
+	if (DanssEvent->trigType == masterTrgRandom) return 1;		// ignore 1 Hz trigger
 	if (DanssEvent->VetoCleanHits > 0) return 0;
 	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
 		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;

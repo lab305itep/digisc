@@ -51,21 +51,8 @@
 #define BOTTOMVETOE	3.0	// Make veto from 2 bottom strip layers
 #define RSHIFT		5000.0	// us
 #define NRANDOM		16	// increase random statistics
-//#define ATTENUATION	0.00342	// Signal attenuation for positron energy correction
-//	Old calibration
-//#define CORR_P0		0.179	// Positron energy correction from MC
-//#define CORR_P1		0.929	// Positron energy correction from MC
-//#define CORR_PMT_P0	0.165	// Positron energy correction from MC
-//#define CORR_PMT_P1	0.929	// Positron energy correction from MC
-//#define CORR_SIPM_P0	0.187	// Positron energy correction from MC + 34 keV from SiPM to PMT comparison
-//#define CORR_SIPM_P1	0.920	// Positron energy correction from MC
-//	New calibration
-//#define CORR_P0		0.130	// Positron energy correction from MC 
-//#define CORR_P1		0.976	// Positron energy correction from MC
-//#define CORR_PMT_P0	0.125	// Positron energy correction from MC
-//#define CORR_PMT_P1	0.948	// Positron energy correction from MC
-//#define CORR_SIPM_P0	0.104	// Positron energy correction from MC
-//#define CORR_SIPM_P1	0.997	// Positron energy correction from MC
+#define SHOWERMIN	800	// 800 MeV shower event threshold
+#define TISOLATION	120	// isolation us for random positron windows
 //	No correction
 #define CORR_P0		0	// Positron energy correction from MC 
 #define CORR_P1		1.0	// Positron energy correction from MC
@@ -74,9 +61,19 @@
 #define CORR_SIPM_P0	0	// Positron energy correction from MC
 #define CORR_SIPM_P1	1.0	// Positron energy correction from MC
 
-#define SHOWERMIN	800	// 800 MeV shower event threshold
-
 #define iMaxDataElements 3000
+#define masterTrgRandom 2
+
+#define FLAG_IGNORE	1
+#define FLAG_NEUTRON	2
+#define FLAG_POSITRON	4
+#define FLAG_VETO	8
+#define FLAG_SHOWER	16
+
+struct TrigArrayStruct {
+	long long globalTime;
+	int flags;
+};
 
 struct HitStruct {
 	float			E[iMaxDataElements];
@@ -130,10 +127,12 @@ void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
 	memcpy(to->type, from->type, N * sizeof(struct HitTypeStruct));
 }
 
-int IsPickUp(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
+int IsIgnore(struct DanssEventStruct7 *DanssEvent, struct RawHitInfoStruct *RawHits)
 //	"(PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3"
 {
+	if (DanssEvent->trigType == masterTrgRandom) return 1;		// ignore 1 Hz triggers
 	if (DanssEvent->VetoCleanHits > 0) return 0;	// never kill VETO trigger
+	if (!RawHits) return 0;
 	if ((RawHits->PmtCnt > 0 && 1.0 * DanssEvent->PmtCleanHits / RawHits->PmtCnt < 0.3) ||
 		1.0 * DanssEvent->SiPmHits / RawHits->SiPmCnt < 0.3) return 1;
 	return 0;
@@ -293,7 +292,6 @@ int main(int argc, char **argv)
 		"DirX/D:DirY/D:DirZ/D:"
 		"TimelineShift/D:"
 		"FluxFlag/B";
-
 	
 	struct DanssPairStruct7		DanssPair;
 	struct DanssEventStruct7	DanssEvent;
@@ -307,7 +305,7 @@ int main(int argc, char **argv)
 	struct RawHitInfoStruct		RawHits;
 	struct MCEventStruct		MCEvent;
 	struct MCEventStruct		MCEventCopy;
-
+	struct TrigArrayStruct		*TrigArray = NULL;
 	TChain *EventChain = NULL;
 	TChain *InfoChain = NULL;
 	TChain *RawChain = NULL;
@@ -319,32 +317,32 @@ int main(int argc, char **argv)
 	char str[1024];
 	char strl[1600];
 	long long iEvt, nEvt, rEvt;
-	int PairCnt[2];
+	int PairCnt[2], WinCnt[3];
 	int PickUpCnt;
 	int i;
 	int iLoop;
 	float tShift;
 	char *ptr;
 	int IsMC = 0;
-	
+	int LoopCnt, inCnt, outCnt, gtDiff;
+//			Check number of arguments
 	if (argc < 3) {
 		printf("Usage: %s list_file.txt|input_file.root output_file.root\n", argv[0]);
 		printf("Will process files in the list_file and create root-file\n");
 		return 10;
 	}
-
+//			The first argument must be a single root file or a list
 	ptr = strrchr(argv[1], '.');
 	if (!ptr) {
 		printf("Strange file extention: .txt or .root expected\n");
 		return 15;
 	}
-
+//			Create Input chains
 	EventChain = new TChain("DanssEvent");
 	RawChain = new TChain("RawHits");
 	InfoChain = new TChain("DanssInfo");
-
+//			Add files to input chains
 	if (!strcmp(ptr, ".txt")) {
-
 		fList = fopen(argv[1], "rt");
 		if (!fList) {
 			printf("Can not open list of files %s: %m\n", argv[1]);
@@ -368,7 +366,7 @@ int main(int argc, char **argv)
 		printf("Strange file extention: .txt or .root expected\n");
 		return 30;
 	}
-
+//			Check RawHits
 	nEvt = EventChain->GetEntries();
 	rEvt = RawChain->GetEntries();
 	if (rEvt > 0 && rEvt != nEvt) {
@@ -378,22 +376,22 @@ int main(int argc, char **argv)
 		delete RawChain;
 		RawChain = NULL;
 	}
-
+//			Is this MC ?
 	if(EventChain->GetBranch("MCEvent")) IsMC = 1;
-
+//			Create output directory
 	strncpy(str, argv[2], sizeof(str));
 	sprintf(strl, "mkdir -p %s", dirname(str));
 	if (system(strl)) {
 		printf("Can not crete target directory: %m\n");
 		return -5;
 	}
-
+//			Open output file
 	fOut = new TFile(argv[2], "RECREATE");
 	if (!fOut->IsOpen()) {
 		printf("Can not open the output file %s: %m\n", argv[2]);
 		return -10;
 	}
-
+//			Create output Chains
 	tOut = new TTree("DanssPair", "Time Correlated events");
 	tOut->Branch("Pair", &DanssPair, LeafList);
 	tOut->Branch("PHitE", HitArray[0].E, "PHitE[NPHits]/F");
@@ -422,7 +420,7 @@ int main(int argc, char **argv)
 		"events/L"		// number of events
 	);
 	memset(&SumInfo, 0, sizeof(struct DanssInfoStruct));
-
+//			Set input branch addresses
 	EventChain->SetBranchAddress("Data", &DanssEvent);
 	EventChain->SetBranchAddress("HitE", &HitArray[2].E);
 	EventChain->SetBranchAddress("HitT", &HitArray[2].T);
@@ -430,57 +428,102 @@ int main(int argc, char **argv)
 	if (IsMC) EventChain->SetBranchAddress("MCEvent", &MCEvent);
 	if (RawChain) RawChain->SetBranchAddress("RawHits", &RawHits);
 	InfoChain->SetBranchAddress("Info", &DanssInfo);
+//			Create trigger arryay to facilitate searches
+	TrigArray = (struct TrigArrayStruct *) malloc(nEvt * sizeof(struct TrigArrayStruct));
+	if (!TrigArray) {
+		printf("TrigArray[%d] memery allocation failed: %m\n", nEvt);
+		goto fin;
+	}
+	for (iEvt =0; iEvt < nEvt; iEvt++) {
+		EventChain->GetEntry(iEvt);
+		if (RawChain) RawChain->GetEntry(iEvt);
+		TrigArray[iEvt].globalTime = DanssEvent.globalTime;
+		TrigArray[iEvt].flags = 0;
+		if ((RawChain) ? IsIgnore(&DanssEvent, &RawHits) : IsIgnore(&DanssEvent, NULL)) TrigArray[iEvt].flags |= FLAG_IGNORE;
+		if (IsNeutron(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_NEUTRON;
+		if (IsPositron(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_POSITRON;
+		if (IsVeto(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_VETO;
+		if (IsShower(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_SHOWER;
+	}
 
 //	printf("EventChain: %d   RawHits: %d\n", nEvt, rEvt);
 	memset(PairCnt, 0, sizeof(PairCnt));
+	memset(WinCnt, 0, sizeof(WinCnt));
 	memset(&Veto, 0, sizeof(Veto));
 	memset(&Shower, 0, sizeof(Shower));
 	PickUpCnt = 0;
 	for (iEvt =0; iEvt < nEvt; iEvt++) {
-		EventChain->GetEntry(iEvt);
-		if (RawChain) RawChain->GetEntry(iEvt);
-		if (RawChain && IsPickUp(&DanssEvent, &RawHits)) {
+		if (TrigArray[iEvt].flags & FLAG_IGNORE) {
 			PickUpCnt++;
-			continue;	// ignore PickUp events
+			continue;	// ignore PickUp and 1 Hz events
 		}
+		EventChain->GetEntry(iEvt);
 //	Shower
-		if (IsShower(&DanssEvent)) memcpy(&Shower, &DanssEvent, sizeof(struct DanssEventStruct7));
+		if (TrigArray[iEvt].flags & FLAG_SHOWER) memcpy(&Shower, &DanssEvent, sizeof(struct DanssEventStruct7));
 //	Veto
-		if (IsVeto(&DanssEvent)) {
+		if (TrigArray[iEvt].flags & FLAG_VETO) {
 			memcpy(&Veto, &DanssEvent, sizeof(struct DanssEventStruct7));
 			continue;
 		}
 //	Get Neutron
-		if (IsNeutron(&DanssEvent)) {
+		if (TrigArray[iEvt].flags & FLAG_NEUTRON) {
 			memcpy(&Neutron, &DanssEvent, sizeof(struct DanssEventStruct7));
 			CopyHits(&HitArray[1], &HitArray[2], DanssEvent.NHits);
-			for (iLoop = 0; iLoop <= NRANDOM; iLoop++) {
+			LoopCnt = 0;
+			WinCnt[0]++;
+			for (iLoop = 0; LoopCnt <= NRANDOM; iLoop++) {
 				tShift = iLoop * RSHIFT;
-//	Now look backward for positron in the region ([-50, 0] - iLoop*RSHIFT) us
-				for (i=iEvt-1; i>=0; i--) {
-					EventChain->GetEntry(i);
-					if (RawChain) RawChain->GetEntry(i);
-					if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
-					if (Neutron.globalTime - DanssEvent.globalTime >= (MAXTDIFF + tShift) * GFREQ2US) break;		// not found
-					if (Neutron.globalTime - DanssEvent.globalTime >= tShift * GFREQ2US && IsPositron(&DanssEvent)) break;	// found
-					if (Neutron.globalTime - DanssEvent.globalTime < 0) break;
+				if (iLoop) {	// check the isolation window - looking backward from neutron and around the signal/background window
+					WinCnt[1]++;
+					inCnt = outCnt = 0;
+					for (i=iEvt-1; i>=0; i--) {
+						if (TrigArray[i].flags & FLAG_IGNORE) continue;
+						gtDiff = TrigArray[i].globalTime + tShift * GFREQ2US - Neutron.globalTime;
+						if (gtDiff >= -TISOLATION * GFREQ2US && gtDiff < -MAXTDIFF * GFREQ2US) {
+							outCnt++;		// outer count
+						} else if (gtDiff >= -MAXTDIFF * GFREQ2US && gtDiff < 0) {
+							if (TrigArray[i].flags & FLAG_POSITRON) {
+								inCnt++;
+							} else {
+								outCnt++;
+							}
+						} else if (gtDiff >= 0 && gtDiff <= TISOLATION * GFREQ2US) {
+							outCnt++;
+						} else if (gtDiff < -TISOLATION * GFREQ2US) {
+							break;		// end of search
+						}
+					}
+					if (inCnt > 1 || outCnt > 0) {
+						WinCnt[2]++;
+						continue;		// don't count this window because of isolation cut
+					}
 				}
-				if (Neutron.globalTime - DanssEvent.globalTime < 0 || i < 0) break;
-//	less than 50 us from neutron
-				if (Neutron.globalTime - DanssEvent.globalTime < (MAXTDIFF + tShift) * GFREQ2US && i >= 0) {
+//	Now look backward for positron in the region ([-50, 0] - iLoop*RSHIFT) us
+				inCnt = 0;
+				for (i=iEvt-1; i>=0; i--) {
+					if (TrigArray[i].flags & FLAG_IGNORE) continue;
+					gtDiff = TrigArray[i].globalTime + tShift * GFREQ2US - Neutron.globalTime;
+					if (gtDiff >= -MAXTDIFF * GFREQ2US && gtDiff < 0 && (TrigArray[i].flags & FLAG_POSITRON)) {
+						inCnt++;
+						break;
+					}
+					if (gtDiff < -MAXTDIFF * GFREQ2US) break;
+				}
+				if (inCnt) {	// Positron found
+					EventChain->GetEntry(i);
 					memcpy(&Positron, &DanssEvent, sizeof(struct DanssEventStruct7));
 					CopyHits(&HitArray[0], &HitArray[2], DanssEvent.NHits);
 					Positron.globalTime += tShift * GFREQ2US;	// assume it here !!!
 					MakePair(&Neutron, &Positron, &Veto, &Shower, &DanssPair);
-					memcpy(&MCEventCopy, &MCEvent, sizeof(MCEvent)); // Copy MC DANSSEvent for positron
+					if (IsMC) memcpy(&MCEventCopy, &MCEvent, sizeof(MCEvent)); // Copy MC DANSSEvent for positron
+//				Isolation for Neutron position
 //	look backward
 					for (i=iEvt-1;i>=0;i--) {
-						EventChain->GetEntry(i);
-						if (RawChain) RawChain->GetEntry(i);
-						if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
-						if (DanssEvent.globalTime > Positron.globalTime) {
+						if (TrigArray[i].flags & FLAG_IGNORE) continue;
+						if (TrigArray[i].globalTime > Positron.globalTime) {
 							DanssPair.EventsBetween++;						
-						} else if (DanssEvent.globalTime < Positron.globalTime) {
+						} else if (TrigArray[i].globalTime < Positron.globalTime) {
+							EventChain->GetEntry(i);
 							DanssPair.gtFromPrevious = (Positron.globalTime - DanssEvent.globalTime) / GFREQ2US;
 							DanssPair.PreviousEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
 							break;
@@ -488,16 +531,15 @@ int main(int argc, char **argv)
 					}
 					if (i == 0) DanssPair.gtFromPrevious = RSHIFT;	// something large
 //	look forward
-					for (i=iEvt+1;i < nEvt;i++) { 
+					for (i=iEvt+1;i<nEvt;i++) { 
+						if (TrigArray[i].flags & FLAG_IGNORE) continue;
 						EventChain->GetEntry(i);
-						if (RawChain) RawChain->GetEntry(i);
-						if (RawChain && IsPickUp(&DanssEvent, &RawHits)) continue;	// ignore PickUp events
 						DanssPair.gtToNext = (DanssEvent.globalTime - Positron.globalTime) / GFREQ2US;
 						DanssPair.NextEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
 						break;
 					}
 					if (i == nEvt) DanssPair.gtToNext = RSHIFT;	// something large
-					
+//	Fill proper tree
 					if (iLoop) {
 						tRandom->Fill();
 						PairCnt[1]++;
@@ -506,6 +548,7 @@ int main(int argc, char **argv)
 						PairCnt[0]++;
 					}
 				}
+				LoopCnt++;
 			}
 		}
 	}
@@ -521,7 +564,9 @@ int main(int argc, char **argv)
 
 	printf("%Ld events processed with %d randomizing loops - %d/%d pairs found. Aquired time %7.0f s. PickUp count = %d\n", 
 		iEvt, NRANDOM, PairCnt[0], PairCnt[1], SumInfo.upTime / GLOBALFREQ, PickUpCnt);
+	printf("%d neutron candidates; %d windows checked; %d windows rejected\n", WinCnt[0], WinCnt[1], WinCnt[2]);
 
+fin:
 	if (EventChain) delete EventChain;
 	if (InfoChain) delete InfoChain;
 	if (RawChain) delete RawChain;
@@ -529,5 +574,6 @@ int main(int argc, char **argv)
 	if (tOut) tOut->Write();
 	if (tRandom) tRandom->Write();
 	if (fOut) fOut->Close();
+	if (TrigArray) free(TrigArray);
 	return 0;
 }

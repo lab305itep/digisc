@@ -36,7 +36,8 @@ const struct PeriodsStruct PeriodList[] = {
 	{"Main", "Oct 16 - Dec 19 (main)", 1, {{6010, 74720}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Main1", "Oct 16 - Dec 19 without Apr - Jul 17 (main1)", 1, {{6010, 17848}, {24776, 74720}, {0, 0}, {0, 0}, {0, 0}}},
 	{"MainA", "Oct 16 - Dec 19, no long down @March19 (mainA)", 1, {{6010, 58024}, {59971, 74720}, {0, 0}, {0, 0}, {0, 0}}},
-	{"MainA1", "Oct 16 - Dec 19 without Apr - Jul 17, no long down @March19(mainA1)", 1, {{6010, 17848}, {24776, 58024}, {59971, 74720}, {0, 0}, {0, 0}}},
+	{"MainA1", "Oct 16 - Dec 19 without Apr - Jul 17, no long down @March19 (mainA1)", 1, {{6010, 17848}, {24776, 58024}, {59971, 74720}, {0, 0}, {0, 0}}},
+	{"March19", "March 19 excluded period (march19)", 1, {{58025, 59970}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Cmp4", "Oct 16 - Jul 17 (campaign 4)", 1, {{6010, 23059}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Cmp5", "Aug 17 - Jan 19 (campaign 5)", 1, {{24776, 54595}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Cmp6", "Feb 19 - Dec 19 (campaign 6)", 1, {{56626, 74720}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
@@ -1014,6 +1015,8 @@ void danss_calc_ratio_v6(const char *fname, double bgScale = 5.6/2.5, double Nsc
 		sprintf(strs, "hDown_%s", PeriodList[i].name);
 		sprintf(strm, "hUp_%s", PeriodList[i].name);
 		sprintf(strl, "hDownUp_%s", PeriodList[i].name);
+		if (((TH1D*) gROOT->FindObject(strm))->Integral() < 10) continue;
+		if (((TH1D*) gROOT->FindObject(strs))->Integral() < 10) continue;
 		sprintf(str, "Ratio Down/Up %s;Positron energy, MeV;#frac{N_{DOWN}}{N_{UP}}", PeriodList[i].title);
 		draw_single_ratio(strs, strm, strl, str, 0.6, 0.9);
 		cv->Update();
@@ -1026,6 +1029,7 @@ void danss_calc_ratio_v6(const char *fname, double bgScale = 5.6/2.5, double Nsc
 		sprintf(strs, "hMid_%s", PeriodList[i].name);
 		sprintf(strm, "hUp_%s", PeriodList[i].name);
 		sprintf(strl, "hMidUp_%s", PeriodList[i].name);
+		if (((TH1D*) gROOT->FindObject(strm))->Integral() < 10) continue;
 		if (((TH1D*) gROOT->FindObject(strs))->Integral() < 10) continue;
 		sprintf(str, "Ratio Mid/Up %s;Positron energy, MeV;#frac{N_{MID}}{N_{UP}}", PeriodList[i].title);
 		draw_single_ratio(strs, strm, strl, str, 0.6, 0.9);
@@ -1040,6 +1044,7 @@ void danss_calc_ratio_v6(const char *fname, double bgScale = 5.6/2.5, double Nsc
 		sprintf(strm, "hMid_%s", PeriodList[i].name);
 		sprintf(strl, "hDownMid_%s", PeriodList[i].name);
 		if (((TH1D*) gROOT->FindObject(strm))->Integral() < 10) continue;
+		if (((TH1D*) gROOT->FindObject(strs))->Integral() < 10) continue;
 		sprintf(str, "Ratio Down/Mid %s;Positron energy, MeV;#frac{N_{DOWN}}{N_{MID}}", PeriodList[i].title);
 		draw_single_ratio(strs, strm, strl, str, 0.6, 0.9);
 		cv->Update();

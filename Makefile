@@ -6,7 +6,7 @@ ROOTLIB = $(shell root-config --libs)
 ROOTINC = $(shell root-config --cflags)
 DIGILIB = -lReadDigiData
 
-All: digi_evtbuilder6_v3 pairbuilder7 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
+All: digi_evtbuilder6_v3 pairbuilder8 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
     run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi rootcheck deadchannels \
     hittree run_hits_mpi cmbuilder spectr6 background_calc_72g
 
@@ -55,6 +55,9 @@ pairbuilder6: pairbuilder6.cpp
 pairbuilder7: pairbuilder7.cpp
 	g++ $^ -g -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
+pairbuilder8: pairbuilder8.cpp
+	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
+
 deadtime: deadtime.cpp
 	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
@@ -92,4 +95,4 @@ pmt2sipm: pmt2sipm.cpp HPainter2.cpp
 	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
 clean:
-	-rm -f digi_evtbuilder5 digi_evtbuilder6_v* pairbuilder6 run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi spectr5w *.o
+	-rm -f digi_evtbuilder5 digi_evtbuilder6_v* pairbuilder8 run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi spectr5w *.o
