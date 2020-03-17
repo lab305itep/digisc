@@ -10,15 +10,16 @@
  ****************************************/
 
 #define NHISTS 24
+#define THISTS 4
 void background_calc(const char *name, int run_first, int run_last, TCut cAux = (TCut) "")
 {
 	char strs[128];
 	char strl[1024];
-	const char titles[NHISTS][16] = {
+	const char *titles[] = {
 		"gtDiff", "R1",  "R2",  "RZ", "PX", "PY", "PZ",  "NX",   "NY",  "NZ", 
 		"NE",     "NH",  "PH",  "AH", "AE", "AM", "AMO", "P2AZ", "AH1", "AE1", 
 		"P2AZ1",  "PX1", "PY1", "PZ1"};
-	const char titlel[NHISTS][256] = {
+	const char *titlel[] = {
 		"Time from positron to neutron;us",
 		"Distance between positron and neutron, 2D;cm", "Distance between positron and neutron, 3D;cm", "Distance between positron and neutron, Z;cm", 
 		"Positron vertex X;cm", "Positron vertex Y;cm", "Positron vertex Z;cm", 
@@ -31,9 +32,13 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		"Distance from the cluster to the closest hit outside the single hit cluster, Z;cm",
 		"Positron vertex X, single hit cluster;cm", "Positron vertex Y, single hit cluster;cm", "Positron vertex Z, single hit cluster;cm"
 	};
+	const char *ttitles[] = {"TSHOWER", "TMUON", "TBEFORE", "TAFTER"};
+	const char *ttitlel[] = {"Time from showering event;us", "Time from muon event;us", "Time from non-muon event;us", "Time after neutron;us"};
 	TH1D *h[NHISTS][3];
+	TH1D *hT[THISTS];
 	int i, j;
 	const char *ptr;
+	const char *what;
 //		Main cuts
 	TCut cVeto("gtFromVeto > 60");
 	TCut cMuonA("gtFromVeto == 0");
@@ -51,7 +56,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
         TCut cR1("Distance < 45");
         TCut cR2("Distance < 55");
         TCut cR = cR2 && (cRXY || cR1);
-        TCut cN("NeutronEnergy > 3.5 && NeutronEnergy < 15.0 && NeutronHits >= 3");
+        TCut cN("NeutronEnergy > 3.5 && NeutronEnergy < 10.0 && NeutronHits >= 3 && NeutronHits < 20");
 //        TCut cNZ("NeutronX[2] < 95.5");
         TCut cNZ("1");
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 2 || AnnihilationEnergy < 0.2 || MinPositron2GammaZ > 15))");
@@ -118,6 +123,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 			break;
 		}
 	}
+	for (i=0; i<THISTS; i++) hT[i] = new TH1D(ttitles[i], ttitlel[i], 250, 0, 500);
 
 	ptr = getenv("PAIR_DIR");
 	if (!ptr) ptr = "/home/clusters/rrcmpi/alekseev/igor/pair7n";
@@ -181,8 +187,32 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		hp->Project(h[23][j], "PositronX[2] + 0.5", ct && cv[j] && cAux);
 	}
 	
+	for (i=0; i<THISTS; i++) {
+		ct = cX && cY && cZ && cR && cPe && cGamma && cGammaMax && cN && cNZ && cSingle && "EventsBetween == 0";
+		switch(i) {
+		case 0:
+			what = "gtFromShower";
+			ct = ct && TCut("gtToNext > 80");
+			break;
+		case 1:
+			what = "gtFromVeto";
+			ct = ct && TCut("gtToNext > 80 && gtFromShower > 200");
+			break;
+		case 2:
+			what = "gtFromPrevious";
+			ct = ct && TCut("gtToNext > 80 && gtFromShower > 200 && gtFromVeto > gtFromPrevious");
+			break;
+		case 3:
+			what = "gtToNext - gtDiff";
+			ct = ct && TCut("gtFromShower > 200 && gtFromVeto > 60 && gtFromPrevious > 45");
+			break;
+		}
+		hp->Project(hT[i], what, ct);
+	}
+	
 	fRoot->cd();
 	for (i=0; i<NHISTS; i++) for (j=0; j<3; j++) h[i][j]->Write();
+	for (i=0; i<THISTS; i++) hT[i]->Write();
 	delete hp;
 	fRoot->Close();
 }
