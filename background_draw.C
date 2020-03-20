@@ -1,30 +1,36 @@
 #define NHISTS 24
+#define THISTS 5
 
 void background_draw(const char *rootname = "background_plots2.root")
 {
 	char strs[128];
 	char strl[1024];
-	const char titles[NHISTS][16] = {
+	const char *titles[] = {
 		"gtDiff", "R1",  "R2",  "RZ", "PX", "PY", "PZ",  "NX",   "NY",  "NZ", 
                 "NE",     "NH",  "PH",  "AH", "AE", "AM", "AMO", "P2AZ", "AH1", "AE1", 
                 "P2AZ1",  "PX1", "PY1", "PZ1"};
-	const char suffix[4][10] = {"A-rand", "A-diff", "B-diff", "C-diff"};
+        const char *ttitles[] = {"TSHOWER", "TMUON", "TBEFORE", "TAFTER", "TAFTERP"};
+	const char *suffix[] = {"A-rand", "A-diff", "B-diff", "C-diff"};
 	const Color_t color[4] = {kGreen+2, kBlue, kRed, kOrange};
 	const int marker[4] = {kOpenCircle, kFullCircle, kOpenSquare, kOpenStar};
 	const float Cut[NHISTS][2] = {
 		{2.0, -50.0},  {45.0, -50.0}, {55.0, -50.0},  {-50.0, -50.0}, {4.0, 96.0},
 		{4.0, 96.0},   {4.0, 96.0},   {-50.0, -50.0}, {-50.0, -50.0}, {-50.0, -50.0},
-		{3.5, 15.0},   {3.0, -50.0},  {-50.0, -50.0}, {0.0, 11.0},    {0.0, 1.8},
-		{0.8, -50.0},  {0.8, -50.0},  {-50.0, -50.0}, {2.0, 11.0},    {0.2, 1.8},
+		{3.5, 9.5},    {3.0, 20.0},   {1.0, 7.0},     {0.0, 9.0},     {0.0, 1.8},
+		{0.8, -50.0},  {0.8, -50.0},  {-50.0, -50.0}, {2.0, 9.0},     {0.2, 1.8},
 		{15.0, -50.0}, {4.0, 96.0},   {4.0, 96.0},    {4.0, 96.0}
 	};
 	TH1D *h[NHISTS][4];
+	TH1D *hT[THISTS];
 	int i, j;
 	double hMax;
 	int iMax;
 	char pdfname[1024];
 	char *ptr;
 	TLine ln;
+	double upTime;
+	TH1 *hConst;
+	TLatex txt;
 
 	strcpy(pdfname, rootname);
 	ptr = strstr(pdfname, ".root");
@@ -52,6 +58,20 @@ void background_draw(const char *rootname = "background_plots2.root")
 		printf("root-file %s not found  - run background_calc() first!\n", rootname);
 		return;
 	}
+	hConst = (TH1 *) fRoot->Get("hConst");
+	if (!hConst) {
+		printf("Strange root-file: %s - hConst not found - run background_calc() first!\n", rootname);
+		delete fRoot;
+		return;
+	}
+	i = hConst->GetXaxis()->FindBin("gTime");
+	if (i <= 0) {
+		printf("Strange root-file: %s - gTime not found in hConst - run background_calc() first!\n", rootname);
+		delete fRoot;
+		return;
+	}
+	upTime = hConst->GetBinContent(i);
+	
 	for (i=0; i<NHISTS; i++) {
 		for (j=0; j<4; j++) {
 			sprintf(strs, "h%s%s", titles[i], suffix[j]);
@@ -61,16 +81,35 @@ void background_draw(const char *rootname = "background_plots2.root")
 				fRoot->Close();
 				return;
 			}
+			h[i][j]->Scale(24*3600.0/upTime);
+			h[i][j]->GetYaxis()->SetTitle("Evt/day/bin");
+			h[i][j]->GetYaxis()->SetLabelSize(0.05);
 			h[i][j]->SetLineWidth(2);
 			h[i][j]->SetLineColor(color[j]);
 			h[i][j]->SetMarkerColor(color[j]);
 			h[i][j]->SetMarkerStyle(marker[j]);
-			h[i][j]->GetYaxis()->SetLabelSize(0.05);
-			h[i][j]->SetMinimum(0);
-			h[i][j]->GetYaxis()->SetTitle("");
+			h[i][j]->SetMinimum(0.0);
 		}
 	}
-	
+
+	for (i=0; i<THISTS; i++) {
+		sprintf(strs, "%s-sig", ttitles[i]);
+		hT[i] = (TH1D*) fRoot->Get(strs);
+		if (!hT[i]) {
+			printf("%s not found - rerun background_calc() to create all hists!\n", strs);
+			fRoot->Close();
+			return;
+		}
+		hT[i]->Scale(24*3600.0/upTime);
+		hT[i]->GetYaxis()->SetTitle("Evt/day/bin");
+		hT[i]->GetYaxis()->SetLabelSize(0.05);
+		hT[i]->SetLineWidth(2);
+		hT[i]->SetLineColor(kBlue);
+		hT[i]->SetMarkerColor(kBlue);
+		hT[i]->SetMarkerStyle(kFullCircle);
+		hT[i]->SetMinimum(0.0);
+	}
+
 	TCanvas *cv = new TCanvas("CV", "Background plots", 1200, 900);
 	TLegend *lg = new TLegend(0.7, 0.8, 0.95, 0.95);
 	lg->AddEntry(h[0][0], "Random", "LP");
@@ -84,7 +123,6 @@ void background_draw(const char *rootname = "background_plots2.root")
 	
 	for (i=0; i<NHISTS; i++) {
 		cv->Clear();
-
 		hMax = 0;
 		iMax = 0;
 		for (j=0; j<3; j++) if (h[i][j]->GetMaximum() > hMax) {
@@ -95,6 +133,44 @@ void background_draw(const char *rootname = "background_plots2.root")
 		for (j=0; j<4; j++) if (j != iMax) h[i][j]->Draw("same");
 		for (j=0; j<2; j++) if (Cut[i][j] > -1.0) ln.DrawLine(Cut[i][j], 0, Cut[i][j], hMax);
 		lg->Draw();
+		cv->SaveAs(pdfname);
+	}
+	
+	TF1 *fExpo = new TF1("fExpo", "expo", 0, 500);
+	TF1 *fExpo2 = new TF1("fExpo2", "expo(0)+expo(2)", 0, 500);
+	txt.SetTextSize(0.07);
+	
+	for (i=0; i<THISTS; i++) {
+		switch(i) {
+		case 0:	// TSHOWER
+			hT[i]->Fit("fExpo", "Q", "", 65, 200);
+			sprintf(strl, "#tau = %5.1f us", -1.0/fExpo->GetParameter(1));
+			txt.DrawLatexNDC(0.65, 0.7, strl);
+			break;
+		case 1:	// TMUON
+			hMax = hT[i]->GetMaximum();
+			fExpo2->SetParameters(TMath::Log(hMax), -1/12., TMath::Log(hMax/10.), -1./1000);
+			hT[i]->Fit("fExpo2", "Q", "", 15, 200);
+			sprintf(strl, "#tau = %5.1f us", -1.0/fExpo2->GetParameter(1));
+			txt.DrawLatexNDC(0.65, 0.7, strl);
+			break;
+		case 2:	// TBEFORE
+			hT[i]->Fit("fExpo2", "Q", "", 10, 200);
+			sprintf(strl, "#tau = %5.1f us", -1.0/fExpo2->GetParameter(1));
+			txt.DrawLatexNDC(0.65, 0.7, strl);
+			break;
+		case 3:	// TAFTER
+			hT[i]->Fit("fExpo2", "Q", "", 5, 200);
+			sprintf(strl, "#tau = %5.1f us", -1.0/fExpo2->GetParameter(1));
+			txt.DrawLatexNDC(0.65, 0.7, strl);
+			break;
+		case 4:	// TAFTERP
+			hT[i]->Fit("fExpo2", "Q", "", 50, 200);
+			sprintf(strl, "#tau = %5.1f us", -1.0/fExpo2->GetParameter(1));
+			txt.DrawLatexNDC(0.65, 0.7, strl);
+			break;
+		}
+		txt.DrawLatexNDC(0.65, 0.7, strl);
 		cv->SaveAs(pdfname);
 	}
 	

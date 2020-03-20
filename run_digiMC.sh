@@ -58,6 +58,11 @@ do_muons()
 	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim_0.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS0.root
 }
 
+do_muons_a()
+{
+	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_cutted_energy.digi.bz2  0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons_cutted_energy/DANSS.root
+}
+
 do_sources()
 {
 	${EXE} ${DIGI}/12B/mc_12B_glbLY_transcode_rawProc_pedSim.digi.bz2                    0x70000 ${OUTDIR}/12B        -mcfile ${MCRAW}/12B/DANSS.root
@@ -78,7 +83,8 @@ do_sources()
 	${EXE} ${DIGI}/RadSources/mc_248Cm_92_5cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_92_5_cm_pos/DANSS.root
 }
 
-do_sources
-do_fuelLarge
+#do_sources
+#do_fuelLarge
+do_muons_a
 
 exit 0
