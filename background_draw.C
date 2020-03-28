@@ -1,7 +1,7 @@
 #define NHISTS 24
 #define THISTS 5
 
-void background_draw(const char *rootname = "background_plots2.root")
+void background_draw(const char *rootname, const char *mcname)
 {
 	char strs[128];
 	char strl[1024];
@@ -21,6 +21,7 @@ void background_draw(const char *rootname = "background_plots2.root")
 		{15.0, -50.0}, {4.0, 96.0},   {4.0, 96.0},    {4.0, 96.0}
 	};
 	TH1D *h[NHISTS][4];
+	TH1D *hMC[NHISTS];
 	TH1D *hT[THISTS];
 	int i, j;
 	double hMax;
@@ -72,6 +73,7 @@ void background_draw(const char *rootname = "background_plots2.root")
 	}
 	upTime = hConst->GetBinContent(i);
 	
+	
 	for (i=0; i<NHISTS; i++) {
 		for (j=0; j<4; j++) {
 			sprintf(strs, "h%s%s", titles[i], suffix[j]);
@@ -89,6 +91,20 @@ void background_draw(const char *rootname = "background_plots2.root")
 			h[i][j]->SetMarkerColor(color[j]);
 			h[i][j]->SetMarkerStyle(marker[j]);
 			h[i][j]->SetMinimum(0.0);
+		}
+	}
+
+	memset(hMC, 0, sizeof(hMC));
+	if (mcname) {
+		TFile *fMC = new TFile(mcname);
+		if (fMC->IsOpen()) {
+			for (i=0; i<NHISTS; i++) {
+				sprintf(strs, "h%s_MC", titles[i]);
+				hMC[i] = (TH1D*) fMC->Get(strs);
+				if (!hMC[i]) continue;
+				hMC[i]->Scale(h[i][1]->Integral() / hMC[i]->Integral());
+				hMC[i]->SetLineColor(kBlack);
+			}
 		}
 	}
 
@@ -116,6 +132,7 @@ void background_draw(const char *rootname = "background_plots2.root")
 	lg->AddEntry(h[0][1], "Neutrino", "LP");
 	lg->AddEntry(h[0][2], "Cosmic-A", "LP");
 	lg->AddEntry(h[0][3], "Cosmic-B", "LP");
+	if (hMC[0]) lg->AddEntry(hMC[0], "Monte-Carlo", "L");
 	lg->AddEntry(&ln, "Cut(s)", "L");
 	
 	sprintf(strl, "%s[", pdfname);
@@ -131,6 +148,7 @@ void background_draw(const char *rootname = "background_plots2.root")
 		}
 		h[i][iMax]->Draw();
 		for (j=0; j<4; j++) if (j != iMax) h[i][j]->Draw("same");
+		if (hMC[i]) hMC[i]->Draw("same,hist");
 		for (j=0; j<2; j++) if (Cut[i][j] > -1.0) ln.DrawLine(Cut[i][j], 0, Cut[i][j], hMax);
 		lg->Draw();
 		cv->SaveAs(pdfname);

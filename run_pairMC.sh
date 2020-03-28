@@ -6,11 +6,11 @@
 #PBS -l nodes=1
 #PBS -l walltime=23:30:00
 cd /home/itep/alekseev/igor
-LIST=`find /home/clusters/rrcmpi/alekseev/igor/root6n8/MC/DataTakingPeriod01/Fuel* -name "*.root" -print`
+LIST=`find /home/clusters/rrcmpi/alekseev/igor/root6n9/MC/DataTakingPeriod01/Fuel* -name "*.root" -print`
 
 for f in $LIST ; do
-	OF=${f/root6n8/pair7n8}
-	./pairbuilder7 $f $OF
+	OF=${f/root6n9/pair7n11}
+	./pairbuilder8 $f $OF
 done
 
 exit 0

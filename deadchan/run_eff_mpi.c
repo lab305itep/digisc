@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 		goto fin;
 	}
 //			Run pair
-	sprintf(str, "../pairbuilder7 %s/var_%d_fuel.root %s/var_%d_fuel.root",
+	sprintf(str, "../pairbuilder8 %s/var_%d_fuel.root %s/var_%d_fuel.root",
 		rootdir, serial, pairdir, serial);
 	irc = system(str);
 	if (irc) {
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		goto fin;
 	}
 //			Plot Spectra
-	sprintf(str, "root -b -l -q \"mcfuelspectra.C(\\\"%s/var_%d_fuel.root\\\", \\\"%s/var_%d_spfuel.root\\\", 0.12)\"",
+	sprintf(str, "root -b -l -q \"mcfuelspectra.C(\\\"%s/var_%d_fuel.root\\\", \\\"%s/var_%d_spfuel.root\\\", 0.12, 0.04)\"",
 		pairdir, serial, vardir, serial);
 	irc = system(str);
 	if (irc) {

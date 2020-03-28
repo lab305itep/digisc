@@ -55,11 +55,11 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	const char *ptr;
 	const char *what;
 //		Main cuts
-	TCut cVeto("gtFromVeto > 60");
+	TCut cVeto("gtFromVeto > 90");
 	TCut cMuonA("gtFromVeto == 0");
-	TCut cMuonB("gtFromVeto > 0 && gtFromVeto <= 60");
-	TCut cIso("((gtFromPrevious > 45  || gtFromPrevious == gtFromVeto) && gtToNext > 80 && EventsBetween == 0)");
-	TCut cShower("gtFromShower > 200 || ShowerEnergy < 800");
+	TCut cMuonB("gtFromVeto > 0 && gtFromVeto <= 90");
+	TCut cIso("((gtFromPrevious > 50  || gtFromPrevious == gtFromVeto) && gtToNext > 80 && EventsBetween == 0)");
+	TCut cShower("gtFromShower > 120 || ShowerEnergy < 800");
 	TCut cX("PositronX[0] < 0 || (PositronX[0] > 2 && PositronX[0] < 94)");
 	TCut cY("PositronX[1] < 0 || (PositronX[1] > 2 && PositronX[1] < 94)");
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");

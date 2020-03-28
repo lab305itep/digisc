@@ -52,7 +52,8 @@
 #define RSHIFT		5000.0	// us
 #define NRANDOM		16	// increase random statistics
 #define SHOWERMIN	800	// 800 MeV shower event threshold
-#define TISOLATION	120	// isolation us for random positron windows
+#define TISOLATIONM	140	// isolation us for random positron windows minus, 90 + 50 us
+#define TISOLATIONP	80	// isolation us for random positron windows plus, 80 us
 //	No correction
 #define CORR_P0		0	// Positron energy correction from MC 
 #define CORR_P1		1.0	// Positron energy correction from MC
@@ -479,7 +480,7 @@ int main(int argc, char **argv)
 					for (i=iEvt-1; i>=0; i--) {
 						if (TrigArray[i].flags & FLAG_IGNORE) continue;
 						gtDiff = TrigArray[i].globalTime + tShift * GFREQ2US - Neutron.globalTime;
-						if (gtDiff >= -TISOLATION * GFREQ2US && gtDiff < -MAXTDIFF * GFREQ2US) {
+						if (gtDiff >= -TISOLATIONM * GFREQ2US && gtDiff < -MAXTDIFF * GFREQ2US) {
 							outCnt++;		// outer count
 						} else if (gtDiff >= -MAXTDIFF * GFREQ2US && gtDiff < 0) {
 							if (TrigArray[i].flags & FLAG_POSITRON) {
@@ -487,9 +488,9 @@ int main(int argc, char **argv)
 							} else {
 								outCnt++;
 							}
-						} else if (gtDiff >= 0 && gtDiff <= TISOLATION * GFREQ2US) {
+						} else if (gtDiff >= 0 && gtDiff <= TISOLATIONP * GFREQ2US) {
 							outCnt++;
-						} else if (gtDiff < -TISOLATION * GFREQ2US) {
+						} else if (gtDiff < -TISOLATIONM * GFREQ2US) {
 							break;		// end of search
 						}
 					}
@@ -521,15 +522,15 @@ int main(int argc, char **argv)
 					for (i=iEvt-1;i>=0;i--) {
 						if (TrigArray[i].flags & FLAG_IGNORE) continue;
 						if (TrigArray[i].globalTime > Positron.globalTime) {
-							DanssPair.EventsBetween++;						
-						} else if (TrigArray[i].globalTime < Positron.globalTime) {
+							DanssPair.EventsBetween++;
+						} else if (TrigArray[i].globalTime < Positron.globalTime && !(TrigArray[i].flags & FLAG_VETO)) {
 							EventChain->GetEntry(i);
 							DanssPair.gtFromPrevious = (Positron.globalTime - DanssEvent.globalTime) / GFREQ2US;
 							DanssPair.PreviousEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
 							break;
 						}
 					}
-					if (i == 0) DanssPair.gtFromPrevious = RSHIFT;	// something large
+					if (i < 0) DanssPair.gtFromPrevious = RSHIFT;	// something large
 //	look forward
 					for (i=iEvt+1;i<nEvt;i++) { 
 						if (TrigArray[i].flags & FLAG_IGNORE) continue;
@@ -538,7 +539,10 @@ int main(int argc, char **argv)
 						DanssPair.NextEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
 						break;
 					}
-					if (i == nEvt) DanssPair.gtToNext = RSHIFT;	// something large
+					if (i == nEvt) {
+						DanssPair.gtToNext = RSHIFT;	// something large
+						DanssPair.NextEnergy = 0;
+					}
 //	Fill proper tree
 					if (iLoop) {
 						tRandom->Fill();

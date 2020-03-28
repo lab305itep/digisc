@@ -38,8 +38,8 @@
 #define masterTrgRandom 2
 
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
-#define AFTERVETO	(long long) (60 * GFREQ2US)
-#define AFTERTRIG	(long long) (45 * GFREQ2US)
+#define AFTERVETO	(long long) (90 * GFREQ2US)
+#define AFTERTRIG	(long long) (50 * GFREQ2US)
 #define BEFORETRIG	(long long) (80 * GFREQ2US)
 
 int IsVeto(struct DanssEventStruct7 *Event)
