@@ -298,6 +298,7 @@ struct DanssEventStruct7 {
 //		"neutron" parameters
 	float		NeutronX[3];		// center of gammas position
 	int		NHits;			// Number of hits
+	float		NeutronEnergy;		// Total energy corrected for signal attenuation
 };
 
 struct HitTypeStruct {

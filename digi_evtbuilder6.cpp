@@ -542,26 +542,48 @@ void CalculateNeutron(ReadDigiDataUser *user)
 {
 	float x, y, z, r;
 	int nx, ny;
+	float exSiPm, eySiPm, exPmt, eyPmt;
 	int i, N;
 
 	N = user->nhits();
 //	Find the center (1st approximation)
 	x = y = z = 0;
 	nx = ny = 0;
+	exSiPm = eySiPm = exPmt = eyPmt = 0;
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm) {
 		if (user->side(i) == 'X') {
 			x += user->firstCoord(i) * fStripWidth;
 			z += user->zCoord(i) * fStripHeight;
+			exSiPm += user->e(i);
 			nx++;
 		} else {
 			y += user->firstCoord(i) * fStripWidth;
 			z += user->zCoord(i) * fStripHeight;
+			eySiPm += user->e(i);
 			ny++;
 		}
 	}
 	DanssEvent.NeutronX[0] = (nx) ? x / nx : -1;			// 50 cm is DANSS center
 	DanssEvent.NeutronX[1] = (ny) ? y / ny : -1;			// 50 cm is DANSS center
 	DanssEvent.NeutronX[2] = (nx + ny) ? z / (nx + ny) : -1;	// 50 cm is DANSS center
+//		Calculate lognitudinal correction
+	if (nx && ny) {
+		for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bPmt) {
+			if (user->side(i) == 'X') {
+				exPmt += user->e(i);
+			} else {
+				eyPmt += user->e(i);
+			}
+		}
+		DanssEvent.NeutronEnergy = (
+			acorr(exSiPm, DanssEvent.NeutronX[1], 'X', bSiPm) +
+			acorr(eySiPm, DanssEvent.NeutronX[0], 'Y', bSiPm) +
+			acorr(exPmt, DanssEvent.NeutronX[1], 'X', bPmt) +
+			acorr(eyPmt, DanssEvent.NeutronX[0], 'Y', bPmt)
+		) / 2;
+	} else {
+		DanssEvent.NeutronEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
+	}
 }
 
 // Clean hits:
@@ -693,7 +715,8 @@ void CorrectEnergy(void)
 	DanssEvent.PositronPmtEnergy *= EnergyCorrection;
 	DanssEvent.AnnihilationEnergy *= EnergyCorrection;
 	DanssEvent.AnnihilationMax *= EnergyCorrection;
-	
+	DanssEvent.NeutronEnergy *= EnergyCorrection;
+
 	for (i=0; i<DanssEvent.NHits; i++) HitArray.E[i] *= EnergyCorrection;
 }
 
@@ -1263,7 +1286,8 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			"MinPositron2GammaZ/F:"	// Z-distance to the closest gamma
 //		"neutron" parameters
 			"NeutronX[3]/F:"	// center of gammas position
-			"NHits/I"		// Number of hits
+			"NHits/I:"		// Number of hits
+			"NeutronEnergy/F"	// Neutron Energy 
 		);
 		OutputTree->Branch("HitE", HitArray.E, "HitE[NHits]/F");
 		OutputTree->Branch("HitT", HitArray.T, "HitT[NHits]/F");

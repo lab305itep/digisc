@@ -144,7 +144,7 @@ int IsNeutron(struct DanssEventStruct7 *DanssEvent)
 	float E;
 	int rc;
 	
-	E = (DanssEvent->SiPmCleanEnergy + DanssEvent->PmtCleanEnergy) / 2;
+	E = DanssEvent->NeutronEnergy;
 	rc = (E >= MINNEUTE && E < MAXNEUTE && DanssEvent->SiPmCleanHits >= NEUTN);
 
 	return rc;
@@ -210,7 +210,7 @@ void MakePair(
 	DanssPair->MinPositron2GammaZ = SavedEvent->MinPositron2GammaZ;
 	
 	DanssPair->NeutronHits = DanssEvent->SiPmCleanHits;
-	DanssPair->NeutronEnergy = (DanssEvent->SiPmCleanEnergy + DanssEvent->PmtCleanEnergy) / 2;
+	DanssPair->NeutronEnergy = DanssEvent->NeutronEnergy;
 	memcpy(DanssPair->NeutronX, DanssEvent->NeutronX, sizeof(DanssEvent->NeutronX));
 	
 	DanssPair->gtDiff = (DanssEvent->globalTime - SavedEvent->globalTime) / GFREQ2US;
