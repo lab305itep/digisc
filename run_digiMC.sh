@@ -8,7 +8,7 @@
 cd /home/itep/alekseev/igor
 
 MCRAW=MC_raw
-OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n8/MC/DataTakingPeriod01
+OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n10/MC/DataTakingPeriod01
 DIGI=digi_MC/DataTakingPeriod01
 EXE=./evtbuilder5
 #EXE=echo
@@ -50,17 +50,13 @@ do_fuelLarge()
 
 do_muons()
 {
-	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS.root
+#	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS.root
 	for f in 0 1 2 3 ; do
-		${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim${f}.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS${f}.root
+		${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_${f}.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS${f}.root
 	done
-	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS.root
-	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim_0.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS0.root
-}
-
-do_muons_a()
-{
-	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_cutted_energy.digi.bz2  0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons_cutted_energy/DANSS.root
+#	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS.root
+#	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim_0.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS0.root
+#	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_cutted_energy.digi.bz2  0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons_cutted_energy/DANSS.root
 }
 
 do_sources()
@@ -84,7 +80,9 @@ do_sources()
 }
 
 #do_sources
+#do_monopositrons
+#do_fuel
 #do_fuelLarge
-do_muons_a
+do_muons
 
 exit 0

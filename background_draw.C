@@ -1,29 +1,34 @@
-#define NHISTS 24
-#define THISTS 5
+#define NHISTS   28
+#define THISTS    5
+#define OPTHISTS 14
 
 void background_draw(const char *rootname, const char *mcname)
 {
+	const double muFraction = 0.068;
 	char strs[128];
 	char strl[1024];
 	const char *titles[] = {
-		"gtDiff", "R1",  "R2",  "RZ", "PX", "PY", "PZ",  "NX",   "NY",  "NZ", 
-                "NE",     "NH",  "PH",  "AH", "AE", "AM", "AMO", "P2AZ", "AH1", "AE1", 
-                "P2AZ1",  "PX1", "PY1", "PZ1"};
+		"gtDiff", "R1",   "R2",   "RZ",   "PX",    "PY",  "PZ",  "NX", "NY", "NZ", 
+		"NE",     "NE10", "NE20", "NE30", "NE40",  "NH",  "PH",  "AH", "AE", "AM", 
+		"AMO",    "P2AZ", "AH1",  "AE1",  "P2AZ1", "PX1", "PY1", "PZ1"};
         const char *ttitles[] = {"TSHOWER", "TMUON", "TBEFORE", "TAFTER", "TAFTERP"};
 	const char *suffix[] = {"A-rand", "A-diff", "B-diff", "C-diff"};
 	const Color_t color[4] = {kGreen+2, kBlue, kRed, kOrange};
 	const int marker[4] = {kOpenCircle, kFullCircle, kOpenSquare, kOpenStar};
 	const float Cut[NHISTS][2] = {
-		{2.0, -50.0},  {45.0, -50.0}, {55.0, -50.0},  {-50.0, -50.0}, {4.0, 96.0},
-		{4.0, 96.0},   {4.0, 96.0},   {-50.0, -50.0}, {-50.0, -50.0}, {-50.0, -50.0},
-		{3.5, 9.5},    {3.0, 20.0},   {1.0, 7.0},     {0.0, 9.0},     {0.0, 1.8},
-		{0.8, -50.0},  {0.8, -50.0},  {-50.0, -50.0}, {2.0, 9.0},     {0.2, 1.8},
-		{15.0, -50.0}, {4.0, 96.0},   {4.0, 96.0},    {4.0, 96.0}
+		{2.0, -50.0}, {-50.0, 45.0},  {-50.0, 55.0},  {-50.0, -50.0}, {4.0, 96.0},
+		{4.0, 96.0},  {4.0, 96.0},    {-50.0, -50.0}, {-50.0, -50.0}, {-50.0, -50.0},
+		{3.5, 9.5},   {3.5, 9.5},     {3.5, 9.5},     {3.5, 9.5},     {3.5, 9.5},
+		{3.0, 20.0},  {1.0, 7.0},     {0.0, 8.0},     {0.0, 1.8},     {-50.0, 0.8},
+		{-50.0, 0.8}, {-50.0, -50.0}, {1.0, 8.0},     {0.2, 1.8},     {-50.0, -50.0}, 
+		{4.0, 96.0},  {4.0, 96.0},    {4.0, 96.0}
 	};
+	const int toOpt[] = {0, 100, 101, 102, 10, 11, 12, 13, 14, 118, 22, 122, 23, 123};
 	TH1D *h[NHISTS][4];
 	TH1D *hMC[NHISTS];
 	TH1D *hT[THISTS];
-	int i, j;
+	TH1D *hOpt[OPTHISTS];
+	int i, j, k1, k2, num, ul;
 	double hMax;
 	int iMax;
 	char pdfname[1024];
@@ -32,6 +37,7 @@ void background_draw(const char *rootname, const char *mcname)
 	double upTime;
 	TH1 *hConst;
 	TLatex txt;
+	double N_diff, N_rand, N_cosmA, N_cosmB, err;
 
 	strcpy(pdfname, rootname);
 	ptr = strstr(pdfname, ".root");
@@ -72,7 +78,6 @@ void background_draw(const char *rootname, const char *mcname)
 		return;
 	}
 	upTime = hConst->GetBinContent(i);
-	
 	
 	for (i=0; i<NHISTS; i++) {
 		for (j=0; j<4; j++) {
@@ -138,6 +143,7 @@ void background_draw(const char *rootname, const char *mcname)
 	sprintf(strl, "%s[", pdfname);
 	cv->SaveAs(strl);
 	
+	txt.SetTextSize(0.05);
 	for (i=0; i<NHISTS; i++) {
 		cv->Clear();
 		hMax = 0;
@@ -151,6 +157,55 @@ void background_draw(const char *rootname, const char *mcname)
 		if (hMC[i]) hMC[i]->Draw("same,hist");
 		for (j=0; j<2; j++) if (Cut[i][j] > -1.0) ln.DrawLine(Cut[i][j], 0, Cut[i][j], hMax);
 		lg->Draw();
+		k1 = (Cut[i][0] > -1.0) ? h[i][0]->GetXaxis()->FindBin(Cut[i][0] + 0.00001) : 1;
+		k2 = (Cut[i][1] > -1.0) ? h[i][0]->GetXaxis()->FindBin(Cut[i][1] - 0.00001) : h[i][0]->GetXaxis()->GetNbins();
+		for (j=0; j<4; j++) {
+			txt.SetTextColor(color[j]);
+			sprintf(strl, "[ %5.1f %%]", 100.0 * h[i][j]->Integral(k1, k2) / h[i][j]->Integral());
+			txt.DrawLatexNDC(0.5, 0.65 - 0.05*j, strl);
+		}
+		if (hMC[i]) {
+			txt.SetTextColor(kBlack);
+			sprintf(strl, "[ %5.1f %%]", 100.0 * hMC[i]->Integral(k1, k2) / hMC[i]->Integral());
+			txt.DrawLatexNDC(0.5, 0.45, strl);
+		}
+		cv->SaveAs(pdfname);
+	}
+	
+	for (i=0; i<OPTHISTS; i++) {
+		num = toOpt[i] % 100;
+		ul  = toOpt[i] / 100;
+		sprintf(strs, "hOpt_%s%c", titles[num], (ul) ? 'U' : 'L');
+		hOpt[i] = (TH1D*) h[num][1]->Clone(strs);
+		sprintf(strl, "%s - %s cut;%s;%%", h[num][1]->GetTitle(), (ul) ? "upper" : "lower",
+			h[num][1]->GetXaxis()->GetTitle());
+		hOpt[i]->SetTitle(strl);
+		hOpt[i]->Reset();
+		hOpt[i]->SetLineColor(kBlack);
+		k1 = (Cut[num][0] > -1.0) ? hOpt[i]->GetXaxis()->FindBin(Cut[num][0] + 0.00001) : 1;
+		k2 = (Cut[num][1] > -1.0) ? hOpt[i]->GetXaxis()->FindBin(Cut[num][1] - 0.00001) : hOpt[i]->GetXaxis()->GetNbins();
+		for (j=1; j<=hOpt[i]->GetXaxis()->GetNbins(); j++) {
+			if (ul) {	// Upper cut
+				if (j < k1) continue;
+				N_rand  = h[num][0]->Integral(k1, j);
+				N_diff  = h[num][1]->Integral(k1, j);
+				N_cosmA = h[num][2]->Integral(k1, j);
+				N_cosmB = h[num][3]->Integral(k1, j);
+			} else {		// Lower cut
+				if (j > k2) continue;
+				N_rand  = h[num][0]->Integral(j, k2);
+				N_diff  = h[num][1]->Integral(j, k2);
+				N_cosmA = h[num][2]->Integral(j, k2);
+				N_cosmB = h[num][3]->Integral(j, k2);
+			}
+			if (N_diff <= 0) continue;
+			err = sqrt(N_rand + N_diff + N_cosmA + N_cosmB) / N_diff;
+			hOpt[i]->SetBinContent(j, 100.0*err);
+		}
+		if (hOpt[i]->GetMaximum() > 10.0) hOpt[i]->SetMaximum(10.0);
+		if (num == 14) hOpt[i]->SetMaximum(20.0);
+		hOpt[i]->Draw();
+		for (j=0; j<2; j++) if (Cut[num][j] > -1.0) ln.DrawLine(Cut[num][j], hOpt[i]->GetMinimum(), Cut[num][j], hOpt[i]->GetMaximum());
 		cv->SaveAs(pdfname);
 	}
 	
