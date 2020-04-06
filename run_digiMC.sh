@@ -35,6 +35,12 @@ do_fuel()
 	done
 }
 
+do_newGd()
+{
+	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd.digi.bz2 0x70000 \
+		${OUTDIR}/Fuel -mcfile /home/clusters/rrcmpi/ershova/DANSS/from_zeld2/235U_new_Gd/DANSS.root
+}
+
 do_fuelLarge()
 {
 	for f in 235U 238U 239Pu 241Pu ; do 
@@ -83,6 +89,8 @@ do_sources()
 #do_monopositrons
 #do_fuel
 #do_fuelLarge
-do_muons
+#do_muons
+
+do_newGd
 
 exit 0

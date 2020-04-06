@@ -16,11 +16,11 @@ void background_draw(const char *rootname, const char *mcname)
 	const Color_t color[4] = {kGreen+2, kBlue, kRed, kOrange};
 	const int marker[4] = {kOpenCircle, kFullCircle, kOpenSquare, kOpenStar};
 	const float Cut[NHISTS][2] = {
-		{2.0, -50.0}, {-50.0, 45.0},  {-50.0, 55.0},  {-50.0, -50.0}, {4.0, 96.0},
+		{1.0, -50.0}, {-50.0, 28.0},  {-50.0, 36.0},  {-50.0, -50.0}, {4.0, 96.0},
 		{4.0, 96.0},  {4.0, 96.0},    {-50.0, -50.0}, {-50.0, -50.0}, {-50.0, -50.0},
-		{3.5, 9.5},   {3.5, 9.5},     {3.5, 9.5},     {3.5, 9.5},     {3.5, 9.5},
-		{3.0, 20.0},  {1.0, 7.0},     {0.0, 8.0},     {0.0, 1.8},     {-50.0, 0.8},
-		{-50.0, 0.8}, {-50.0, -50.0}, {1.0, 8.0},     {0.2, 1.8},     {-50.0, -50.0}, 
+		{3.6, 9.5},   {3.6, 9.5},     {3.6, 9.5},     {3.6, 9.5},     {3.6, 9.5},
+		{3.0, 20.0},  {1.0, 7.0},     {0.0, 7.0},     {0.0, 1.2},     {-50.0, 0.8},
+		{-50.0, 0.8}, {-50.0, -50.0}, {1.0, 7.0},     {0.1, 1.2},     {-50.0, -50.0}, 
 		{4.0, 96.0},  {4.0, 96.0},    {4.0, 96.0}
 	};
 	const int toOpt[] = {0, 100, 101, 102, 10, 11, 12, 13, 14, 118, 22, 122, 23, 123};
@@ -29,7 +29,7 @@ void background_draw(const char *rootname, const char *mcname)
 	TH1D *hT[THISTS];
 	TH1D *hOpt[OPTHISTS];
 	int i, j, k1, k2, num, ul;
-	double hMax;
+	double hMax, hMin;
 	int iMax;
 	char pdfname[1024];
 	char *ptr;
@@ -184,6 +184,7 @@ void background_draw(const char *rootname, const char *mcname)
 		hOpt[i]->SetLineColor(kBlack);
 		k1 = (Cut[num][0] > -1.0) ? hOpt[i]->GetXaxis()->FindBin(Cut[num][0] + 0.00001) : 1;
 		k2 = (Cut[num][1] > -1.0) ? hOpt[i]->GetXaxis()->FindBin(Cut[num][1] - 0.00001) : hOpt[i]->GetXaxis()->GetNbins();
+		hMin = 100.0;
 		for (j=1; j<=hOpt[i]->GetXaxis()->GetNbins(); j++) {
 			if (ul) {	// Upper cut
 				if (j < k1) continue;
@@ -199,10 +200,12 @@ void background_draw(const char *rootname, const char *mcname)
 				N_cosmB = h[num][3]->Integral(j, k2);
 			}
 			if (N_diff <= 0) continue;
-			err = sqrt(N_rand + N_diff + N_cosmA + N_cosmB) / N_diff;
-			hOpt[i]->SetBinContent(j, 100.0*err);
+			err = 100.0 * sqrt(N_rand + N_diff + N_cosmA + N_cosmB) / N_diff;
+			hOpt[i]->SetBinContent(j, err);
+			if (err < hMin) hMin = err;
 		}
-		if (hOpt[i]->GetMaximum() > 10.0) hOpt[i]->SetMaximum(10.0);
+		hOpt[i]->SetMinimum(0.9*hMin);
+		hOpt[i]->SetMaximum(5*hMin);
 		if (num == 14) hOpt[i]->SetMaximum(20.0);
 		hOpt[i]->Draw();
 		for (j=0; j<2; j++) if (Cut[num][j] > -1.0) ln.DrawLine(Cut[num][j], hOpt[i]->GetMinimum(), Cut[num][j], hOpt[i]->GetMaximum());
