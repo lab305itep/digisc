@@ -58,6 +58,9 @@ pairbuilder7: pairbuilder7.cpp
 pairbuilder8: pairbuilder8.cpp
 	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 
+getMCinfo: getMCinfo.cpp
+	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
+
 deadtime: deadtime.cpp
 	g++ $^ -o $@ ${ROOTINC} ${CLIB} ${ROOTLIB}
 

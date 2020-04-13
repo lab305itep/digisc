@@ -9,7 +9,7 @@ cd /home/itep/alekseev/igor
 LIST=`find /home/clusters/rrcmpi/alekseev/igor/root6n10/MC/DataTakingPeriod01/Fuel* -name "*.root" -print`
 
 for f in $LIST ; do
-	OF=${f/root6n10/pair7n12}
+	OF=${f/root6n10/pair7n13}
 	./pairbuilder8 $f $OF
 done
 

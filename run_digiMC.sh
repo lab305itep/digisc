@@ -37,8 +37,8 @@ do_fuel()
 
 do_newGd()
 {
-	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd.digi.bz2 0x70000 \
-		${OUTDIR}/Fuel -mcfile /home/clusters/rrcmpi/ershova/DANSS/from_zeld2/235U_new_Gd/DANSS.root
+	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd_1.digi.bz2 0x70000 \
+		${OUTDIR}/Fuel -mcfile /home/clusters/rrcmpi/ershova/DANSS/from_zeld2/235U_new_Gd_1/DANSS.root
 }
 
 do_fuelLarge()

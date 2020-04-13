@@ -299,6 +299,10 @@ struct DanssEventStruct7 {
 	float		NeutronX[3];		// center of gammas position
 	int		NHits;			// Number of hits
 	float		NeutronEnergy;		// Total energy corrected for signal attenuation
+	int		NeutronHits;		// Hits SiPm + PMT (where no SiPm)
+	int		NXYSiPmRaw;		// number of SiPm raw hits X - Y, raw hits
+	int		NXYSiPmClean;		// number of SiPm raw hits X - Y, clean hits
+	int		NXYPmt;			// number of Pmt raw hits X - Y
 };
 
 struct HitTypeStruct {
@@ -737,6 +741,24 @@ struct MCEventStruct {
 	double DirZ;
 	double TimelineShift;
 	char   FluxFlag;
+};
+
+//	MC tree DANSSParticle: branch ParticleData : 
+//	EventID/D:ID:ParentID:ParticleEnergy:X:Y:Z:DirX:DirY:DirZ:Time:KillingFlag 
+struct MCParticleStruct {
+	double EventID;
+	double ID;
+	double ParentID;
+	double ParticleEnergy;
+	double X, Y, Z;
+	double DirX, DirY, DirZ;
+	double Time;
+	double KillingFlag;
+};
+
+struct DanssFromMC {
+	float MCPositronEnergy;		// Positron energy, MeV
+	float MCPositronX[3];		// Positron x, y, z, cm in analysis frame
 };
 
 #endif /* EVTBUILDER_H */

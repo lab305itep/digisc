@@ -169,6 +169,15 @@ void background_draw(const char *rootname, const char *mcname)
 			sprintf(strl, "[ %5.1f %%]", 100.0 * hMC[i]->Integral(k1, k2) / hMC[i]->Integral());
 			txt.DrawLatexNDC(0.5, 0.45, strl);
 		}
+		txt.SetTextColor(kBlue);
+		err = sqrt(h[i][0]->Integral(k1, k2) + h[i][1]->Integral(k1, k2) + muFraction * (h[i][2]->Integral(k1, k2) + h[i][3]->Integral(k1, k2)));
+		err *= 100.0 / h[i][1]->Integral(k1, k2);
+		sprintf(strl, "#sigma/N_{cut}=%4.1f%%", err);
+		txt.DrawLatexNDC(0.5, 0.4, strl);
+		err = sqrt(h[i][0]->Integral() + h[i][1]->Integral() + muFraction * (h[i][2]->Integral() + h[i][3]->Integral()));
+		err *= 100.0 / h[i][1]->Integral();
+		sprintf(strl, "#sigma/N_{nocut}=%4.1f%%", err);
+		txt.DrawLatexNDC(0.5, 0.35, strl);
 		cv->SaveAs(pdfname);
 	}
 	
@@ -184,7 +193,7 @@ void background_draw(const char *rootname, const char *mcname)
 		hOpt[i]->SetLineColor(kBlack);
 		k1 = (Cut[num][0] > -1.0) ? hOpt[i]->GetXaxis()->FindBin(Cut[num][0] + 0.00001) : 1;
 		k2 = (Cut[num][1] > -1.0) ? hOpt[i]->GetXaxis()->FindBin(Cut[num][1] - 0.00001) : hOpt[i]->GetXaxis()->GetNbins();
-		hMin = 100.0;
+		hMin = 10000.0;
 		for (j=1; j<=hOpt[i]->GetXaxis()->GetNbins(); j++) {
 			if (ul) {	// Upper cut
 				if (j < k1) continue;
@@ -200,13 +209,12 @@ void background_draw(const char *rootname, const char *mcname)
 				N_cosmB = h[num][3]->Integral(j, k2);
 			}
 			if (N_diff <= 0) continue;
-			err = 100.0 * sqrt(N_rand + N_diff + N_cosmA + N_cosmB) / N_diff;
+			err = 100.0 * sqrt(N_rand + N_diff + muFraction * (N_cosmA + N_cosmB)) / N_diff;
 			hOpt[i]->SetBinContent(j, err);
 			if (err < hMin) hMin = err;
 		}
 		hOpt[i]->SetMinimum(0.9*hMin);
 		hOpt[i]->SetMaximum(5*hMin);
-		if (num == 14) hOpt[i]->SetMaximum(20.0);
 		hOpt[i]->Draw();
 		for (j=0; j<2; j++) if (Cut[num][j] > -1.0) ln.DrawLine(Cut[num][j], hOpt[i]->GetMinimum(), Cut[num][j], hOpt[i]->GetMaximum());
 		cv->SaveAs(pdfname);

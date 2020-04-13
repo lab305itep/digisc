@@ -124,6 +124,12 @@ struct DanssExtraStruct	{
 	int VetoHits;
 } 				DanssExtra;
 int 				HitFlag[iMaxDataElements];	// array to flag out SiPM hits
+	// Hitflag = -100 - early hit
+	// HitFlag = -1   - bad hit
+	// HitFlag = 0    - ordinary hit
+	// Hitflag = 5    - Pmt Hit in the cluster
+	// HitFlag = 10   - the most energetic hit in the cluster (SiPm)
+	// HitFlag = 20   - other hit in the cluster (SiPm)
 TH1D *				hTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
 TH1D *				hPMTTimeDelta[MAXADCBOARD][iNChannels_AdcBoard];
 double				PmtFineTime;
@@ -426,6 +432,7 @@ void CalculatePositron(ReadDigiDataUser *user)
 	int xmin, xmax, ymin, ymax, zmin, zmax;
 	int xy;
 	int invalid;
+	float E;
 
 //	if (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy > 2 * MAXPOSITRONENERGY) {
 //		DanssEvent.PositronFlags |= PFLAG_MAXENERGY;
@@ -522,12 +529,42 @@ void CalculatePositron(ReadDigiDataUser *user)
 //
 //		Count possible gammas
 	A = 0;
-	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && HitFlag[i] < 10 && user->type(i) == bSiPm) {
-		DanssEvent.AnnihilationGammas++;
-		DanssEvent.AnnihilationEnergy += user->e(i);
-		if (A < user->e(i)) A = user->e(i);
+	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && HitFlag[i] < 5) switch(user->type(i)) {
+	case bSiPm:
+		DanssEvent.AnnihilationGammas++;	// Add SiPm hits
+		if (user->side(i) == 'X') {
+			E = acorr(user->e(i), DanssEvent.PositronX[1], 'X', bSiPm);
+		} else {
+			E = acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bSiPm);
+		}
+		DanssEvent.AnnihilationEnergy += E;
+		if (A < E) A = E;
+		break;
+	case bPmt:
+		// We will add Pmt hit only if there is no SiPm hit
+		for (j=0; j < N; j++) if (HitFlag[j] >= 0 && user->type(i) == bSiPm && IsInModule(j, i, user)) break;
+		if (j >= N) DanssEvent.AnnihilationGammas++;
+		// Add PMT energy
+		for (j=0; j < N; j++) if (HitFlag[j] >= 0 && HitFlag[j] < 5 && user->type(i) == bSiPm && IsInModule(j, i, user)) break;
+		if (user->side(i) == 'X') {
+			E = acorr(user->e(i), DanssEvent.PositronX[1], 'X', bPmt);
+		} else {
+			E = acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bPmt);
+		}
+		DanssEvent.AnnihilationEnergy += E;
+		// Subtruct SiPMs in cluster if any
+		for (j=0; j < N; j++) if (HitFlag[j] >= 10 && user->type(i) == bSiPm && IsInModule(j, i, user)) {
+			if (user->side(j) == 'X') {
+				E = acorr(user->e(j), DanssEvent.PositronX[1], 'X', bSiPm);
+			} else {
+				E = acorr(user->e(j), DanssEvent.PositronX[0], 'Y', bSiPm);
+			}
+			DanssEvent.AnnihilationEnergy -= E;
+		}
 	}
 	DanssEvent.AnnihilationMax = A;
+	DanssEvent.AnnihilationEnergy /= 2;	// (SiPm + Pmt) / 2
+	
 //		Do energy correction based on MC taking into account number of hits in the cluster
 	if (FLG_POSECORRECTIONA & iFlags) DanssEvent.PositronEnergy = HitNumberCorrection(DanssEvent.PositronEnergy, DanssEvent.PositronHits);
 	if (FLG_POSECORRECTIONB & iFlags) DanssEvent.PositronEnergy = MCAverageCorrection(DanssEvent.PositronEnergy);
@@ -543,7 +580,7 @@ void CalculateNeutron(ReadDigiDataUser *user)
 	float x, y, z, r;
 	int nx, ny;
 	float exSiPm, eySiPm, exPmt, eyPmt;
-	int i, N;
+	int i, j, N;
 
 	N = user->nhits();
 //	Find the center (1st approximation)
@@ -583,6 +620,11 @@ void CalculateNeutron(ReadDigiDataUser *user)
 		) / 2;
 	} else {
 		DanssEvent.NeutronEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
+	}
+	DanssEvent.NeutronHits = DanssEvent.SiPmCleanHits;
+	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bPmt) {
+		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bSiPm && IsInModule(j, i, user)) break;
+		if (j >= N) DanssEvent.NeutronHits++;	// count Pmt hit if it was not counted by SiPm
 	}
 }
 
@@ -999,12 +1041,24 @@ void SumClean(ReadDigiDataUser *user)
 		}
 #endif
 //		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
+//		Calculate asymmetry, clean hits 
+		if (user->side(i) == 'X') {
+			DanssEvent.NXYSiPmClean++;
+		} else {
+			DanssEvent.NXYSiPmClean--;
+		}
 		break;
 	case bPmt:
 		DanssEvent.PmtCleanHits++;
 		DanssEvent.PmtCleanEnergy += user->e(i);
 		if (user->e(i) > 0) hPMTAmpl[user->adcChan(i)]->Fill(user->signal(i) / user->e(i));
 //		DanssEvent.PmtCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->pmtAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
+//		Calculate asymmetry, clean hits 
+		if (user->side(i) == 'X') {
+			DanssEvent.NXYPmt++;
+		} else {
+			DanssEvent.NXYPmt--;
+		}
 		break;
 	case bVeto:
 		DanssEvent.VetoCleanHits++;
@@ -1028,6 +1082,11 @@ void SumEverything(ReadDigiDataUser *user)
 	case bSiPm:
 		DanssExtra.SiPmHits++;
 		DanssExtra.SiPmEnergy += user->e(i);
+		if (user->side(i) == 'X') {
+			DanssEvent.NXYSiPmRaw++;
+		} else {
+			DanssEvent.NXYSiPmRaw--;
+		}
 		break;
 	case bPmt:
 		DanssExtra.PmtHits++;
@@ -1251,6 +1310,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		}
 		OutputFile = new TFile(chOutputFile, "RECREATE");
 		if (!OutputFile->IsOpen()) throw "Panic - can not open output file!";
+		OutputFile->SetCompressionSettings(ROOT::RCompressionSetting::EDefaults::kUseGeneralPurpose);
 		OutputTree = new TTree("DanssEvent", "Danss event tree");
 		OutputTree->Branch("Data", &DanssEvent, 
 //		Common parameters
@@ -1287,7 +1347,11 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 //		"neutron" parameters
 			"NeutronX[3]/F:"	// center of gammas position
 			"NHits/I:"		// Number of hits
-			"NeutronEnergy/F"	// Neutron Energy 
+			"NeutronEnergy/F:"	// Neutron Energy 
+			"NeutronHits/I:"	// Count Neutron hits by SiPm and add Pmt hits where no SiPm
+			"NXYSiPmRaw/I:"		// SiPm X-Y asymmetry, raw hits
+			"NXYSiPmClean/I:"	// SiPm X-Y asymmetry, clean hits
+			"NXYPmt/I"		// Pmt X-Y asymmetry
 		);
 		OutputTree->Branch("HitE", HitArray.E, "HitE[NHits]/F");
 		OutputTree->Branch("HitT", HitArray.T, "HitT[NHits]/F");
