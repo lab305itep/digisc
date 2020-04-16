@@ -84,9 +84,9 @@ int main(int argc, char **argv)
 			break;
 		}
 		FromMC.MCPositronEnergy = MCParticle.ParticleEnergy;
-		FromMC.MCPositronX[0] = 48.0 - MCParticle.X;
-		FromMC.MCPositronX[1] = 48.0 - MCParticle.Y;
-		FromMC.MCPositronX[2] = 49.5 - MCParticle.Z;
+		FromMC.MCPositronX[0] = 48.0 - MCParticle.X / 10000.0;	// um to cm
+		FromMC.MCPositronX[1] = 48.0 - MCParticle.Y / 10000.0;	// um to cm
+		FromMC.MCPositronX[2] = 49.5 + MCParticle.Z / 10000.0;	// um to cm
 		OutTree->Fill();
 	}
 

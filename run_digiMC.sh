@@ -8,7 +8,7 @@
 cd /home/itep/alekseev/igor
 
 MCRAW=MC_raw
-OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n10/MC/DataTakingPeriod01
+OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n11/MC/DataTakingPeriod01
 DIGI=digi_MC/DataTakingPeriod01
 EXE=./evtbuilder5
 #EXE=echo
@@ -37,6 +37,8 @@ do_fuel()
 
 do_newGd()
 {
+	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd.digi.bz2 0x70000 \
+		${OUTDIR}/Fuel -mcfile /home/clusters/rrcmpi/ershova/DANSS/from_zeld2/235U_new_Gd/DANSS.root
 	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd_1.digi.bz2 0x70000 \
 		${OUTDIR}/Fuel -mcfile /home/clusters/rrcmpi/ershova/DANSS/from_zeld2/235U_new_Gd_1/DANSS.root
 }
@@ -56,13 +58,13 @@ do_fuelLarge()
 
 do_muons()
 {
-#	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS.root
+	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS.root
 	for f in 0 1 2 3 ; do
 		${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_${f}.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS${f}.root
 	done
-#	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS.root
-#	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim_0.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS0.root
-#	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_cutted_energy.digi.bz2  0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons_cutted_energy/DANSS.root
+	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS.root
+	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim_0.digi.bz2 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS0.root
+	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_cutted_energy.digi.bz2  0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons_cutted_energy/DANSS.root
 }
 
 do_sources()
@@ -85,12 +87,11 @@ do_sources()
 	${EXE} ${DIGI}/RadSources/mc_248Cm_92_5cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_92_5_cm_pos/DANSS.root
 }
 
-#do_sources
-#do_monopositrons
-#do_fuel
-#do_fuelLarge
-#do_muons
-
+do_sources
+do_monopositrons
+do_fuel
+do_fuelLarge
+do_muons
 do_newGd
 
 exit 0

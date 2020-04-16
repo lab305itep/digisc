@@ -42,7 +42,7 @@
 #define MINPOSE		0.5	// MeV
 #define MAXPOSE		20.0	// MeV
 #define AGAMMAN		0	// number of annihilation gamma hits (0 no requirement)
-#define MINNEUTE	2.0	// MeV
+#define MINNEUTE	1.5	// MeV
 #define MAXNEUTE	15.0	// MeV
 #define NEUTN		3	// number of hits
 #define MINVETOE	4.0	// MeV
@@ -145,7 +145,7 @@ int IsNeutron(struct DanssEventStruct7 *DanssEvent)
 	int rc;
 	
 	E = DanssEvent->NeutronEnergy;
-	rc = (E >= MINNEUTE && E < MAXNEUTE && DanssEvent->SiPmCleanHits >= NEUTN);
+	rc = (E >= MINNEUTE && E < MAXNEUTE && DanssEvent->NeutronHits >= NEUTN);
 
 	return rc;
 }
@@ -209,7 +209,7 @@ void MakePair(
 	DanssPair->AnnihilationMax = SavedEvent->AnnihilationMax;
 	DanssPair->MinPositron2GammaZ = SavedEvent->MinPositron2GammaZ;
 	
-	DanssPair->NeutronHits = DanssEvent->SiPmCleanHits;
+	DanssPair->NeutronHits = DanssEvent->NeutronHits;
 	DanssPair->NeutronEnergy = DanssEvent->NeutronEnergy;
 	memcpy(DanssPair->NeutronX, DanssEvent->NeutronX, sizeof(DanssEvent->NeutronX));
 	

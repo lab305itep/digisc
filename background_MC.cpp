@@ -61,7 +61,7 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 	TCut cR3("Distance < 52 && Distance < 28 + 5.5 * PositronEnergy && Distance < 81 - 5.3 * PositronEnergy");
 	TCut cR = cR3 && (cRXY || cR2);
 	TCut cNH("NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
-	TCut cNE("NeutronEnergy > 4.7 - 0.77 * PositronEnergy && NeutronEnergy > 2");
+	TCut cNE("NeutronEnergy > 4.7 - 0.77 * PositronEnergy && NeutronEnergy > 1.5");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
         TCut cNX10("NeutronX[0] > 8 && NeutronX[0] < 88");
@@ -114,7 +114,7 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 		case 12:	// NE20
 		case 13:	// NE30
 		case 14:	// NE40
-			h[i] = new TH1D(strs, titlel[i], 100, 2.0, 12.0);
+			h[i] = new TH1D(strs, titlel[i], 105, 1.5, 12.0);
 			break;
 		case 15:	// NH
 			h[i] = new TH1D(strs, titlel[i], 20, 0, 20.0);

@@ -78,7 +78,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut cPh("PositronHits < 6");
 	TCut cR = cR3 && (cRXY || cR2);
 	TCut cNH("NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
-	TCut cNE("NeutronEnergy > 4.7 - 0.77 * PositronEnergy && NeutronEnergy > 2");
+	TCut cNE("NeutronEnergy > 4.7 - 0.77 * PositronEnergy && NeutronEnergy > 1.5");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
         TCut cNX10("NeutronX[0] > 8 && NeutronX[0] < 88");
@@ -140,7 +140,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		case 12:	// NE20
 		case 13:	// NE30
 		case 14:	// NE40
-			h[i][j] = new TH1D(strs, titlel[i], 100, 2.0, 12.0);
+			h[i][j] = new TH1D(strs, titlel[i], 105, 1.5, 12.0);
 			break;
 		case 15:	// NH
 			h[i][j] = new TH1D(strs, titlel[i], 20, 0, 20.0);
