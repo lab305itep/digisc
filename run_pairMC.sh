@@ -14,6 +14,7 @@ for f in $LIST ; do
 	OF=${f/root${RVER}/pair${PVER}}
 	./pairbuilder8 $f $OF
 done
+exit 0
 
 PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/DataTakingPeriod01/Fuel
 

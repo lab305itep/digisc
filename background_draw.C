@@ -1,4 +1,4 @@
-#define NHISTS   28
+#define NHISTS   31
 #define THISTS    5
 #define OPTHISTS 14
 
@@ -8,21 +8,22 @@ void background_draw(const char *rootname, const char *mcname)
 	char strs[128];
 	char strl[1024];
 	const char *titles[] = {
-		"gtDiff", "R1",   "R2",   "RZ",   "PX",    "PY",  "PZ",  "NX", "NY", "NZ", 
-		"NE",     "NE10", "NE20", "NE30", "NE40",  "NH",  "PH",  "AH", "AE", "AM", 
-		"AMO",    "P2AZ", "AH1",  "AE1",  "P2AZ1", "PX1", "PY1", "PZ1"};
+		"gtDiff", "R1",   "R2",   "RZ",   "PX",    "PY",  "PZ",  "NX",  "NY",  "NZ", 
+		"NE",     "NE10", "NE20", "NE30", "NE40",  "NH",  "PH",  "AH",  "AE",  "AM", 
+		"AMO",    "P2AZ", "AH1",  "AE1",  "P2AZ1", "PX1", "PY1", "PZ1", "PXN", "PYN", 
+		"PZN"};
         const char *ttitles[] = {"TSHOWER", "TMUON", "TBEFORE", "TAFTER", "TAFTERP"};
 	const char *suffix[] = {"A-rand", "A-diff", "B-diff", "C-diff"};
 	const Color_t color[4] = {kGreen+2, kBlue, kRed, kOrange};
 	const int marker[4] = {kOpenCircle, kFullCircle, kOpenSquare, kOpenStar};
 	const float Cut[NHISTS][2] = {
-		{1.0, -50.0}, {-50.0, 28.0},  {-50.0, 36.0},  {-50.0, -50.0}, {4.0, 96.0},
+		{1.0, -50.0}, {-50.0, 40.0},  {-50.0, 48.0},  {-50.0, -50.0}, {4.0, 96.0},
 		{4.0, 96.0},  {4.0, 96.0},    {-50.0, -50.0}, {-50.0, -50.0}, {-50.0, -50.0},
-		{3.6, 9.5},   {3.6, 9.5},     {3.6, 9.5},     {3.6, 9.5},     {3.6, 9.5},
-		{3.0, 20.0},  {1.0, 7.0},     {0.0, 7.0},     {0.0, 1.2},     {-50.0, 0.8},
+		{1.5, 9.5},   {1.5, 9.5},     {1.5, 9.5},     {1.5, 9.5},     {1.5, 9.5},
+		{3.0, 20.0},  {1.0, 8.0},     {0.0, 7.0},     {0.0, 1.2},     {-50.0, 0.8},
 		{-50.0, 0.8}, {-50.0, -50.0}, {1.0, 7.0},     {0.1, 1.2},     {-50.0, -50.0}, 
-		{4.0, 96.0},  {4.0, 96.0},    {4.0, 96.0}
-	};
+		{4.0, 96.0},  {4.0, 96.0},    {4.0, 96.0},    {4.0, 96.0},    {4.0, 96.0}, 
+		{4.0, 96.0}};
 	const int toOpt[] = {0, 100, 101, 102, 10, 11, 12, 13, 14, 118, 22, 122, 23, 123};
 	TH1D *h[NHISTS][4];
 	TH1D *hMC[NHISTS];

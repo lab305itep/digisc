@@ -8,15 +8,16 @@
  *	Calculate various cuts for MC	*
  ****************************************/
 
-#define NHISTS 28
+#define NHISTS 31
 void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 {
 	char strs[128];
 	char strl[1024];
 	const char *titles[] = {
 		"gtDiff", "R1",  "R2",  "RZ", "PX", "PY", "PZ",  "NX",   "NY",  "NZ", 
-		"NE",     "NE10", "NE20", "NE30", "NE40",  "NH",  "PH",  "AH", "AE", "AM", 
-		"AMO",    "P2AZ", "AH1",  "AE1",  "P2AZ1", "PX1", "PY1", "PZ1"};
+		"NE",     "NE10", "NE20", "NE30", "NE40",  "NH",  "PH",  "AH",  "AE",  "AM", 
+		"AMO",    "P2AZ", "AH1",  "AE1",  "P2AZ1", "PX1", "PY1", "PZ1", "PXN", "PYN", 
+		"PZN"};
 	const char *titlel[] = {
 		"MC: Time from positron to neutron;us;mHz/us",
 		"MC: Distance between positron and neutron, 2D;cm;mHz/4cm", 
@@ -29,19 +30,22 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 		"Neutron capture energy, > 20 cm from the edge;MeV;mHz/100keV", 
 		"Neutron capture energy, > 30 cm from the edge;MeV;mHz/100keV", 
 		"Neutron capture energy, > 40 cm from the edge;MeV;mHz/100keV", 
-		"Neutron capture SiPM Hits;hits;mHz/hit",
+		"Neutron capture hits;hits;mHz/hit",
 		"MC: Number of SiPM hits in positron cluster;Hits;mHz/hit", 
-		"MC: Number of SiPM hits out of the cluster;Hits;mHz/hit", 
+		"MC: Number of hits out of the cluster;Hits;mHz/hit", 
 		"MC: Energy out of the cluster;MeV;mHz/100keV", 
 		"MC: The most energetic hit out of the cluster;MeV;mHz/100keV",
 		"MC: The most energetic hit out of the cluster - other cuts applied;MeV;mHz/100keV", 
 		"MC: Distance from the cluster to the closest hit outside the cluster, Z;cm;mHz/cm",
-		"MC: Number of SiPM hits out of the single hit cluster;Hits;mHz/hit", 
+		"MC: Number of hits out of the single hit cluster;Hits;mHz/hit", 
 		"MC: Energy out of the single hit cluster;MeV;mHz/100keV", 
 		"MC: Distance from the cluster to the closest hit outside the single hit cluster, Z;cm;mHz/cm",
 		"MC: Positron vertex X, single hit cluster;cm;mHz/4cm", 
 		"MC: Positron vertex Y, single hit cluster;cm;mHz/4cm", 
-		"MC: Positron vertex Z, single hit cluster;cm;mHz/cm"
+		"MC: Positron vertex Z, single hit cluster;cm;mHz/cm",
+		"MC: Positron vertex X, multi hit cluster;cm;mHz/4cm", 
+		"MC: Positron vertex Y, multi hit cluster;cm;mHz/4cm", 
+		"MC: Positron vertex Z, multi hit cluster;cm;mHz/cm"
 	};
 	TH1D *h[NHISTS];
 	int i;
@@ -53,15 +57,15 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");
 	TCut cRXY("PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0");
 	TCut c20("gtDiff > 1");
-	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 7");
+	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 12");
 	TCut cGammaMax("AnnihilationMax < 0.8");
 	TCut cPe("PositronEnergy > 0.75");
-	TCut cPh("PositronHits < 6");
-	TCut cR2("Distance < 48 && Distance < 19 + 6.4 * PositronEnergy");
-	TCut cR3("Distance < 52 && Distance < 28 + 5.5 * PositronEnergy && Distance < 81 - 5.3 * PositronEnergy");
+	TCut cPh("PositronHits < 8");
+	TCut cR2("Distance < 40 && Distance < 21 + 4.3 * PositronEnergy");
+	TCut cR3("Distance < 48 && Distance < 29 + 4.3 * PositronEnergy && Distance < 70 - 4.8 * PositronEnergy");
 	TCut cR = cR3 && (cRXY || cR2);
 	TCut cNH("NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
-	TCut cNE("NeutronEnergy > 4.7 - 0.77 * PositronEnergy && NeutronEnergy > 1.5");
+	TCut cNE("NeutronEnergy > 4.8 - 0.75 * PositronEnergy && NeutronEnergy > -0.33 + 0.33 * PositronEnergy && NeutronEnergy > 1.5");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
         TCut cNX10("NeutronX[0] > 8 && NeutronX[0] < 88");
@@ -96,17 +100,20 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 		case 3:		// RZ
 			h[i] = new TH1D(strs, titlel[i], 100, -50.0, 50.0);
 			break;
-		case 4:		// PX, PY, NX, NY, PX1, PY1
+		case 4:		// PX, PY, NX, NY, PX1, PY1, PXN, PYN
 		case 5:
 		case 7:
 		case 8:
 		case 25:
 		case 26:
+		case 28:
+		case 29:
 			h[i] = new TH1D(strs, titlel[i], 25, 0, 100.0);
 			break;
-		case 6:		// PZ, NZ, PZ1
+		case 6:		// PZ, NZ, PZ1, PZN
 		case 9:
 		case 27:
+		case 30:
 			h[i] = new TH1D(strs, titlel[i], 100, 0, 100.0);
 			break;
 		case 10:	// NE
@@ -195,6 +202,12 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 	chain->Project(h[26]->GetName(), "PositronX[1] + 2.0", ct && cAux);
 	ct = cIso && cX && cY && cR && cPe && cGamma &&  cGammaMax && cN && "PositronX[2] >= 0 && PositronHits == 1";
 	chain->Project(h[27]->GetName(), "PositronX[2] + 0.5", ct && cAux);
+	ct = cIso && cY && cZ && cR && cPe && cGamma &&  cGammaMax && cN && "PositronX[0] >= 0 && PositronHits > 1";
+	chain->Project(h[28]->GetName(), "PositronX[0] + 2.0", ct && cAux);
+	ct = cIso && cX && cZ && cR && cPe && cGamma &&  cGammaMax && cN && "PositronX[1] >= 0 && PositronHits > 1";
+	chain->Project(h[29]->GetName(), "PositronX[1] + 2.0", ct && cAux);
+	ct = cIso && cX && cY && cR && cPe && cGamma &&  cGammaMax && cN && "PositronX[2] >= 0 && PositronHits > 1";
+	chain->Project(h[30]->GetName(), "PositronX[2] + 0.5", ct && cAux);
 	
 	fRoot->cd();
 	for (i=0; i<NHISTS; i++) h[i]->Write();

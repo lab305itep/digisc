@@ -22,7 +22,7 @@
 #include "TClonesArray.h"
 #include "TStopwatch.h"
 #include "TTreeCacheUnzip.h"
-#include "TRandom.h"
+#include "TRandom2.h"
 #include "TDirectory.h"
 #include "TProcessID.h"
 #include "TObject.h"
@@ -119,6 +119,14 @@ void NeutronCorr(struct DanssPairStruct7 *DanssPair)
 	DanssPair->PositronEnergy *= (CSiPm + CPmt) / 2;
 	DanssPair->PositronSiPmEnergy *= CSiPm;
 	DanssPair->PositronPmtEnergy *= CPmt;
+}
+
+double MCEnergySmear(double E)
+{
+	static TRandom2 rndm;
+	const double lSmear = 0.04;	// 4%
+	const double sSmear = 0.12;	// 12%/sqrt(e)
+	return rndm.Gaus(E, sqrt(sSmear * sSmear * E + lSmear * lSmear * E));
 }
 
 void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
@@ -543,6 +551,8 @@ int main(int argc, char **argv)
 						DanssPair.gtToNext = RSHIFT;	// something large
 						DanssPair.NextEnergy = 0;
 					}
+//	Do MC energy smear
+					if (IsMC) DanssPair.PositronEnergy = MCEnergySmear(DanssPair.PositronEnergy);
 //	Fill proper tree
 					if (iLoop) {
 						tRandom->Fill();

@@ -9,16 +9,17 @@
  *	Calculate various cuts		*
  ****************************************/
 
-#define NHISTS 28
+#define NHISTS 31
 #define THISTS 5
 void background_calc(const char *name, int run_first, int run_last, TCut cAux = (TCut) "")
 {
 	char strs[128];
 	char strl[1024];
 	const char *titles[] = {
-		"gtDiff", "R1",   "R2",   "RZ",   "PX",    "PY",  "PZ",  "NX", "NY", "NZ", 
-		"NE",     "NE10", "NE20", "NE30", "NE40",  "NH",  "PH",  "AH", "AE", "AM", 
-		"AMO",    "P2AZ", "AH1",  "AE1",  "P2AZ1", "PX1", "PY1", "PZ1"};
+		"gtDiff", "R1",   "R2",   "RZ",   "PX",    "PY",  "PZ",  "NX",  "NY",  "NZ", 
+		"NE",     "NE10", "NE20", "NE30", "NE40",  "NH",  "PH",  "AH",  "AE",  "AM", 
+		"AMO",    "P2AZ", "AH1",  "AE1",  "P2AZ1", "PX1", "PY1", "PZ1", "PXN", "PYN", 
+		"PZN"};
 	const char *titlel[] = {
 		"Time from positron to neutron;us;mHz/us",
 		"Distance between positron and neutron, 2D;cm;mHz/4cm", 
@@ -31,19 +32,22 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		"Neutron capture energy, > 20 cm from the edge;MeV;mHz/100keV", 
 		"Neutron capture energy, > 30 cm from the edge;MeV;mHz/100keV", 
 		"Neutron capture energy, > 40 cm from the edge;MeV;mHz/100keV", 
-		"Neutron capture SiPM Hits;hits;mHz/hit",
+		"Neutron capture hits;hits;mHz/hit",
 		"Number of SiPM hits in positron cluster;Hits;mHz/hit", 
-		"Number of SiPM hits out of the cluster;Hits;mHz/hit", 
+		"Number of hits out of the cluster;Hits;mHz/hit", 
 		"Energy out of the cluster;MeV;mHz/100keV", 
 		"The most energetic hit out of the cluster;MeV;mHz/100keV",
 		"The most energetic hit out of the cluster - other cuts applied;MeV;mHz/100keV", 
 		"Distance from the cluster to the closest hit outside the cluster, Z;cm;mHz/cm",
-		"Number of SiPM hits out of the single hit cluster;Hits;mHz/hit", 
+		"Number of hits out of the single hit cluster;Hits;mHz/hit", 
 		"Energy out of the single hit cluster;MeV;mHz/100keV", 
 		"Distance from the cluster to the closest hit outside the single hit cluster, Z;cm;mHz/cm",
 		"Positron vertex X, single hit cluster;cm;mHz/4cm", 
 		"Positron vertex Y, single hit cluster;cm;mHz/4cm", 
-		"Positron vertex Z, single hit cluster;cm;mHz/cm"
+		"Positron vertex Z, single hit cluster;cm;mHz/cm",
+		"Positron vertex X, multi hit cluster;cm;mHz/4cm", 
+		"Positron vertex Y, multi hit cluster;cm;mHz/4cm", 
+		"Positron vertex Z, multi hit cluster;cm;mHz/cm"
 	};
 	const char *ttitles[] = {"TSHOWER", "TMUON", "TBEFORE", "TAFTER", "TAFTERP"};
 	const char *ttitlel[] = {
@@ -66,19 +70,19 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut cIso("((gtFromPrevious > 50  || gtFromPrevious == gtFromVeto) && gtToNext > 80 && EventsBetween == 0)");
 	TCut cShower("gtFromShower > 120 || ShowerEnergy < 800");
 	TCut c20("gtDiff > 1");
-	TCut cR2("Distance < 48 && Distance < 19 + 6.4 * PositronEnergy");
-	TCut cR3("Distance < 52 && Distance < 28 + 5.5 * PositronEnergy && Distance < 81 - 5.3 * PositronEnergy");
 	TCut cX("PositronX[0] < 0 || (PositronX[0] > 2 && PositronX[0] < 94)");
 	TCut cY("PositronX[1] < 0 || (PositronX[1] > 2 && PositronX[1] < 94)");
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");
 	TCut cRXY("PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0");
-	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 7");
+	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 12");
 	TCut cGammaMax("AnnihilationMax < 0.8");
 	TCut cPe("((PositronHits == 1) ? (PositronEnergy+0.0292)/1.043 : (PositronEnergy-0.1779)/0.9298) > 0.75");
-	TCut cPh("PositronHits < 6");
+	TCut cPh("PositronHits < 8");
+	TCut cR2("Distance < 40 && Distance < 21 + 4.3 * PositronEnergy");
+	TCut cR3("Distance < 48 && Distance < 29 + 4.3 * PositronEnergy && Distance < 70 - 4.8 * PositronEnergy");
 	TCut cR = cR3 && (cRXY || cR2);
 	TCut cNH("NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
-	TCut cNE("NeutronEnergy > 4.7 - 0.77 * PositronEnergy && NeutronEnergy > 1.5");
+	TCut cNE("NeutronEnergy > 4.8 - 0.75 * PositronEnergy && NeutronEnergy > -0.33 + 0.33 * PositronEnergy && NeutronEnergy > 1.5");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
         TCut cNX10("NeutronX[0] > 8 && NeutronX[0] < 88");
@@ -122,17 +126,20 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		case 3:		// RZ
 			h[i][j] = new TH1D(strs, titlel[i], 100, -50.0, 50.0);
 			break;
-		case 4:		// PX, PY, NX, NY, PX1, PY1
+		case 4:		// PX, PY, NX, NY, PX1, PY1, PXN, PYN
 		case 5:
 		case 7:
 		case 8:
 		case 25:
 		case 26:
+		case 28:
+		case 29:
 			h[i][j] = new TH1D(strs, titlel[i], 25, 0, 100.0);
 			break;
-		case 6:		// PZ, NZ, PZ1
+		case 6:		// PZ, NZ, PZ1, PZN
 		case 9:
 		case 27:
+		case 30:
 			h[i][j] = new TH1D(strs, titlel[i], 100, 0, 100.0);
 			break;
 		case 10:	// NE
@@ -237,6 +244,12 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		hp->Project(h[26][j], "PositronX[1] + 2.0", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cR && cPe && cGamma && cGammaMax && cN && "PositronX[2] >= 0 && PositronHits == 1";
 		hp->Project(h[27][j], "PositronX[2] + 0.5", ct && cv[j] && cAux);
+		ct = cIso && cShower && cY && cZ && cR && cPe && cGamma && cGammaMax && cN && "PositronX[0] >= 0 && PositronHits > 1";
+		hp->Project(h[28][j], "PositronX[0] + 2.0", ct && cv[j] && cAux);
+		ct = cIso && cShower && cX && cZ && cR && cPe && cGamma && cGammaMax && cN && "PositronX[1] >= 0 && PositronHits > 1";
+		hp->Project(h[29][j], "PositronX[1] + 2.0", ct && cv[j] && cAux);
+		ct = cIso && cShower && cX && cY && cR && cPe && cGamma && cGammaMax && cN && "PositronX[2] >= 0 && PositronHits > 1";
+		hp->Project(h[30][j], "PositronX[2] + 0.5", ct && cv[j] && cAux);
 	}
 	
 	for (i=0; i<THISTS; i++) {
