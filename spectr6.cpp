@@ -5,6 +5,7 @@
 #include <TF1.h>
 #include <TFile.h>
 #include <TH1.h>
+#include <TROOT.h>
 
 #include "HPainter2.h"
 
@@ -68,6 +69,7 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 
 	TH1D *hSig  = new TH1D("hSig",  "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
 	TH1D *hBgnd = new TH1D("hCosm", "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
+	TH1D *hRBgnd = new TH1D("hRCosm", "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);		// accidental muon backgraound
 	TH1D *hRes  = new TH1D("hRes",  "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
 	TH1D *hConst = new TH1D("hConst", "Various period parameters", 10, 0, 10);
 	
@@ -75,8 +77,14 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 	ptr2->SetFile(fRoot);
 	ptr2->Project(hSig,  what, cSig);
 	ptr2->Project(hBgnd, what, cBgnd);
+	hRBgnd = (TH1D*) gROOT->FindObject("hCosm-murand");
 	hConst->Fill("UpTime", ptr2->GetUpTime());
 	hConst->Fill("StartTime", ptr2->GetBeginTime());
+	if (!hRBgnd) {
+		printf("Internal ERROR: Can not find hSig-murand\n");
+	} else {
+		hBgnd->Add(hRBgnd, -1000.0/ptr2->GetUpTime());
+	}
 
 	hSig->Add(&fBgndN, -1.0);
 	hBgnd->Add(&fBgndC, -1.0);

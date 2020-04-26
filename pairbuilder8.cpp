@@ -54,6 +54,7 @@
 #define SHOWERMIN	800	// 800 MeV shower event threshold
 #define TISOLATIONM	140	// isolation us for random positron windows minus, 90 + 50 us
 #define TISOLATIONP	80	// isolation us for random positron windows plus, 80 us
+#define MUTDIFF		90	// muon window - 90 us
 //	No correction
 #define CORR_P0		0	// Positron energy correction from MC 
 #define CORR_P1		1.0	// Positron energy correction from MC
@@ -119,14 +120,6 @@ void NeutronCorr(struct DanssPairStruct7 *DanssPair)
 	DanssPair->PositronEnergy *= (CSiPm + CPmt) / 2;
 	DanssPair->PositronSiPmEnergy *= CSiPm;
 	DanssPair->PositronPmtEnergy *= CPmt;
-}
-
-double MCEnergySmear(double E)
-{
-	static TRandom2 rndm;
-	const double lSmear = 0.04;	// 4%
-	const double sSmear = 0.12;	// 12%/sqrt(e)
-	return rndm.Gaus(E, sqrt(sSmear * sSmear * E + lSmear * lSmear * E));
 }
 
 void CopyHits(struct HitStruct *to, struct HitStruct *from, int N)
@@ -320,20 +313,23 @@ int main(int argc, char **argv)
 	TChain *RawChain = NULL;
 	TTree *tOut = NULL;
 	TTree *tRandom = NULL;
+	TTree *tMuRandom = NULL;
 	TTree *InfoOut = NULL;
 	TFile *fOut = NULL;
 	FILE *fList;
 	char str[1024];
 	char strl[1600];
 	long long iEvt, nEvt, rEvt;
-	int PairCnt[2], WinCnt[3];
+	int PairCnt[3], WinCnt[3];
 	int PickUpCnt;
 	int i;
 	int iLoop;
-	float tShift;
+	double tShift;
 	char *ptr;
 	int IsMC = 0;
 	int LoopCnt, inCnt, outCnt, gtDiff;
+	int iDiff, iDiffUsed;
+	double rDiff;
 //			Check number of arguments
 	if (argc < 3) {
 		printf("Usage: %s list_file.txt|input_file.root output_file.root\n", argv[0]);
@@ -421,6 +417,16 @@ int main(int argc, char **argv)
 	tRandom->Branch("NHitType", HitArray[1].type, "NHitType[NNHits]/I");
 	if (IsMC) tRandom->Branch("MCEvent", &MCEventCopy, MCLeafList);
 
+	tMuRandom = new TTree("DanssMuRandom", "Random muon coincidence events");
+	tMuRandom->Branch("Pair", &DanssPair, LeafList);
+	tMuRandom->Branch("PHitE", HitArray[0].E, "PHitE[NPHits]/F");
+	tMuRandom->Branch("PHitT", HitArray[0].T, "PHitT[NPHits]/F");
+	tMuRandom->Branch("PHitType", HitArray[0].type, "PHitType[NPHits]/I");
+	tMuRandom->Branch("NHitE", HitArray[1].E, "NHitE[NNHits]/F");
+	tMuRandom->Branch("NHitT", HitArray[1].T, "NHitT[NNHits]/F");
+	tMuRandom->Branch("NHitType", HitArray[1].type, "NHitType[NNHits]/I");
+	if (IsMC) tMuRandom->Branch("MCEvent", &MCEventCopy, MCLeafList);
+
 	InfoOut = new TTree("SumInfo", "Summary information");
 	InfoOut->Branch("Info", &SumInfo,  
 		"gTime/L:"		// running time in terms of 125 MHz
@@ -437,6 +443,7 @@ int main(int argc, char **argv)
 	if (IsMC) EventChain->SetBranchAddress("MCEvent", &MCEvent);
 	if (RawChain) RawChain->SetBranchAddress("RawHits", &RawHits);
 	InfoChain->SetBranchAddress("Info", &DanssInfo);
+
 //			Create trigger arryay to facilitate searches
 	TrigArray = (struct TrigArrayStruct *) malloc(nEvt * sizeof(struct TrigArrayStruct));
 	if (!TrigArray) {
@@ -551,8 +558,6 @@ int main(int argc, char **argv)
 						DanssPair.gtToNext = RSHIFT;	// something large
 						DanssPair.NextEnergy = 0;
 					}
-//	Do MC energy smear
-					if (IsMC) DanssPair.PositronEnergy = MCEnergySmear(DanssPair.PositronEnergy);
 //	Fill proper tree
 					if (iLoop) {
 						tRandom->Fill();
@@ -560,6 +565,26 @@ int main(int argc, char **argv)
 					} else {
 						tOut->Fill();
 						PairCnt[0]++;
+						// for muon free events find in future random coincidence with muons
+						iDiffUsed = -1;
+						if (DanssPair.gtFromVeto > MUTDIFF) for (i=iEvt+1; i<nEvt;i++) {
+							if (TrigArray[i].globalTime - Positron.globalTime > NRANDOM * RSHIFT * GFREQ2US) break;
+							if (TrigArray[i].flags & FLAG_IGNORE) continue;
+							if (!(TrigArray[i].flags & FLAG_VETO)) continue;
+							iDiff = 1 + (TrigArray[i].globalTime - Positron.globalTime) / (GFREQ2US * RSHIFT);
+							if (iDiff == iDiffUsed) continue;	// we already have an event from a close muon
+							rDiff = (Positron.globalTime + iDiff * GFREQ2US * RSHIFT - TrigArray[i].globalTime) / GFREQ2US;
+							if (rDiff >= 0 && rDiff < MUTDIFF) {	// Found - we need to fill info about veto
+								EventChain->GetEntry(i);
+								DanssPair.gtFromVeto = rDiff;		// emulated time
+								DanssPair.VetoHits = DanssEvent.VetoCleanHits;
+								DanssPair.VetoEnergy = DanssEvent.VetoCleanEnergy;
+								DanssPair.DanssEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
+								tMuRandom->Fill();
+								PairCnt[2]++;
+								iDiffUsed = iDiff;
+							}
+						}
 					}
 				}
 				LoopCnt++;
@@ -576,8 +601,8 @@ int main(int argc, char **argv)
 	}
 	InfoOut->Fill();
 
-	printf("%Ld events processed with %d randomizing loops - %d/%d pairs found. Aquired time %7.0f s. PickUp count = %d\n", 
-		iEvt, NRANDOM, PairCnt[0], PairCnt[1], SumInfo.upTime / GLOBALFREQ, PickUpCnt);
+	printf("%Ld events processed with %d randomizing loops - %d/%d/%d pairs found. Aquired time %7.0f s. PickUp count = %d\n", 
+		iEvt, NRANDOM, PairCnt[0], PairCnt[1], PairCnt[2], SumInfo.upTime / GLOBALFREQ, PickUpCnt);
 	printf("%d neutron candidates; %d windows checked; %d windows rejected\n", WinCnt[0], WinCnt[1], WinCnt[2]);
 
 fin:
@@ -587,6 +612,7 @@ fin:
 	if (InfoOut) InfoOut->Write();
 	if (tOut) tOut->Write();
 	if (tRandom) tRandom->Write();
+	if (tMuRandom) tMuRandom->Write();
 	if (fOut) fOut->Close();
 	if (TrigArray) free(TrigArray);
 	return 0;

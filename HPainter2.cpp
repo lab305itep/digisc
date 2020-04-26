@@ -37,7 +37,7 @@ HPainter2::HPainter2(int mask, int run_from, int run_to, const char *root2dir, i
 
 	fRes = NULL;
 	ClosefRes = 0;
-	tSig = tRand = NULL;
+	tSig = tRand = tMuRand = NULL;
 	upTime = 0;
 	tBegin = 0;
 	tEnd = 0;
@@ -62,11 +62,13 @@ HPainter2::HPainter2(int mask, int run_from, int run_to, const char *root2dir, i
 	case 0:
 		tSig = new TChain("DanssPair", "SignalPair");
 		tRand = new TChain("DanssRandom", "RandomPair");
+		tMuRand = new TChain("DanssMuRandom", "MuRandomPair");
 		prefix = "pair";
 		break;
 	case 1:
 		tSig = new TChain("MuonPair", "SignalPair");
 		tRand = new TChain("MuonRandom", "RandomPair");
+		tMuRand = new TChain("MuonMuRandom", "MuRandomPair");
 		prefix = "muon";
 		break;
 	default:
@@ -79,6 +81,7 @@ HPainter2::HPainter2(int mask, int run_from, int run_to, const char *root2dir, i
 		tSig->Add(str);
 		info->Add(str);
 		tRand->Add(str);
+		tMuRand->Add(str);
 	}
 	
 	for (i=0; i<num; i++) {
@@ -162,41 +165,51 @@ int HPainter2::Make_file_list(int *list, int size, int mask, int run_from, int r
 /*	Project histogram doing random background subtraction	*/
 void HPainter2::Project(TH1 *hist, const char *what, TCut cut)
 {
-	TH1 *hSig;
-	TH1 *hRand;
+	TH1 *hSig;	// Signal hist
+	TH1 *hRand;	// Accidental background (e+ - n)
+	TH1 *hMuRand;	// Accidental background (muon - pair)
 	TH1 *hDiff;
 	TCut ct;
 	char str[256];
 	char csig[1024];
 	char crand[1024];
+	char cmurand[1024];
 	char cdiff[1024];
 	
 	if (!IsOpen()) return;
 	
 	snprintf(csig, sizeof(csig), "%s-sig", hist->GetName());
 	snprintf(crand, sizeof(crand), "%s-rand", hist->GetName());
+	snprintf(cmurand, sizeof(cmurand), "%s-murand", hist->GetName());
 	snprintf(cdiff, sizeof(cdiff), "%s-diff", hist->GetName());
 	hSig = (TH1 *) hist->Clone(csig);
 	hRand = (TH1 *) hist->Clone(crand);
+	hMuRand = (TH1 *) hist->Clone(cmurand);
 	hDiff = (TH1 *) hist->Clone(cdiff);
 	hSig->SetYTitle("Events");
 	hRand->SetYTitle("Events");
+	hMuRand->SetYTitle("Events");
 	hDiff->SetYTitle("Events");
 	if (tBegin < tEnd) {
 		sprintf(str, "unixTime > %d && unixTime < %d", tBegin, tEnd);
 		ct = cut && str;
 		tSig->Project(csig, what, ct);
 		tRand->Project(crand, what, ct);
+		tMuRand->Project(cmurand, what, ct);
 	} else {
 		tSig->Project(csig, what, cut.GetTitle());
 		tRand->Project(crand, what, cut.GetTitle());
+		tMuRand->Project(cmurand, what, cut.GetTitle());
 	}
 	
 	hSig->Sumw2();
 	hRand->Sumw2();
+	hMuRand->Sumw2();
 	MakeNonZeroErrors(hSig);
 	MakeNonZeroErrors(hRand);
+	MakeNonZeroErrors(hMuRand);
 	hRand->Scale(1.0/NRANDOM);
+	hMuRand->Scale(1.0/NRANDOM);
 	
 	hDiff->Add(hSig, hRand, 1.0, -1.0);
 
@@ -207,12 +220,13 @@ void HPainter2::Project(TH1 *hist, const char *what, TCut cut)
 		fRes->cd();
 		hSig->Write();
 		hRand->Write();
+		hMuRand->Write();	// hMuRand is only calculated and saved. No subtraction here.
 		hDiff->Write();
 	}
 	
-	delete hSig;
-	delete hRand;
-	delete hDiff;
+//	delete hSig;
+//	delete hRand;
+//	delete hDiff;
 }
 
 /*	Project histogram doing random background subtraction

@@ -6,7 +6,7 @@ ROOTLIB = $(shell root-config --libs)
 ROOTINC = $(shell root-config --cflags)
 DIGILIB = -lReadDigiData
 
-All: digi_evtbuilder6_v3 pairbuilder8 muonpair pmt2sipm spectr5w background_calc xyz deadtime run_dead_mpi\
+All: digi_evtbuilder6_v3 pairbuilder8 muonpair pmt2sipm background_calc xyz deadtime run_dead_mpi\
     run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi rootcheck deadchannels \
     hittree run_hits_mpi cmbuilder spectr6 background_MC
 

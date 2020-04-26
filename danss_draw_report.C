@@ -14,7 +14,6 @@ void danss_draw_report(const char *fname, double bgScale = 2.24)
 	TVirtualPad *pd;
 	TLatex *txt;
 	double val, err;
-	double evnts, rate;
 	char *ptr;
 	TPad *subPad;
 	
@@ -76,7 +75,6 @@ void danss_draw_report(const char *fname, double bgScale = 2.24)
 		sprintf(str, "Result = %5.0f+-%4.0f", val, err);
 		txt->SetTextColor(kRed);
 		txt->DrawTextNDC(0.4, 0.6, str);
-		evnts = val;
 		
 		pd->cd(2);
 		sprintf(str, "%s_hCosm-sig", positions[i].name);
@@ -99,24 +97,34 @@ void danss_draw_report(const char *fname, double bgScale = 2.24)
 		val = h->IntegralAndError(1, h->FindBin(7.999), err);
 		sprintf(str, "Random = %5.0f+-%4.0f", val, err);
 		txt->SetTextColor(kBlack);
-		txt->DrawTextNDC(0.4, 0.7, str);
+		txt->DrawTextNDC(0.4, 0.73, str);
+		sprintf(str, "%s_hCosm-murand", positions[i].name);
+		hb = (TH1 *) f->Get(str);
+		if (!hb) continue;
+		hb->SetLineWidth(2);
+		hb->SetLineColor(kMagenta);
+		hb->Draw("same");
+		val = hb->IntegralAndError(1, hb->FindBin(7.999), err);
+		sprintf(str, "MuRandom = %5.0f+-%4.0f", val, err);
+		txt->SetTextColor(kMagenta);
+		txt->DrawTextNDC(0.4, 0.66, str);
 		sprintf(str, "%s_hCosm-diff", positions[i].name);
 		h = (TH1 *) f->Get(str);
 		if (!h) continue;
+		h->Add(hb, -1);
 		h->SetLineWidth(2);
 		h->SetLineColor(kRed);
 		h->Draw("same");
 		val = h->IntegralAndError(1, h->FindBin(7.999), err);
 		sprintf(str, "Result = %5.0f+-%4.0f", val, err);
 		txt->SetTextColor(kRed);
-		txt->DrawTextNDC(0.4, 0.6, str);
+		txt->DrawTextNDC(0.4, 0.59, str);
 		
 		pd = cv->cd(2);
 		pd->SetFillStyle(4000);
 		sprintf(str, "%s_hSig", positions[i].name);
 		h = (TH1 *) f->Get(str);
 		if (!h) continue;
-		rate = h->Integral(1, 28);
 //		sprintf(str, "%s_hRes", positions[i].name);
 //		h = (TH1 *) f->Get(str);
 //		if (!h) continue;
@@ -143,7 +151,9 @@ void danss_draw_report(const char *fname, double bgScale = 2.24)
 		sprintf(str, "Cosm = %5.2f+-%4.2f mHz (%4.1f%%)", val, err, 100*positions[i].bgnd * bgScale);
 		txt->SetTextColor(kBlue);
 		txt->DrawTextNDC(0.3, 0.8, str);
-		sprintf(str, "Time = %6.1f*10^3 s", evnts / rate);
+		sprintf(str, "%s_hConst", positions[i].name);
+		val = ((TH1D*)f->Get(str))->GetBinContent(1);
+		sprintf(str, "Time = %6.1f*10^3 s", val / 1000.0);
 		txt->SetTextColor(kBlack);
 		txt->DrawTextNDC(0.3, 0.75, str);
 

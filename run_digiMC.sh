@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N run_digiMC
-#PBS -q long
+#PBS -q mpi
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
 #PBS -l nodes=1
@@ -31,15 +31,15 @@ do_monopositrons()
 do_fuel()
 {
 	for f in 235U 238U 239Pu 241Pu ; do 
-		${EXE} ${DIGI}/Fuel/mc_IBD_glbLY_transcode_rawProc_pedSim_${f}.digi.bz2 0x70000 ${OUTDIR}/Fuel -mcfile ${MCRAW}/Fuel_IBD/${f}_fuel/DANSS.root
+		${EXE} ${DIGI}/Fuel/mc_IBD_glbLY_transcode_rawProc_pedSim_${f}.digi.bz2 0x870000 ${OUTDIR}/Fuel -mcfile ${MCRAW}/Fuel_IBD/${f}_fuel/DANSS.root
 	done
 }
 
 do_newGd()
 {
-	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd.digi.bz2 0x70000 \
+	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd.digi.bz2 0x870000 \
 		${OUTDIR}/Fuel -mcfile /home/clusters/rrcmpi/ershova/DANSS/from_zeld2/235U_new_Gd/DANSS.root
-	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd_1.digi.bz2 0x70000 \
+	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/v3.2/DataTakingPeriod01/Fuel_largeStat/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_eroshovaNewGd_1.digi.bz2 0x870000 \
 		${OUTDIR}/Fuel -mcfile /home/clusters/rrcmpi/ershova/DANSS/from_zeld2/235U_new_Gd_1/DANSS.root
 }
 
@@ -50,7 +50,7 @@ do_fuelLarge()
 			fn=`printf "mc_IBD_glbLY_transcode_rawProc_pedSim_%s_%2.2d.digi.bz2" $f $n`
 			fm=`printf "%s_fuel/DANSS%d.root" $f $n`
 			if [ -f ${DIGI}/Fuel_largeStat/${fn} ] ; then 
-				${EXE} ${DIGI}/Fuel_largeStat/${fn} 0x70000 ${OUTDIR}/Fuel -mcfile ${MCRAW}/Fuel_IBD_largeStat/${fm}
+				${EXE} ${DIGI}/Fuel_largeStat/${fn} 0x870000 ${OUTDIR}/Fuel -mcfile ${MCRAW}/Fuel_IBD_largeStat/${fm}
 			fi
 		done
 	done
@@ -87,11 +87,11 @@ do_sources()
 	${EXE} ${DIGI}/RadSources/mc_248Cm_92_5cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_92_5_cm_pos/DANSS.root
 }
 
-do_sources
-do_monopositrons
+# do_sources
+# do_monopositrons
 do_fuel
 do_fuelLarge
-do_muons
+# do_muons
 do_newGd
 
 exit 0

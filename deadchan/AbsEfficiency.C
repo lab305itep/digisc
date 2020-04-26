@@ -49,11 +49,13 @@ void AbsEfficiency(const char *mcorig, const char *mcprc, const char *infoprc, c
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");
 	TCut cXYZ = cX && cY && cZ;
 	TCut cPh("PositronHits < 8");
-	TCut cNE("NeutronEnergy > 4.8 - 0.75 * PositronEnergy && NeutronEnergy > -0.33 + 0.33 * PositronEnergy");
-	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 12 && AnnihilationMax < 0.8");
+//	TCut cNE("NeutronEnergy > 4.8 - 0.75 * PositronEnergy && NeutronEnergy > -0.33 + 0.33 * PositronEnergy");
+	TCut cNE("NeutronEnergy > 1.5 + 3 * exp(-0.13 * PositronEnergy*PositronEnergy)");
+	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 12");
 	TCut cRXY("PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0");
-	TCut cR2("Distance < 40 && Distance < 21 + 4.3 * PositronEnergy");
-	TCut cR3("Distance < 48 && Distance < 29 + 4.3 * PositronEnergy && Distance < 70 - 4.8 * PositronEnergy");
+	TCut cR2("Distance < 40 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
+//	TCut cR3("Distance < 48 && Distance < 29 + 4.3 * PositronEnergy && Distance < 70 - 4.8 * PositronEnergy");
+	TCut cR3("Distance < 48 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
 	TCut cR = cR3 && (cRXY || cR2);
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
 

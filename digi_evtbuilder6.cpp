@@ -78,6 +78,7 @@
 #define FLG_NOPMTCORR		0x100000	// do not correct PMT energy of cluster for out of cluster SiPM hits
 #define FLG_PMTTIMECUT		0x200000	// Cut PMT and Veto by time
 #define FLG_CONFIRMSIPM		0x400000	// do not confirm all SiPM hits
+#define FLG_MCENERGYSMEAR	0x800000	// Do aaditional energy smear for MC events (IBD simulation assumed)
 
 #define MAXADCBOARD	60
 #define TAGMASK		((1L<<45) - 1)
@@ -320,6 +321,14 @@ int IsNeighbor(int hitA, int hitB, ReadDigiDataUser *user)
 	if (user->zCoord(hitA) == user->zCoord(hitB) && abs(user->firstCoord(hitA) - user->firstCoord(hitB)) <= 1) return 1;
 	if (abs(user->zCoord(hitA) - user->zCoord(hitB)) == 1) return 1;
 	return 0;
+}
+
+double MCEnergySmear(double E)
+{
+	static TRandom2 rndm;
+	const double lSmear = 0.04;	// 4%
+	const double sSmear = 0.12;	// 12%/sqrt(e)
+	return rndm.Gaus(E, sqrt(sSmear * sSmear * E + lSmear * lSmear * E * E));
 }
 
 double PMTYAverageLightColl(double x)
@@ -989,6 +998,16 @@ void FindFineTime(ReadDigiDataUser *user)
 	if (n >= 2 && PMTsumA > 2) PmtFineTime = PMTsumT / PMTsumA;
 }
 
+
+// Do additional smear of energy for MC events
+void MCSmear(void)
+{
+	DanssEvent.PositronEnergy = MCEnergySmear(DanssEvent.PositronEnergy);
+	DanssEvent.TotalEnergy = MCEnergySmear(DanssEvent.TotalEnergy);
+	DanssEvent.AnnihilationEnergy = MCEnergySmear(DanssEvent.AnnihilationEnergy);
+	DanssEvent.NeutronEnergy = MCEnergySmear(DanssEvent.NeutronEnergy);
+}
+
 void StoreHits(ReadDigiDataUser *user)
 {
 	int i, j, N;
@@ -1187,7 +1206,7 @@ void Help(void)
 	printf("-calib filename.txt     --- file with energy calibration. No default.\n");
 	printf("-deadlist filename.txt  --- file with explicit list of dead channels.\n");
 	printf("-dump gTime             --- dump an event with this gTime.\n");
-	printf("-ecorr EnergyCorrection --- 0.935 by default.\n");
+	printf("-ecorr EnergyCorrection --- 0.93 by default.\n");
 	printf("-events number          --- stop after processing this number of events. Default - do not stop.\n");
 	printf("-file filename.txt      --- file with a list of files for processing. No default.\n");
 	printf("-flag FLAGS             --- analysis flag mask. Default - 0. Recognized flags:\n");
@@ -1203,6 +1222,7 @@ void Help(void)
 	printf("\t0x100000 --- do not correct PMT cluster energy for out of cluster SiPM hits.\n");
 	printf("\t0x200000 --- Check PMT and VETO time.\n");
 	printf("\t0x400000 --- do not confirm all SiPM hits.\n");
+	printf("\t0x800000 --- Do aaditional energy smear for MC events (IBD simulation assumed)\n");
 	printf("-help                   --- print this message and exit.\n");
 	printf("-hitinfo hitinfo.txt[.bz2] --- add raw hits information tree.\n");
 	printf("-mcdata                 --- this is Monte Carlo data - create McTruth branch.\n");
@@ -1518,6 +1538,7 @@ int ReadDigiDataUser::processUserEvent()
 	CalculatePositron(this);
 	StoreHits(this);
 	if (!IsMc) CorrectEnergy();
+	if (IsMc && (iFlags & FLG_MCENERGYSMEAR)) MCSmear();
 	if (iFlags & FLG_PRINTALL) DebugFullPrint(this);
 	if (DanssEvent.globalTime == dumpgTime) {
 		DumpEvent(this);
