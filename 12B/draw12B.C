@@ -85,41 +85,87 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	
 	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterEnergy", kScale);
 	TH1D *hExp = new TH1D("hExp12B", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterSiPMEnergy", kScale);
+	TH1D *hExpSiPM = new TH1D("hExp12BSiPM", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterPMTEnergy", kScale);
+	TH1D *hExpPMT = new TH1D("hExp12BPMT", str, 80, 0, 20);
 	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterEnergy");
 	TH1D *hRndm = new TH1D("hRndm12B", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterSiPMEnergy");
+	TH1D *hRndmSiPM = new TH1D("hRndm12BSiPM", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterPMTEnergy");
+	TH1D *hRndmPMT = new TH1D("hRndm12BPMT", str, 80, 0, 20);
 	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronEnergy", kRndm, kRndm2);
 	TH1D *hMC = new TH1D("hMC12B", str, 80, 0, 20);
+	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronSiPMEnergy", kRndm, kRndm2);
+	TH1D *hMCSiPM = new TH1D("hMC12BSiPM", str, 80, 0, 20);
+	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronPMTEnergy", kRndm, kRndm2);
+	TH1D *hMCPMT = new TH1D("hMC12BPMT", str, 80, 0, 20);
 	TH1D *hExpT = new TH1D("hExp12BT", "Time from muon, experiment;ms", 99, 1, 100);
 	TH1D *hRndmT = new TH1D("hRndm12BT", "Time from muon, MC;ms", 99, 1, 100);
 	
 	sprintf(str, "ClusterEnergy * %6.4f", kScale);
 	chA->Project(hExp->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndm->GetName(), str, "gtDiff > 500");
+	sprintf(str, "ClusterSiPmEnergy * %6.4f", kScale);
+	chA->Project(hExpSiPM->GetName(), str, "gtDiff > 500");
+	chR->Project(hRndmSiPM->GetName(), str, "gtDiff > 500");
+	sprintf(str, "ClusterPmtEnergy * %6.4f", kScale);
+	chA->Project(hExpPMT->GetName(), str, "gtDiff > 500");
+	chR->Project(hRndmPMT->GetName(), str, "gtDiff > 500");
 	sprintf(str, "MyRandom::GausAdd(PositronEnergy, %6.4f, %6.4f)", kRndm, kRndm2);
 	tMC->Project(hMC->GetName(), str);
+	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy, %6.4f, %6.4f)", kRndm, kRndm2);
+	tMC->Project(hMCSiPM->GetName(), str);
+	sprintf(str, "MyRandom::GausAdd(PositronPmtEnergy, %6.4f, %6.4f)", kRndm, kRndm2);
+	tMC->Project(hMCPMT->GetName(), str);
 	chA->Project(hExpT->GetName(), "gtDiff / 1000.0");
 	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0");
 	
 	hExp->Sumw2();
 	hRndm->Sumw2();
 	hMC->Sumw2();
+	hExpSiPM->Sumw2();
+	hRndmSiPM->Sumw2();
+	hMCSiPM->Sumw2();
+	hExpPMT->Sumw2();
+	hRndmPMT->Sumw2();
+	hMCPMT->Sumw2();
 	hExpT->Sumw2();
 	hRndmT->Sumw2();
 	
 	hExp->Add(hRndm, -1.0/16);
+	hExpSiPM->Add(hRndmSiPM, -1.0/16);
+	hExpPMT->Add(hRndmPMT, -1.0/16);
 	hExpT->Add(hRndmT, -1.0/16);
 	hMC->Scale(hExp->Integral(17, 64) / hMC->Integral(17, 64));
+	hMCSiPM->Scale(hExpSiPM->Integral(17, 64) / hMCSiPM->Integral(17, 64));
+	hMCPMT->Scale(hExpPMT->Integral(17, 64) / hMCPMT->Integral(17, 64));
 	
 	hExp->SetMarkerStyle(kFullCircle);
 	hExp->SetMarkerColor(kRed);
 	hExp->SetLineColor(kRed);
+	hExpSiPM->SetMarkerStyle(kFullCircle);
+	hExpSiPM->SetMarkerColor(kRed);
+	hExpSiPM->SetLineColor(kRed);
+	hExpPMT->SetMarkerStyle(kFullCircle);
+	hExpPMT->SetMarkerColor(kRed);
+	hExpPMT->SetLineColor(kRed);
 	hExpT->SetMarkerStyle(kFullCircle);
 	hExpT->SetMarkerColor(kGreen);
 	hExpT->SetLineColor(kGreen);
 	hMC->SetLineWidth(2);
 	hMC->SetLineColor(kBlue);
+	hMCSiPM->SetLineWidth(2);
+	hMCSiPM->SetLineColor(kBlue);
+	hMCPMT->SetLineWidth(2);
+	hMCPMT->SetLineColor(kBlue);
 	
 	TCanvas *cv = new TCanvas("CV", "12B", 1400, 800);
+	sprintf(str, "12B_78_rndm_%5.3f_%5.3f_scale_%5.3f", kRndm, kRndm2, kScale);
+	TString oname(str);
+	cv->SaveAs((oname+".pdf[").Data());
+
 	cv->Divide(2,1);
 	cv->cd(1);
 	hExp->Draw();
@@ -132,15 +178,29 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	lg->Draw();
 	cv->cd(2);
 	hExpT->Fit("expo");
+	cv->SaveAs((oname+".pdf").Data());
+
+	cv->Clear();
+	cv->Divide(2,1);
+	cv->cd(1);
+	hExpSiPM->Draw();
+	hMCSiPM->Draw("hist,same");
+	lg->Draw();
+	cv->cd(2);
+	hExpPMT->Draw();
+	hMCPMT->Draw("hist,same");
+	lg->Draw();
+	cv->SaveAs((oname+".pdf").Data());
+	cv->SaveAs((oname+".pdf]").Data());
 	
-	sprintf(str, "12B_78_rndm_%5.3f_%5.3f_scale_%5.3f.png", kRndm, kRndm2, kScale);
-	cv->SaveAs(str);
-	
-	sprintf(str, "12B_78_rndm_%5.3f_%5.3f_scale_%5.3f.root", kRndm, kRndm2, kScale);
-	TFile *fOut = new TFile(str, "RECREATE");
+	TFile *fOut = new TFile((oname+".root").Data(), "RECREATE");
 	fOut->cd();
 	hExp->Write();
 	hMC->Write();
+	hExpSiPM->Write();
+	hMCSiPM->Write();
+	hExpPMT->Write();
+	hMCPMT->Write();
 	hExpT->Write();
 	fOut->Close();
 }

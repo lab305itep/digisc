@@ -33,7 +33,7 @@ if [ x${TMP}  != x ] ; then
 	export DANSSRAWREC_HOME=lib_v3.2
 	BUILDER=./digi_evtbuilder6_v3
 	mkdir -p $ROOT_DIR
-	$BUILDER -file $LISTFILE -output $OUTFILE -flag $FLAGS -tcalib $TCALIB -mcdata -deadlist deadlist_12850.txt $ARGS 
+	$BUILDER -file $LISTFILE -output $OUTFILE -flag $FLAGS -tcalib $TCALIB -mcdata $ARGS 
 else
 	RUNNUMBER=`printf "%6.6d" $FN`
 #	Try V3 first:

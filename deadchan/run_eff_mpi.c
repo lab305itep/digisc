@@ -17,11 +17,17 @@ int main(int argc, char *argv[])
 	char *pairdir;
 	char *fuellist;
 	char *vardir;
+	int start_run = 0;
 	
 	t0 = time(NULL);
+	
+	if (argc > 1) start_run = strtol(argv[1], NULL, 10);
 //		Get our run number
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
+	if (argc > 1) start_run = strtol(argv[1], NULL, 10);
+	serial += start_run;
+	
 	rootdir = getenv("ROOT_DIR");
 	if (!rootdir) rootdir = "/home/clusters/rrcmpi/alekseev/igor/root6n4/MC/DataTakingPeriod01/Eff/";
 	pairdir = getenv("PAIR_DIR");
@@ -31,9 +37,13 @@ int main(int argc, char *argv[])
 	vardir = getenv("VAR_DIR");
 	if (!vardir) vardir = "varlists/";
 	
+	sprintf(str, "%s/%d.list", vardir, serial);
+	irc = access(str, R_OK);
+	if (irc) goto fin;
+	
 	setenv("DANSSRAWREC_HOME", "../lib_v3.2", 1);
 //			Run digi
-	sprintf(str, "../digi_evtbuilder6_v3 -no_hit_tables -file %s -output %s/var_%d_fuel.root -flag 0x70000 -ecorr 1.0 -mcdata -deadlist %s/%d.list", 
+	sprintf(str, "../digi_evtbuilder6_v3 -no_hit_tables -file %s -output %s/var_%d_fuel.root -flag 0x870000 -ecorr 1.0 -mcdata -deadlist %s/%d.list", 
 		fuellist, rootdir, serial, vardir, serial);
 	irc = system(str);
 	if (irc) {
@@ -49,7 +59,7 @@ int main(int argc, char *argv[])
 		goto fin;
 	}
 //			Plot Spectra
-	sprintf(str, "root -b -l -q \"mcfuelspectra.C(\\\"%s/var_%d_fuel.root\\\", \\\"%s/var_%d_spfuel.root\\\", 0.12, 0.04)\"",
+	sprintf(str, "root -b -l -q \"mcfuelspectra.C(\\\"%s/var_%d_fuel.root\\\", \\\"%s/var_%d_spfuel.root\\\")\"",
 		pairdir, serial, vardir, serial);
 	irc = system(str);
 	if (irc) {

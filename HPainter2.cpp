@@ -121,16 +121,18 @@ void HPainter2::OpenFile(const char *name)
 */
 int HPainter2::Make_file_list(int *list, int size, int mask, int run_from, int run_to)
 {
-	const char stat_file_name[] = "stat_all.txt";
 	int N;
 	FILE *f;
 	char str[1024];
-	char *ptr;
+	const char *ptr;
 	int i, num, cond;
 
-	f = fopen(stat_file_name, "rt");
+	ptr = getenv("STAT_ALL");
+	if (!ptr) ptr = "stat_all.txt";
+
+	f = fopen(ptr, "rt");
 	if (!f) {
-		printf("Stat file %s not found: %m\n", stat_file_name);
+		printf("Stat file %s not found: %m\n", ptr);
 		return -1;
 	}
 

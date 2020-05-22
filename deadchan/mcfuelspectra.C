@@ -1,11 +1,3 @@
-#include <stdio.h>
-
-#include <TCut.h>
-#include <TFile.h>
-#include <TH1D.h>
-#include <TRandom2.h>
-#include <TTree.h>
-
 TRandom2 rnd;
 
 class MyRandom {
@@ -21,7 +13,7 @@ class MyRandom {
 	};
 };
 
-void mcfuelspectra(const char *pairname, const char *spname, const double kRndm = 0.12, const double kRndmC = 0.04)
+void mcfuelspectra(const char *pairname, const char *spname, const double kRndm = 0, const double kRndmC = 0)
 {
 	const double kScale = 1.0;
 	char str[1024];
@@ -30,12 +22,18 @@ void mcfuelspectra(const char *pairname, const char *spname, const double kRndm 
 	TCut cX("PositronX[0] < 0 || (PositronX[0] > 2 && PositronX[0] < 94)");
 	TCut cY("PositronX[1] < 0 || (PositronX[1] > 2 && PositronX[1] < 94)");
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");
-	TCut cT("gtDiff > 2");
-	TCut cA("AnnihilationEnergy < 1.8 && AnnihilationGammas < 9 && AnnihilationMax < 0.8");
-	TCut cPE("PositronEnergy > 0.75 && PositronHits < 7");
-	TCut cR("((PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0) || Distance < 45) && Distance < 55");
-	TCut cN("NeutronEnergy > 3.5 && NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
-	TCut cOneHit("!(PositronHits == 1 && (AnnihilationGammas < 2 || AnnihilationEnergy < 0.2 || MinPositron2GammaZ > 15))");
+	TCut cRXY("PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0");
+	TCut cT("gtDiff > 1");
+	TCut cA("AnnihilationEnergy < 1.2 && AnnihilationGammas < 12");
+	TCut cPE("PositronEnergy > 0.5 && PositronHits < 8");
+	TCut cOneHit("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
+	TCut cR2("Distance < 40 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
+	TCut cR3("Distance < 48 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
+	TCut cR = cR3 && (cRXY || cR2);
+	TCut cNH("NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
+	TCut cNE("NeutronEnergy > 1.5 + 3 * exp(-0.13 * PositronEnergy*PositronEnergy)");
+	TCut cN = cNH && cNE;
+
 	TCut cSel = cVeto && cX && cY && cZ && cA && cR && cN && cOneHit;
 	
 	TFile *fMC = new TFile(pairname);
@@ -47,7 +45,11 @@ void mcfuelspectra(const char *pairname, const char *spname, const double kRndm 
 	
 	TFile *fSp = new TFile(spname, "RECREATE");
 	TH1D *hMC = new TH1D("hMC", "Fuel mixture MC event positron spectra;E_{e^{+}}, MeV;Events/day/125 keV", 128, 0, 16);
-	sprintf(str, "%6.3f*MyRandom::GausAdd(PositronEnergy, %8.5f, %8.5f)", kScale, kRndm, kRndmC);
+	if (kRndm == 0 && kRndmC == 0) {
+		sprintf(str, "%6.3f*PositronEnergy", kScale);
+	} else {
+		sprintf(str, "%6.3f*MyRandom::GausAdd(PositronEnergy, %8.5f, %8.5f)", kScale, kRndm, kRndmC);
+	}
 	tMC->Project(hMC->GetName(), str, cSel);
 	fSp->cd();
 	hMC->Write();
