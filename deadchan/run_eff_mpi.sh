@@ -17,5 +17,5 @@ for ((i=0; $i<173; i=$i + 45 )) ; do
 	mpirun --mca btl ^tcp run_eff_mpi $i
 done
 
-root -l -q -b "calc_eff.C(173, \"_2210_078234\", \"$VAR_DIR\", 15000000)"
+root -l -q -b "calc_eff.C(173, \"2210_078234\", \"$VAR_DIR\", 15000000)"
 exit 0

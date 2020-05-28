@@ -26,7 +26,6 @@
 #include "TClonesArray.h"
 #include "TStopwatch.h"
 #include "TTreeCacheUnzip.h"
-#include "TRandom.h"
 #include "TDirectory.h"
 #include "TProcessID.h"
 #include "TObject.h"
@@ -101,10 +100,14 @@ char *				chOutputFile;
 int				iFlags;
 int				MaxEvents;
 int				IsMc;				// MC run flag
-double				AttenuationLength;
 double				EnergyCorrection;
+double				MCEnergyCorrection;
 
 TRandom2 *			Random;
+struct {	// additional energy smear for MC events
+	double st;	// stokhastic term
+	double ct;	// impurity term
+} MCsmear;
 TFile *				OutputFile;
 TTree *				OutputTree;
 TTree *				InfoTree;
@@ -325,10 +328,7 @@ int IsNeighbor(int hitA, int hitB, ReadDigiDataUser *user)
 
 double MCEnergySmear(double E)
 {
-	static TRandom2 rndm;
-	const double lSmear = 0.04;	// 4%
-	const double sSmear = 0.12;	// 12%/sqrt(e)
-	return rndm.Gaus(E, sqrt(sSmear * sSmear * E + lSmear * lSmear * E * E));
+	return Random->Gaus(E, sqrt(MCsmear.st * MCsmear.st * E + MCsmear.ct * MCsmear.ct * E * E));
 }
 
 double PMTYAverageLightColl(double x)
@@ -376,7 +376,6 @@ float acorr(float energy, float dist, char side = 'Y', int type = bSiPm)
 	float C, XY;
 
 	if (dist >= 0) {
-//		C = exp((dist - 48.0) / AttenuationLength);	// 48 cm is the effective middle
 		C = 1.0 / YAverageLightColl(dist, type);
 	} else if (IsMc && (iFlags & FLG_SIMLONGCORR)) {
 		XY = (side == 'X') ? DanssMc.X[1] : DanssMc.X[0];
@@ -751,24 +750,24 @@ void CleanByTime(ReadDigiDataUser *user)
 	for (i=0; i<N; i++) if (user->type(i) == bSiPm && fabs(user->t_raw(i) - tearly) <= TCUT) HitFlag[i] = -100;	// mark early hit candidates
 }
 
-void CorrectEnergy(void)
+void CorrectEnergy(double scale)
 {
 	int i;
-	DanssEvent.VetoCleanEnergy *= EnergyCorrection;
-	DanssEvent.BottomLayersEnergy *= EnergyCorrection;
-	DanssEvent.PmtCleanEnergy *= EnergyCorrection;
-	DanssEvent.SiPmEnergy *= EnergyCorrection;
-	DanssEvent.SiPmCleanEnergy *= EnergyCorrection;
-	DanssEvent.SiPmEarlyEnergy *= EnergyCorrection;
-	DanssEvent.PositronEnergy *= EnergyCorrection;
-	DanssEvent.TotalEnergy *= EnergyCorrection;
-	DanssEvent.PositronSiPmEnergy *= EnergyCorrection;
-	DanssEvent.PositronPmtEnergy *= EnergyCorrection;
-	DanssEvent.AnnihilationEnergy *= EnergyCorrection;
-	DanssEvent.AnnihilationMax *= EnergyCorrection;
-	DanssEvent.NeutronEnergy *= EnergyCorrection;
+	DanssEvent.VetoCleanEnergy *= scale;
+	DanssEvent.BottomLayersEnergy *= scale;
+	DanssEvent.PmtCleanEnergy *= scale;
+	DanssEvent.SiPmEnergy *= scale;
+	DanssEvent.SiPmCleanEnergy *= scale;
+	DanssEvent.SiPmEarlyEnergy *= scale;
+	DanssEvent.PositronEnergy *= scale;
+	DanssEvent.TotalEnergy *= scale;
+	DanssEvent.PositronSiPmEnergy *= scale;
+	DanssEvent.PositronPmtEnergy *= scale;
+	DanssEvent.AnnihilationEnergy *= scale;
+	DanssEvent.AnnihilationMax *= scale;
+	DanssEvent.NeutronEnergy *= scale;
 
-	for (i=0; i<DanssEvent.NHits; i++) HitArray.E[i] *= EnergyCorrection;
+	for (i=0; i<DanssEvent.NHits; i++) HitArray.E[i] *= scale;
 }
 
 void CreateDeadList(char *fname)
@@ -1202,7 +1201,6 @@ void Help(void)
 	printf("\tDANSS offline: digi event builder. Version %s\n", MYVERSION);
 	printf("Process events and create root-tree with event parameters.\n");
 	printf("\tOptions:\n");
-	printf("-alen AttenuationLength --- signal attenuation length in cm. Default - 300 cm.\n");
 	printf("-calib filename.txt     --- file with energy calibration. No default.\n");
 	printf("-deadlist filename.txt  --- file with explicit list of dead channels.\n");
 	printf("-dump gTime             --- dump an event with this gTime.\n");
@@ -1228,7 +1226,9 @@ void Help(void)
 	printf("-mcdata                 --- this is Monte Carlo data - create McTruth branch.\n");
 	printf("-mcfile mc.root         --- this is Monte Carlo data - create McTruth and McEvent branches.\n");
 	printf("          Copy information from mc.root:DANSSEvent tree.\n");
+	printf("-mcscale scale          --- scale energy factor for MC.\n");
 	printf("-seed SEED              --- seed for random number generator.\n");
+	printf("-smear stohastic_term impurity term --- additional smear for MC events.\n");
 	printf("-output filename.root   --- output file name. Without this key output file is not written.\n");
 	printf("-tcalib filename.txt    --- file with the time calibration.\n");
 }
@@ -1253,7 +1253,8 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	char *McRootFileName;
 	
 	int RandomSeed = 17321;
-	AttenuationLength = 300;
+	MCsmear.st = 0.12;	// 12%/sqrt(E)
+	MCsmear.ct = 0.04;	// 4%
 	progStartTime = time(NULL);
 	chOutputFile = NULL;
 	OutputFile = NULL;
@@ -1266,6 +1267,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	MaxEvents = -1;
 	IsMc = 0;
 	EnergyCorrection = 0.93;
+	MCEnergyCorrection = 1.00;
 	RawHitsFileName = NULL;
 	RawHitsTree = NULL;
 	RawHitsArray = NULL;
@@ -1301,12 +1303,17 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 			IsMc = 1;
 			i++;
 			McRootFileName = (char *)argv[i];
-		} else if (!strcmp(argv[i], "-alen")) {
+		} else if (!strcmp(argv[i], "-mcscale")) {
 			i++;
-			AttenuationLength = strtod(argv[i], NULL);
+			MCEnergyCorrection = strtod(argv[i], NULL);
 		} else if (!strcmp(argv[i], "-seed")) {
 			i++;
 			RandomSeed = strtol(argv[i], NULL, 0);
+		} else if (!strcmp(argv[i], "-smear")) {
+			i++;
+			MCsmear.st = strtod(argv[i], NULL);
+			i++;
+			MCsmear.ct = strtod(argv[i], NULL);
 		} else if (!strcmp(argv[i], "-help")) {
 			Help();
 			exit(0);
@@ -1537,7 +1544,7 @@ int ReadDigiDataUser::processUserEvent()
 	CalculateNeutron(this);
 	CalculatePositron(this);
 	StoreHits(this);
-	if (!IsMc) CorrectEnergy();
+	CorrectEnergy((IsMc) ? MCEnergyCorrection : EnergyCorrection);
 	if (IsMc && (iFlags & FLG_MCENERGYSMEAR)) MCSmear();
 	if (iFlags & FLG_PRINTALL) DebugFullPrint(this);
 	if (DanssEvent.globalTime == dumpgTime) {

@@ -33,7 +33,9 @@ void mc_mono_neutrinos(const char *name)
 	int i;
 	TH1D *h[NBINS];
 	double elow, ehigh;
+	double Hlow, Hhigh;
 	TF1 *fg;
+	TAxis *hXaxis;
 
 	gStyle->SetOptStat("emr");
 	gStyle->SetOptFit(1);
@@ -51,13 +53,21 @@ void mc_mono_neutrinos(const char *name)
 	for (i = 0; i < NBINS; i++) {
 		cv->Clear();
 		e[i] = h2PE->GetXaxis()->GetBinCenter(i+1);
-		se[i] = sqrt(e[i]);
+		se[i] = sqrt(e[i]-1.804);
 		ee[i] = 0;
 		sprintf(strH, "hPE_%d", i);
 		sprintf(strT, "Reconstructed positron energy for MC neutrinos at %7.4f MeV;E, MeV", Enu);
 		h[i] = h2PE->ProjectionY(strH, i+1, i+1);
+		hXaxis = h[i]->GetXaxis();
+		hXaxis->SetTitleOffset(1.2);
 		aGaus->SetParameters(h[i]->GetMaximum(), h[i]->GetMean(), h[i]->GetRMS(), h[i]->GetRMS());
-		h[i]->Fit("aGaus");
+		Hlow = hXaxis->GetBinLowEdge(hXaxis->GetFirst());
+		Hhigh = hXaxis->GetBinUpEdge(hXaxis->GetLast());
+		elow = h[i]->GetMean() - 2*h[i]->GetRMS();
+		ehigh = h[i]->GetMean() + 2*h[i]->GetRMS();
+		if (elow < Hlow) elow = Hlow;
+		if (ehigh > Hhigh) ehigh = Hhigh;
+		h[i]->Fit("aGaus", "", "", elow, ehigh);
 		er[i] = aGaus->GetParameter(1);
 		es[i] = (aGaus->GetParameter(2) + aGaus->GetParameter(3))/2; 
 		ere[i] = aGaus->GetParError(1);
@@ -75,9 +85,10 @@ void mc_mono_neutrinos(const char *name)
 	cv->Clear();
 	cv->Divide(1, 2);
 	cv->cd(1);
-	TH1D *hG = new TH1D("hG", "Cluster energy;E_{#nu}, MeV;E_{cluster}, MeV", NBINS, 1.81, 9.81);
+	TH1D *hG = new TH1D("hG", "Cluster energy MPV;E_{#nu}, MeV;E_{cluster}, MeV", NBINS, 1.81, 9.81);
 	hG->SetMinimum(-0.5);
 	hG->SetMaximum(12.5);
+	hG->GetXaxis()->SetTitleOffset(1.2);
 	hG->SetStats(0);
 	hG->Draw();
 	TLegend *lg = new TLegend(0.5, 0.2, 0.8, 0.3);
@@ -95,26 +106,28 @@ void mc_mono_neutrinos(const char *name)
 	gER->Draw("P");
 	lg->AddEntry(gER, "Difference x10", "P");
 	lg->Draw();
-	gE->Write();
+//	gE->Write();
 
 	cv->cd(2);
-	TH1D *hGG = new TH1D("hS", "#sigma;#sqrt{E}, MeV;#sigma,MeV", 12, 0, 3.5);
+	TH1D *hGG = new TH1D("hS", "#sigma;#sqrt{E_{e+}}, MeV;#sigma,MeV", 12, 0, 3.5);
 	hGG->SetMinimum(0);
 	hGG->SetMaximum(1.5);
 	hGG->SetStats(0);
+	hGG->GetXaxis()->SetTitleOffset(1.2);
 	TGraphErrors *gEE = new TGraphErrors(NBINS, se, es, ee, ese);
 	gEE->SetMarkerStyle(kCircle);
 	gEE->SetMarkerColor(kGreen);
 	gEE->SetTitle("#sigma;#sqrt{E}, MeV;#sigma,MeV");
 	hGG->Draw();
 	gEE->Draw("PE");
-	gEE->Fit("pol1", "", "", 1.7, 3.0);
+	gEE->Fit("pol1", "", "", 1, 2.8);
 	cv->SaveAs((sname+".pdf").Data());
-	gEE->Write();
+//	gEE->Write();
 
 	cv->Clear();
 	cv->Divide(1, 2);
 	cv->cd(1);
+	hG->SetTitle("Cluster energy Mean");
 	hG->Draw();
 	TGraphErrors *gEM = new TGraphErrors(NBINS, e, Mean, ee, eeMean);
 	gEM->SetMarkerStyle(kFullCircle);
@@ -128,18 +141,18 @@ void mc_mono_neutrinos(const char *name)
 	gEMR->SetMarkerColor(kRed);
 	gEMR->Draw("P");
 	lg->Draw();
-	gEMR->Write();
+//	gEMR->Write();
 
 	cv->cd(2);
 	TGraphErrors *gEEM = new TGraphErrors(NBINS, se, RMS, ee, eeMean);
 	gEEM->SetMarkerStyle(kCircle);
 	gEEM->SetMarkerColor(kGreen);
-	gEEM->SetTitle("#sigma;#sqrt{E}, MeV;#sigma,MeV");
+	gEEM->SetTitle("#sigma;#sqrt{E_{e+}}, MeV;#sigma,MeV");
 	hGG->Draw();
 	gEEM->Draw("PE");
-	gEEM->Fit("pol1", "", "", 1.7, 3.0);
+	gEEM->Fit("pol1", "", "", 1, 2.8);
 	cv->SaveAs((sname+".pdf").Data());
-	gEEM->Write();
+//	gEEM->Write();
 
 	cv->SaveAs((sname+".pdf]").Data());
 	
