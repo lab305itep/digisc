@@ -2,6 +2,7 @@
 #DBG="echo"
 ROOTVER=${ROOTVER:-6n11}
 PAIRVER=${PAIRVER:-7n14}
+REBUILD=${REBUILD:-NO}
 
 if [ "x$3" == "x" ] ; then
 	echo "Usage: $0 smear_stohastic smear_constant scale"
@@ -24,7 +25,7 @@ mkdir -p $ROOTDIR
 mkdir -p $PAIRDIR
 rm -f $LIST
 
-for k in 1 2 3 ; do
+for k in 1 2 3 4 ; do
 	for i in 0 1 2 3 4 ; do
 		for j in A B C D E ; do
 			FNAME=${DIGI}/Ready_${k}/mc_NeutrinoFlat_glbLY_transcode_rawProc_pedSim_${i}_${j}.digi
@@ -33,10 +34,12 @@ for k in 1 2 3 ; do
 			PNAME=${PAIRDIR}/Ready_${k}/mc_NeutrinoFlat_glbLY_transcode_rawProc_pedSim_${i}_${j}.root
 			INAME=${PAIRDIR}/Ready_${k}/mc_NeutrinoFlat_info_${i}_${j}.root
 			if [ -f $FNAME ] && [ -f $MCNAME ] ; then
-				echo "$FNAME" > $DLIST
-				$DBG ./digi_evtbuilder6_v3 -file $DLIST -output $RNAME -flag 0x870000 -mcdata -mcfile $MCNAME $DEAD $OPT
-				$DBG ./pairbuilder8 $RNAME $PNAME 
-				$DBG ./getMCinfo $PNAME $MCNAME $INAME
+				if [ $REBUILD == "YES" ] || ! [ -f $PNAME ] ; then
+					echo "$FNAME" > $DLIST
+					$DBG ./digi_evtbuilder6_v3 -file $DLIST -output $RNAME -flag 0x870000 -mcdata -mcfile $MCNAME $DEAD $OPT
+					$DBG ./pairbuilder8 $RNAME $PNAME 
+					$DBG ./getMCinfo $PNAME $MCNAME $INAME
+				fi
 				echo $PNAME $INAME >> ${LIST}
 			fi
 		done
