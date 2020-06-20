@@ -75,7 +75,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut cZ("PositronX[2] > 3.5 && PositronX[2] < 95.5");
 	TCut cRXY("PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0");
 	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 12");
-	TCut cPe("PositronEnergy > 0.75");
+	TCut cPe("PositronEnergy > 0.5");
 	TCut cPh("PositronHits < 8");
 	TCut cR2("Distance < 40 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
 	TCut cR3("Distance < 48 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");

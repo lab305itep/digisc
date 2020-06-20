@@ -89,11 +89,11 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	TH1D *hExpSiPM = new TH1D("hExp12BSiPM", str, 80, 0, 20);
 	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterPMTEnergy", kScale);
 	TH1D *hExpPMT = new TH1D("hExp12BPMT", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterEnergy");
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterEnergy", kScale);
 	TH1D *hRndm = new TH1D("hRndm12B", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterSiPMEnergy");
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterSiPMEnergy", kScale);
 	TH1D *hRndmSiPM = new TH1D("hRndm12BSiPM", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterPMTEnergy");
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterPMTEnergy", kScale);
 	TH1D *hRndmPMT = new TH1D("hRndm12BPMT", str, 80, 0, 20);
 	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronEnergy", kRndm, kRndm2);
 	TH1D *hMC = new TH1D("hMC12B", str, 80, 0, 20);
@@ -202,6 +202,10 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	hExpPMT->Write();
 	hMCPMT->Write();
 	hExpT->Write();
+	hRndm->Write();
+	hRndmSiPM->Write();
+	hRndmPMT->Write();
+	hRndmT->Write();
 	fOut->Close();
 }
 

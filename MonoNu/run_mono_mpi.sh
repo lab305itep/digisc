@@ -2,12 +2,13 @@
 #PBS -N MonoNu
 #PBS -q mpi
 #PBS -l nodes=9
-#PBS -l walltime=50:00:00
+#PBS -l walltime=72:00:00
 #PBS -l pmem=3Gb
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu.err
 cd /home/itep/alekseev/igor/MonoNu
 
+###export REBUILD=YES
 export ROOTVER=6n11
 export PAIRVER=7n14
 export MONO_ARG00="0.06 0.02 0.98"

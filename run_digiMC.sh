@@ -85,6 +85,14 @@ do_muons()
 	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_cutted_energy.digi.bz2  0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAW}/Muons_cutted_energy/DANSS.root
 }
 
+do_radmuons()
+{
+	for f in 0 1 2 3 ; do
+		${EXE} ${DIGIGD}/Muons/Positrons_from_muplus_decay_new_paint/mc_Muons_glbLY_transcode_rawProc_pedSim_positronsFromMuplusDecayNewPaint_${f}.digi.bz2 0x70000 \
+		${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Positrons_from_muplus_decay_new_paint/DANSS${f}.root
+	done
+}
+
 do_sources()
 {
 	${EXE} ${DIGI}/12B/mc_12B_glbLY_transcode_rawProc_pedSim.digi.bz2                    0x70000 ${OUTDIR}/12B        -mcfile ${MCRAW}/12B/DANSS.root               ${DEAD}
@@ -108,8 +116,8 @@ do_sources()
 # do_sources
 # do_monopositrons
 # do_fuelGd
-do_flatGd
+#do_flatGd
 #do_fuel
-#do_muons
+do_radmuons
 
 exit 0

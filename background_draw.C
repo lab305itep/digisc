@@ -2,9 +2,8 @@
 #define THISTS    5
 #define OPTHISTS 14
 
-void background_draw(const char *rootname, const char *mcname)
+void background_draw(const char *rootname, const char *mcname, double muFraction = 0.068)
 {
-	const double muFraction = 0.068;
 	char strs[128];
 	char strl[1024];
 	const char *titles[] = {

@@ -25,7 +25,7 @@ mkdir -p $ROOTDIR
 mkdir -p $PAIRDIR
 rm -f $LIST
 
-for k in 1 2 3 4 ; do
+for k in 1 2 3 4 5 6 7 8 ; do
 	for i in 0 1 2 3 4 ; do
 		for j in A B C D E ; do
 			FNAME=${DIGI}/Ready_${k}/mc_NeutrinoFlat_glbLY_transcode_rawProc_pedSim_${i}_${j}.digi
