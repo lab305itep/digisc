@@ -92,8 +92,8 @@ void process(int run, const char *fmt, FILE *fOut)
     25.1 --> 24.1 - 69765 - first run
     20 --> 25 - 69765 - first run
 */
-	const unsigned short ChanMask[][MAXMODULE][4] = {{
-//			Runs 2210 - 61540
+	const unsigned short ChanMask[MAXMODULE][4] = {
+//			Runs 2210 - 61540 - we translate everything to this module/channel numeration
 		{0, 0, 0, 0},				// 1 - ignore PMT
 		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 2
 		{0, 0, 0, 0},				// 3 - ignore VETO
@@ -145,112 +145,8 @@ void process(int run, const char *fmt, FILE *fOut)
 		{0, 0, 0, 0},				// 49 - never used
 		{0, 0, 0, 0},				// 50 - never used
 		{0, 0, 0, 0}				// 51 - not now
-	}, {	// 	Runs 61541 - 69764
-		{0, 0, 0, 0},				// 1 - ignore PMT
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 2
-		{0, 0, 0, 0},				// 3 - ignore VETO
-		{0x7FFF, 0, 0, 0},			// 4 - one connector, replacement of 47
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 5
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 6
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 7
-		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 8 - 2/3 on connector 1
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 9
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 10
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 11
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 12
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 13
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 14
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 15
-		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 16 - 2/3 on connector 3
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 17
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 18
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 19
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 20 - 2/3 on connector 4
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 21
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 22
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 23
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 24
-		{0x36DB, 0, 0, 0},			// 25 - only one connector 2/3 filled
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 26
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 27
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 28
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 29
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 30
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 31
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 32
-		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 33 - 2/3 on connector 1
-		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 34 - 2/3 on connector 2
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 35
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 36 - 2/3 on connector 4
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 37
-		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 38 - 2/3 on connector 2
-		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 39 - 2/3 on connector 3
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 40
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 41
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 42
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 43
-		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 44 - 2/3 on connector 2
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 45
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 46
-		{0, 0, 0, 0},				// 47 - broken
-		{0, 0, 0, 0},				// 48 - never used
-		{0, 0, 0, 0},				// 49 - never used
-		{0, 0, 0, 0},				// 50 - never used
-		{0, 0, 0, 0}				// 51 - not now
-	}, {	//		Runs 69765 - XXXXXX
-		{0, 0, 0, 0},				// 1 - ignore PMT
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 2
-		{0, 0, 0, 0},				// 3 - ignore VETO
-		{0x7FFF, 0, 0, 0},			// 4 - one connector, replacement of 47
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 5
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 6
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 7
-		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 8 - 2/3 on connector 1
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 9
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 10
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 11
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 12
-		{0, 0, 0, 0},				// 13 - broken
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 14
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 15
-		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 16 - 2/3 on connector 3
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 17
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 18
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 19
-		{0, 0, 0, 0},				// 20 - broken
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 21
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 22
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 23
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 24
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 25 - replacement of 20 - 2/3 on connector 4
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 26
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 27
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 28
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 29
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 30
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 31
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 32
-		{0x36DB, 0x7FFF, 0x7FFF, 0x7FFF},	// 33 - 2/3 on connector 1
-		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 34 - 2/3 on connector 2
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 35
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x36DB},	// 36 - 2/3 on connector 4
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 37
-		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 38 - 2/3 on connector 2
-		{0x7FFF, 0x7FFF, 0x36DB, 0x7FFF},	// 39 - 2/3 on connector 3
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 40
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 41
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 42
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 43
-		{0x7FFF, 0x36DB, 0x7FFF, 0x7FFF},	// 44 - 2/3 on connector 2
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 45
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF},	// 46
-		{0, 0, 0, 0},				// 47 - broken
-		{0, 0, 0, 0},				// 48 - never used
-		{0, 0, 0, 0},				// 49 - never used
-		{0, 0, 0, 0},				// 50 - never used
-		{0x7FFF, 0x7FFF, 0x7FFF, 0x7FFF}	// 51 - replacement of 13
-	}};
-
+	};
+	unsigned short ChanMet[MAXMODULE][4];
 	TTree *DanssEvent;
 	TH1 *h;
 	TFile *f;
@@ -262,6 +158,7 @@ void process(int run, const char *fmt, FILE *fOut)
 	int Period;
 	int mod, chan;
 
+	memset(ChanMet, 0, sizeof(ChanMet));
 	if (run < 61541) {
 		Period = 0;
 	} else if (run < 69765) {
@@ -282,18 +179,23 @@ void process(int run, const char *fmt, FILE *fOut)
 		return;
 	}
 	
+	// Fill channel present map
+	for (i=0; i<MAXMODULE; i++) for (j=0; j<MAXCHANNEL; j++) {
+		sprintf(str, "hDT%2.2dc%2.2d", i+1, j);
+		h = (TH1 *) f->Get(str);
+		if (h && h->Integral(101, 150) >= MINHITS) {
+			ModTranslate(Period, i + 1, j, mod, chan);
+			ChanMet[mod-1][chan/16] |= 1 << (chan % 16);
+		}
+	}
+	// Write the result
 	lstr[0] = '\0';
 	ptr = 0;
 	Cnt[0] = Cnt[1] = 0;
-	
-	for (i=0; i<MAXMODULE; i++) for (j=0; j<MAXCHANNEL; j++) if (ChanMask[Period][i][j/16] & (1 << (j&15))) {
-		sprintf(str, "hDT%2.2dc%2.2d", i+1, j);
-		h = (TH1 *) f->Get(str);
-		if (!h || h->Integral(101, 150) < MINHITS) {
+	for (i=0; i<MAXMODULE; i++) for (j=0; j<MAXCHANNEL; j++) if (ChanMask[i][j/16] & (1 << (j%16))) {
+		if (!(ChanMet[i][j/16] & (1 << (j%16)))) {
+			ptr += sprintf(&lstr[ptr], " %2.2d.%2.2d", i + 1, j);
 			Cnt[1]++;
-//	Translation
-			ModTranslate(Period, i + 1, j, mod, chan);
-			ptr += sprintf(&lstr[ptr], " %2.2d.%2.2d", mod, chan);
 		} else {
 			Cnt[0]++;
 		}

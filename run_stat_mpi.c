@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	fnum += serial*pnum;
 //		The run itself
-	sprintf(str, "root -b -q -l \"digi_stat.C(%d, %d, \\\"root6n9\\\")\" > /home/clusters/rrcmpi/alekseev/igor/root6n9/stat/stat_%6.6d_%6.6d.txt", 
+	sprintf(str, "root -b -q -l \"digi_stat.C(%d, %d, \\\"root6n12\\\")\" > /home/clusters/rrcmpi/alekseev/igor/root6n12/stat/stat_%6.6d_%6.6d.txt", 
 		fnum, fnum+pnum-1,fnum, fnum+pnum-1);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);

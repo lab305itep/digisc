@@ -1,33 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAXRUN	100000
-#define MAXSTR	1024
+#define MAXEFF	100
+#define MAXSTR	4096
 
 int main(int argc, char **argv)
 {
 	char str[MAXSTR];
-	double eff[MAXRUN];
+	struct EffStruct {
+		double eff;
+		int from;
+		int to;
+	} Eff[MAXEFF];
 	char *ptr;
 	FILE *fEff;
 	FILE *fIn;
 	FILE *fOut;
+	FILE *fDead;
 	int num;
 	int type;
-	int cnt;
+	int cnt, cntr, i;
 	double current;
 	
-	memset(eff, 0, sizeof(eff));
+	memset(Eff, 0, sizeof(Eff));
 	if (argc < 4) {
-		printf("Usage %s file_eff.txt file_stat.txt file_out.txt\n", argv[0]);
+		printf("Usage %s file_eff.txt file_dead.txt file_stat.txt file_out.txt\n", argv[0]);
 		return 10;
 	}
 	
 	fEff = fopen(argv[1], "rt");
-	fIn = fopen(argv[2], "rt");
-	fOut = fopen(argv[3], "wt");
-	if (!fEff || !fIn || !fOut) {
-		printf("Can not open all files: %s %s %s\n", argv[1], argv[2], argv[3]);
+	fDead = fopen(argv[2], "rt");
+	fIn = fopen(argv[3], "rt");
+	fOut = fopen(argv[4], "wt");
+	if (!fEff || !fDead || !fIn || !fOut) {
+		printf("We need to open all files: eff: %s  dead: %s  stat: %s  out: %s\n", argv[1], argv[2], argv[3], argv[4]);
 		return 20;
 	}
 
@@ -39,27 +45,43 @@ int main(int argc, char **argv)
 		ptr = strtok(str, " \t");
 		if (!ptr) continue;
 		num = strtol(ptr, NULL, 10);
-		if (num <= 0) continue;
-		if (num >= MAXRUN) {
-			printf("MAXRUN = %d is too small ! (Run %d met in %s)\n", MAXRUN, num, argv[1]);
+		if (num != cnt || num >= MAXEFF) {
+			printf("Bad number %d: line = %d and MAXEFF = %d  (met in %s)\n", num, cnt, MAXEFF, argv[1]);
 			continue;
 		}
-		strtok(NULL, " \t");
 		ptr = strtok(NULL, " \t");
 		if (!ptr) continue;
-		eff[num] = strtod(ptr, NULL);
+		Eff[cnt].eff = strtod(ptr, NULL);
 		cnt++;
 	}
-	printf("%s: %d runs found\n", argv[1], cnt);
-//		Fill gaps
-	current = 0;
-	for (num = 0; num < MAXRUN; num++) if (eff[num] == 0) {
-		eff[num] = current;
-	} else {
-		current = eff[num];
+//		Read Ranges
+	cntr = 0;
+	for (;;) {
+		ptr = fgets(str, sizeof(str), fDead);
+		if (!ptr) break;	// EOF
+		ptr = strtok(str, " \t");
+		if (!ptr) continue;
+		num = strtol(ptr, NULL, 10);
+		if (num <= 0) continue;
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		Eff[cntr].from = num;
+		Eff[cntr].to = strtol(ptr, NULL, 10);
+		cntr++;
 	}
+	if (cnt != cntr) {
+		printf("Files Eff: %s and Dead: %s have different number of lines: %d and %d\n",
+			argv[1], argv[2], cnt, cntr);
+		return 20;
+	}
+	printf("%s and %s: %d efficiency ranges found\n", argv[1], argv[2], cnt);
+	for (i=0; i<cnt; i++) {
+		printf("%d - %d: %f\n", Eff[i].from, Eff[i].to, Eff[i].eff);
+	}
+	printf("Press <enter>\n");
+	getchar();
+	
 //		Read stat and write the output
-	cnt = 0;
 	for (;;) {
 		ptr = fgets(str, sizeof(str), fIn);
 		if (!ptr) break;	// EOF
@@ -70,17 +92,19 @@ int main(int argc, char **argv)
 			fprintf(fOut, "%s\n", str);
 			continue;
 		}
-		if (num >= MAXRUN) {
-			printf("MAXRUN = %d is too small ! (Run %d met in %s)\n", MAXRUN, num, argv[2]);
+		for (i=0; i<cnt; i++) if (num >= Eff[i].from && num <= Eff[i].to) break;
+		if (i == cnt) {
+			printf("Efficiency range for run %d not found\n", num);
 			continue;
 		}
-		fprintf(fOut, "%s %7.5f\n", str, eff[num]);
+		fprintf(fOut, "%s %7.5f\n", str, Eff[i].eff);
 		cnt++;
 	}
 
-	printf("%s: %d runs written\n", argv[3], cnt);
+	printf("%s: %d runs written\n", argv[4], cnt);
 	
 	fclose(fEff);
+	fclose(fDead);
 	fclose(fIn);
 	fclose(fOut);
 }

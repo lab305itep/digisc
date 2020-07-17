@@ -5,9 +5,11 @@
 #PBS -l nodes=1
 #PBS -q short
 
+date
 cd /home/itep/alekseev/igor
 echo IBD
-./rootcheck "/home/clusters/rrcmpi/alekseev/igor/root6n11/%3.3dxxx/danss_%6.6d.root" "/home/clusters/rrcmpi/alekseev/igor/pair7n14/%3.3dxxx/pair_%6.6d.root" 2210 78234
+./rootcheck "/home/clusters/rrcmpi/alekseev/igor/root6n12/%3.3dxxx/danss_%6.6d.root" "/home/clusters/rrcmpi/alekseev/igor/pair7n15/%3.3dxxx/pair_%6.6d.root" 2210 78234
 #echo Muon
 #./rootcheck "/home/clusters/rrcmpi/alekseev/igor/root6n8/%3.3dxxx/danss_%6.6d.root" "/home/clusters/rrcmpi/alekseev/igor/muon7n8/%3.3dxxx/muon_%6.6d.root" 71211 74720
+date
 exit 0

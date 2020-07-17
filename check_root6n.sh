@@ -6,6 +6,6 @@
 #PBS -q medium
 
 cd /home/itep/alekseev/igor
-./rootcheck digi "/home/clusters/rrcmpi/alekseev/igor/root6n11/%3.3dxxx/danss_%6.6d.root" 2210 78234
+./rootcheck digi "/home/clusters/rrcmpi/alekseev/igor/root6n12/%3.3dxxx/danss_%6.6d.root" 2210 78234
 
 exit 0

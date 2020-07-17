@@ -1,20 +1,36 @@
 #!/bin/bash
 #DBG="echo"
-ROOTVER=${ROOTVER:-6n11}
-PAIRVER=${PAIRVER:-7n14}
+ROOTVER=${ROOTVER:-6n12}
+PAIRVER=${PAIRVER:-7n15}
 REBUILD=${REBUILD:-NO}
 
 if [ "x$3" == "x" ] ; then
-	echo "Usage: $0 smear_stohastic smear_constant scale"
+	echo "Usage: $0 smear_stohastic smear_constant scale [dead option:MIN NORM MAX]"
 	exit 10
 fi
+
 DIRNAME=`printf "R%5.3fC%5.3fS%5.3f" $1 $2 $3`
+
+case "x"$4 in 
+	xMIN ) 	
+		DEAD="-deadlist dch_002210_078234_min.list" 
+		DIRNAME=${DIRNAME}_DMIN
+		;;
+	xMAX ) 
+		DEAD="-deadlist dch_002210_078234_max.list"
+		DIRNAME=${DIRNAME}_DMAX
+		;;
+	* )
+		DEAD="-deadlist dch_002210_078234.list" 
+		;;
+esac
+
 OPT="-smear $1 $2 -mcscale $3"
 RAW=/home/itep/alekseev/igor/MC_rawGd/Flat_spectrum_new_Gd_big_stat
 DIGI=/home/clusters/rrcmpi/alekseev/igor/MCFlat
 ROOTDIR=/home/clusters/rrcmpi/alekseev/igor/root${ROOTVER}/MC/DataTakingPeriod01/FlatGd/${DIRNAME}
 PAIRDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PAIRVER}/MC/DataTakingPeriod01/FlatGd/${DIRNAME}
-DEAD="-deadlist deadlist_12850.txt"
+DEAD=${DEAD_FILE:-"-deadlist dch_002210_078234.list"}
 LIST=${PAIRDIR}/run_list.txt
 HIST=${PAIRDIR}/${DIRNAME}
 DLIST=${ROOTDIR}/.tmp.list
@@ -48,5 +64,11 @@ done
 
 $DBG MonoNu/mc_mono_nu $LIST ${HIST}.root
 $DBG root -l -b -q "MonoNu/mc_mono_neutrinos.C(\"${HIST}\")"
+
+$DBG MonoNu/mc_mono_nu $LIST ${HIST}p0.05.root "1" "0.05"
+$DBG root -l -b -q "MonoNu/mc_mono_neutrinos.C(\"${HIST}p0.05\")"
+
+$DBG MonoNu/mc_mono_nu $LIST ${HIST}n0.05.root "1" "(-0.05)"
+$DBG root -l -b -q "MonoNu/mc_mono_neutrinos.C(\"${HIST}n0.05\")"
 
 exit 0

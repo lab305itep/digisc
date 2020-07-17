@@ -18,12 +18,13 @@ int main(int argc, char **argv)
 	const int BinsE = 96;
 	char str[1024];
 	char *ptr;
+	const char *shift;
 
 	TChain *chain = new TChain("DanssPair");
 	TChain *mc = new TChain("FromMC");
 
 	if (argc < 3) {
-		printf("Usage: %s mc_file_list.txt output_file.root [auxcuts]\n", argv[0]);
+		printf("Usage: %s mc_file_list.txt output_file.root [auxcuts [shift]]\n", argv[0]);
 		return 100;
 	}
 	FILE *fIn = fopen(argv[1], "rt");
@@ -78,8 +79,10 @@ int main(int argc, char **argv)
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
         TCut ct = c20 && cIso && cX && cY && cZ && cR && cPh && cGamma && cN && cSingle && cAux;
+        
+        shift = (argc > 4) ? argv[4] : "0.0";
 	
-	sprintf(str, "PositronEnergy:ParticleEnergy+MCPositronEnergy + %f", deltaM);
+	sprintf(str, "PositronEnergy + %s:ParticleEnergy+MCPositronEnergy + %f", shift, deltaM);
 	chain->Project(h->GetName(), str, ct);
 	
 	h->Write();

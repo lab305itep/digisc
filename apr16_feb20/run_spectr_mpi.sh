@@ -1,9 +1,8 @@
 #!/bin/bash
-#PBS -N digi_spectr_base
+#PBS -N digi_spectr
 #PBS -q mpi
 #PBS -l walltime=10:00:00
-####PBS -l nodes=449
-#PBS -l nodes=50
+#PBS -l nodes=450
 ####PBS -l pvmem=2Gb
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/spectr.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/spectr.err
@@ -33,50 +32,16 @@ export SPECTR_CUT11="NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20
 export SPECTR_CUT12="!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))"
 export SPECTR_CUT13="PositronHits < 8"
 
+export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v14f2.data
 
-### Down 1/3
-export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v3f2_down.data
-export SPECTR_CUT20="PositronX[2] > 3.5 && PositronX[2] < 34.5"
-
+date
 mkdir -p $OUT_DIR
 rm -f ${OUT_DIR}/*.root
-for ((i=1; $i<449; i=$i+50)); do 
-	mpirun --mca btl ^tcp run_spectr_mpi $i
-done
+mpirun --mca btl ^tcp run_spectr_mpi
 
 NAME=${OUT_DIR/.data/.root}
 root -l -b -q "join_periods.C(\"${NAME}\", \"$OUT_DIR\")"
 root -l -b -q "danss_draw_report.C(\"${NAME}\", $SPECTR_BGSCALE)"
-root -l -b -q "apr16_feb20/danss_calc_ratio_v6.C(\"${NAME}\", $SPECTR_BGSCALE, 0.337)"
-
-### Mid 1/3
-export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v3f2_mid.data
-export SPECTR_CUT20="PositronX[2] > 34.5 && PositronX[2] < 64.5"
-
-mkdir -p $OUT_DIR
-rm -f ${OUT_DIR}/*.root
-for ((i=1; $i<449; i=$i+50)); do 
-	mpirun --mca btl ^tcp run_spectr_mpi $i
-done
-
-NAME=${OUT_DIR/.data/.root}
-root -l -b -q "join_periods.C(\"${NAME}\", \"$OUT_DIR\")"
-root -l -b -q "danss_draw_report.C(\"${NAME}\", $SPECTR_BGSCALE)"
-root -l -b -q "apr16_feb20/danss_calc_ratio_v6.C(\"${NAME}\", $SPECTR_BGSCALE, 0.326)"
-
-### Up 1/3
-export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v3f2_up.data
-export SPECTR_CUT20="PositronX[2] > 64.5 && PositronX[2] < 95.5"
-
-mkdir -p $OUT_DIR
-rm -f ${OUT_DIR}/*.root
-for ((i=1; $i<449; i=$i+50)); do 
-	mpirun --mca btl ^tcp run_spectr_mpi $i
-done
-
-NAME=${OUT_DIR/.data/.root}
-root -l -b -q "join_periods.C(\"${NAME}\", \"$OUT_DIR\")"
-root -l -b -q "danss_draw_report.C(\"${NAME}\", $SPECTR_BGSCALE)"
-root -l -b -q "apr16_feb20/danss_calc_ratio_v6.C(\"${NAME}\", $SPECTR_BGSCALE, 0.337)"
-
+root -l -b -q "apr16_feb20/danss_calc_ratio_v6.C(\"${NAME}\", $SPECTR_BGSCALE)"
+date
 exit 0

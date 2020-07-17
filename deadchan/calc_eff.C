@@ -1,4 +1,4 @@
-void calc_eff(int NVAR, const char *suffix, const char *vardir, int MCTotal = 2000000)
+void calc_eff(int NVAR, const char *outname, const char *vardir, int MCTotal = 2000000)
 {
 	int i;
 	char str[1024];
@@ -9,7 +9,6 @@ void calc_eff(int NVAR, const char *suffix, const char *vardir, int MCTotal = 20
 	FILE *fOut;
 	int run, var;
 	char *tok;
-	TString tstr(suffix);
 	
 	for (i=0; i<NVAR; i++) {
 		sprintf(str, "%s/var_%d_spfuel.root", vardir, i);
@@ -22,36 +21,11 @@ void calc_eff(int NVAR, const char *suffix, const char *vardir, int MCTotal = 20
 		eff[i] = h->Integral(9, 64) / MCTotal;
 	}
 	
-	fEff = fopen(("eff_"+tstr+".txt").Data(), "wt");
+	fEff = fopen(outname, "wt");
 	if (!fEff) {
-		printf("can not open file %s: %m\n", ("eff_"+tstr+".txt").Data());
+		printf("can not open file %s: %m\n", outname);
 		return;
 	}
 	for (i=0; i<NVAR; i++) fprintf(fEff, "%2d %f\n", i, eff[i]);
 	fclose(fEff);
-	
-	fEff = fopen(("runlist_"+tstr+".txt").Data(), "rt");
-	if (!fEff) {
-		printf("can not open file %s: %m\n", ("runlist_"+tstr+".txt").Data());
-		return;
-	}
-	fOut = fopen(("run_eff_"+tstr+".txt").Data(), "wt");
-	if (!fOut) {
-		printf("can not open file %s: %m\n", ("run_eff_"+tstr+".txt").Data());
-		return;
-	}
-	
-	for(;;) {
-		if (!fgets(str, sizeof(str), fEff)) break;	// EOF
-		tok =strtok(str, " \t");
-		if (!tok) continue;
-		run = strtol(tok, NULL, 10);
-		tok =strtok(NULL, " \t");
-		if (!tok) continue;
-		var = strtol(tok, NULL, 10);
-		if (var <0 || var >= NVAR) continue;
-		fprintf(fOut, "%6d %2d %7.5f\n", run, var, eff[var]);
-	}
-	fclose(fEff);
-	fclose(fOut);
 }

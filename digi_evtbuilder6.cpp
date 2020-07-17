@@ -77,7 +77,7 @@
 #define FLG_NOPMTCORR		0x100000	// do not correct PMT energy of cluster for out of cluster SiPM hits
 #define FLG_PMTTIMECUT		0x200000	// Cut PMT and Veto by time
 #define FLG_CONFIRMSIPM		0x400000	// do not confirm all SiPM hits
-#define FLG_MCENERGYSMEAR	0x800000	// Do aaditional energy smear for MC events (IBD simulation assumed)
+#define FLG_MCENERGYSMEAR	0x800000	// Do additional energy smear for MC events (IBD simulation assumed)
 
 #define MAXADCBOARD	60
 #define TAGMASK		((1L<<45) - 1)
@@ -770,12 +770,15 @@ void CorrectEnergy(double scale)
 	for (i=0; i<DanssEvent.NHits; i++) HitArray.E[i] *= scale;
 }
 
-void CreateDeadList(char *fname)
+void CreateDeadList(char *fname, int run)
 {
 	int i, j;
-	char str[1024];
+	char str[16*1024];
 	char *ptr;
 	FILE *f;
+	int from, to;
+	int chan;
+	int cnt = 0;
 
 	memset(DeadList, 0, sizeof(DeadList));
 	if (!fname) return;
@@ -786,12 +789,28 @@ void CreateDeadList(char *fname)
 	}
 	for (;;) {
 		if (!fgets(str, sizeof(str), f)) break;
-		i = strtol(str, &ptr, 10) - 1;
-		ptr++;
-		j = strtol(ptr, NULL, 10);
-		if (i >= 0 && i < MAXADCBOARD && j >= 0 && j < iNChannels_AdcBoard) DeadList[i][j] = 1;
+		ptr = strtok(str, " \t\n");
+		if (!ptr) continue;
+		from = strtol(ptr, NULL, 10);
+		ptr = strtok(NULL, " \t\n");
+		if (!ptr) continue;
+		to = strtol(ptr, NULL, 10);
+		if (run < from || run > to) continue;	// this is not the list for our run
+		for(;;) {
+			ptr = strtok(NULL, " \t\n");
+			if (!ptr) break;	// end of dead channels list
+			chan = 100 * (strtod(ptr, NULL) + 0.001);
+			i = chan /100;
+			j = chan % 100;
+			if (i > 0 && i <= MAXADCBOARD && j >= 0 && j < iNChannels_AdcBoard) {
+				DeadList[i-1][j] = 1;
+				cnt++;
+			}
+		}
+		break;
 	}
 	fclose(f);
+	printf("Run %d: %d channels masked out.\n", run, cnt);
 }
 
 void DebugFullPrint(ReadDigiDataUser *user)
@@ -1325,7 +1344,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 
 	Random = new TRandom2(RandomSeed);
 
-	CreateDeadList(DeadListName);
+	CreateDeadList(DeadListName, runnumber());
 	if (chTimeCalibration) init_Tds();
 
 	if (chOutputFile) {

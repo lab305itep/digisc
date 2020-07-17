@@ -1,13 +1,13 @@
 #!/bin/bash
 #PBS -N run_pairMC
-#PBS -q medium
+#PBS -q long
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_pairMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_pairMC.err
 #PBS -l nodes=1
-#PBS -l walltime=23:30:00
+#PBS -l walltime=100:00:00
 cd /home/itep/alekseev/igor
-RVER="6n11"
-PVER="7n14"
+RVER="6n12"
+PVER="7n15"
 
 do_fuel()
 {
@@ -69,6 +69,8 @@ do_flat()
 	done
 }
 
-do_flat
+date
+do_fuel
+date
 
 exit 0

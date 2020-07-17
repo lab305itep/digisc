@@ -1,19 +1,19 @@
 #!/bin/bash
 #PBS -N run_digiMC
-#PBS -q short
+#PBS -q long
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
 #PBS -l nodes=1
-#PBS -l walltime=4:00:00
+#PBS -l walltime=100:00:00
 cd /home/itep/alekseev/igor
 
 MCRAW=MC_raw
 MCRAWGD=MC_rawGd
-OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n11/MC/DataTakingPeriod01
+OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n12/MC/DataTakingPeriod01
 DIGI=digi_MC/DataTakingPeriod01
 DIGIGD=digi_MCGd/DataTakingPeriod01
 EXE=./evtbuilder5
-DEAD="-deadlist deadlist_12850.txt"
+DEAD="-deadlist dch_002210_078234.list"
 #EXE=echo
 
 # We need just a list...
@@ -93,6 +93,12 @@ do_radmuons()
 	done
 }
 
+do_orbitmuons()
+{
+	${EXE} ${DIGIGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/mc_Muons_glbLY_transcode_rawProc_pedSim_electronsFromMuminusInCorbitDecayNewPaint.digi.bz2 \
+		0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/DANSS.root
+}
+
 do_sources()
 {
 	${EXE} ${DIGI}/12B/mc_12B_glbLY_transcode_rawProc_pedSim.digi.bz2                    0x70000 ${OUTDIR}/12B        -mcfile ${MCRAW}/12B/DANSS.root               ${DEAD}
@@ -113,11 +119,11 @@ do_sources()
 	${EXE} ${DIGI}/RadSources/mc_248Cm_92_5cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_92_5_cm_pos/DANSS.root ${DEAD}
 }
 
-# do_sources
-# do_monopositrons
-# do_fuelGd
+#do_sources
+#do_monopositrons
+#do_fuelGd
 #do_flatGd
-#do_fuel
-do_radmuons
+#do_muons
+do_orbitmuons
 
 exit 0
