@@ -50,9 +50,9 @@ const struct PeriodsStruct PeriodList[] = {
 	{"Pos2", "Apr 19 - Feb 20 (2-positions)", 1, {{59971, 78234}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Pos3_1", "Oct 16 - Mar 19 without Apr - Jul 17 (3-positions)", 1, {{6010, 17848}, {24776, 58024}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Pos2A", "Apr 19 - Feb 20 no long down @Jan20 (2-positions)", 1, {{59971, 75513}, {76147, 78234}, {0, 0}, {0, 0}, {0, 0}}},
-	{"Off1", "Jul - Aug 17 (reactor off 1)", 0, {{21188, 24705}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
+	{"Off1", "Jul - Aug 17 (reactor off 1)", 0, {{23188, 24705}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Off2", "Jan - Feb 19 (reactor off 2)", 0, {{54782, 56290}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
-	{"Off", "Jul - Aug 17 and Jan - Feb 19 (reactor off)", 0, {{21188, 24705}, {54782, 56290}, {0, 0}, {0, 0}, {0, 0}}},
+	{"Off", "Jul - Aug 17 and Jan - Feb 19 (reactor off)", 0, {{23188, 24705}, {54782, 56290}, {0, 0}, {0, 0}, {0, 0}}},
 	{"End4", "Apr - Jul 17 (end of campaign 4)", 1, {{17849, 23059}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Beg5", "Sep - Dec 17 (begin of campaign 5)", 1, {{26437, 31697}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"End5", "Oct 18 - Jan 19 (end of campaign 5)", 1, {{48438, 54595}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
@@ -80,7 +80,7 @@ TFile *fData;
 const char *NeutronCorrN = "0.5109-0.01932*x";		// neutron correction for signal per day
 const char *NeutronCorrC = "2.143-0.09811*x";		// neutron correction for cosmic per day
 const char *LowMuonCorr = "10.7*exp(-1.00*x)";		// low energy reactor off correction
-const double rOffCosmCorr = 0.98;
+const double rOffCosmCorr = 0.98 * (1-0.092) / (1-0.137);	// 8 m of additional water above reactor and different dead times
 const double OtherBlockFraction = 0.0060;	// Neutrino fraction of other blocks. Distances to other reactors: 160, 336 and 478 m
 const double ERangeA[2] = {0.75, 8};
 const double ERangeB[2] = {1, 7};
@@ -189,6 +189,47 @@ double GetEffScale(const char *nameA, const char *nameB)
 	return k;
 }
 
+//	Try to find scale correction from power, efficiency, dead time for
+//	histogramms ratio M/sqrt(U*D). Return 1.0 if this is not an option.
+double GetEffScale3(const char *nameU, const char *nameM, const char *nameD)
+{
+	char str[1024];
+	char * ptr;
+	int iU, iM, iD;
+	
+	iU = GetPrefix(nameU);
+	iM = GetPrefix(nameM);
+	iD = GetPrefix(nameD);
+	if (!iU || !iM || iD) return 1.0;
+
+	ptr = strchr(nameU, '_');
+	if (!ptr) return 1.0;
+	sprintf(str, "hConst%s", ptr);
+	TH1D *hCU = (TH1D*) gROOT->FindObject(str);
+	ptr = strchr(nameM, '_');
+	if (!ptr) return 1.0;
+	sprintf(str, "hConst%s", ptr);
+	TH1D *hCM = (TH1D*) gROOT->FindObject(str);
+	ptr = strchr(nameD, '_');
+	if (!ptr) return 1.0;
+	sprintf(str, "hConst%s", ptr);
+	TH1D *hCD = (TH1D*) gROOT->FindObject(str);
+	if (!hCU || !hCM || !hCD) return 1.0;
+	
+	double PwrU = hCU->GetBinContent(6 + iU);
+	double PwrM = hCM->GetBinContent(6 + iM);
+	double PwrD = hCD->GetBinContent(6 + iD);
+	double DeadU = hCU->GetBinContent(9 + iU);
+	double DeadM = hCM->GetBinContent(9 + iM);
+	double DeadD = hCD->GetBinContent(9 + iD);
+	double EffU = hCU->GetBinContent(12 + iU);
+	double EffM = hCM->GetBinContent(12 + iM);
+	double EffD = hCD->GetBinContent(12 + iD);
+	
+	double k = sqrt(PwrU * PwrD * EffU * EffD * (1 - DeadU) * (1 - DeadD)) / (PwrM * EffM * (1 - DeadM));
+	return k;
+}
+
 void change_file_suffix(char *to, int len, const char *from, const char *where, const char *what)
 {
 	char *ptr;
@@ -266,6 +307,7 @@ double sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, const struct 
 		hSub->Add(hBgnd, positions[i].bgnd * bgScale);
 		hSub->Add(hRBgnd, -positions[i].bgnd * bgScale);	// subtract accidental muon to IBD coincidence
 		hSub->Add(&fBgndN, dt * Nscale / 86.4);
+		hSub->Add(&fLowMuon, dt * Nscale / 86.4);
 		hSub->Add(&fBgndC, -dt * positions[i].bgnd * bgScale * Nscale / 86.4);
 		power += positions[i].power * positions[i].total;
 		eff += positions[i].eff * positions[i].total;
@@ -273,7 +315,7 @@ double sum_of_spectra(TH1D *hSum, TH1D *hSub, const char *posmask, const struct 
 		dead += positions[i].dead;
 	}
 	days = tSum / 86.4;
-	hSub->Add(&fLowMuon, days * Nscale);
+//	hSub->Add(&fLowMuon, days * Nscale);
 	hSum->Add(hSub, -1);
 	if (tSum == 0) return 0;
 	Cnt = hSum->Integral();
@@ -647,7 +689,6 @@ void draw_period_ratio_page(TCanvas *cv, int month, int year, double bgScale, do
 	delete hTmp;
 }
 
-
 void draw_cosmics_page(TCanvas *cv, const struct PeriodsStruct *period)
 {
 	TLegend *lg;
@@ -831,6 +872,50 @@ void draw_single_period_ratio(const char *prefix, const char *nameA, const char 
 	sprintf(title, "Ratio %s: %s / %s;Positron energy, MeV;#frac{N_{%s}}{N_{%s}}", 
 		prefix, periodA->title, periodB->title, nameA, nameB);
 	draw_single_ratio(histA, histB, name, title, 0.75, 1.25);
+}
+
+//	Calculate sqrt(hist) with errors
+void calc_sqrt(TH1 *h)
+{
+	int i;
+	double var;
+	for (i=0; i<h->GetXaxis()->GetNbins(); i++) {
+		var = h->GetBinContent(i+1);
+		if (var > 0) {
+			h->SetBinContent(i+1, sqrt(var));
+			h->SetBinError(i+1, h->GetBinError(i+1) / (2 * sqrt(var)));
+		} else {
+			h->SetBinContent(i+1, 0);
+			h->SetBinError(i+1, 0);
+		}
+	}
+}
+
+//	Draw Mid/sqrt(Up*Down)
+void draw_sqrt_ratio(const char *nameU, const char *nameM, const char *nameD, const char *name, const char *title, double min=0.6, double max=1.2)
+{
+	TH1D *hU = (TH1D *) gROOT->FindObject(nameU);
+	TH1D *hM = (TH1D *) gROOT->FindObject(nameM);
+	TH1D *hD = (TH1D *) gROOT->FindObject(nameD);
+	if (!hU || !hM || !hD) {
+		printf("Can not find hist(s): %s, %s or(and) %s. Step %s\n", nameU, nameM, nameD, title);
+		return;
+	}
+	TH1D *h = (TH1D*) hU->Clone(name);
+	h->SetName(name);
+	h->SetTitle(title);
+	h->Multiply(hU, hD);
+	calc_sqrt(h);
+	h->Divide(hM, h);
+	h->Scale(GetEffScale3(nameU, nameM, nameD));
+	h->SetLineColor(kBlue);
+	h->Write();
+	h->SetMinimum(min);
+	h->SetMaximum(max);
+	h->GetYaxis()->SetLabelSize(0.08);
+	h->GetXaxis()->SetRange(h->FindBin(ERangeA[0]+0.001), h->FindBin(ERangeA[1]-0.001));
+	h->GetYaxis()->SetTitle("");
+	h->Fit("pol0", "", "", ERangeB[0], ERangeB[1]);
 }
 
 void draw_normalized_ratio(const struct PeriodsStruct *periodA, const struct PeriodsStruct *periodB,
@@ -1044,11 +1129,11 @@ void draw_signal_spectra(const struct PeriodsStruct *period, double bgScale = 5.
 	hC->Add(&fBgndC, -1 * Nscale * rOffCosmCorr);
 	hC->Scale(bgScale * 0.025);	// fixed 0.025 here
 	hC->Add(&fBgndN, Nscale * rOffCosmCorr);
-	hC->Add(&fLowMuon, Nscale);
+	hC->Add(&fLowMuon, Nscale * rOffCosmCorr);
 
 	hNC->Add(&fBgndN, -1 * Nscale * rOffCosmCorr);
 	hCC->Add(&fBgndC, -1 * Nscale * rOffCosmCorr);
-	hNC->Add(&fLowMuon, -Nscale);
+	hNC->Add(&fLowMuon, -Nscale * rOffCosmCorr);
 
 	hN->Write();
 	hC->Write();
@@ -1151,7 +1236,7 @@ void draw_accidental(const struct PeriodsStruct *period = NULL)
 
 	if (!period) period = period_by_name("Main");
 
-	sprintf(strs, "AccUp_%s", period->name);
+	sprintf(strs, "hAccUp_%s", period->name);
 	sprintf(strl, "Accidental background spectrum %s, UP;Positron energy, MeV;Events / (day * 125 keV)", 
 		period->title);
 	TH1D *hUp = new TH1D(strs, strl, NEBINS, 0, 16);
@@ -1232,12 +1317,84 @@ void draw_4month_chi2(double chi2[N4MONTH][3])
 	lg->Draw();
 }
 
+void print_stat_line(const char *name, const char *title, double frac, double x, double y)
+{
+	char strl[256];
+	double val[3], err[3];
+	const double rg[3][2] = {{0.75, 8.0}, {1.0, 7.0}, {1.5, 6.0}};
+	int bin[2];
+	TH1D *h;
+	TLatex lx;
+	int i;
+
+	lx.SetTextSize(0.028);
+	lx.SetTextFont(102);
+	h = (TH1D *) gROOT->FindObject(name);
+	if (!h) {
+		sprintf(strl, "%s not found", name);
+		lx.DrawLatexNDC(x, y, strl);
+		return;
+	}
+	for (i=0; i<3; i++) {
+		bin[0] = h->FindBin(rg[i][0] + 0.001);
+		bin[1] = h->FindBin(rg[i][1] - 0.001);
+		val[i] = frac * h->IntegralAndError(bin[0], bin[1], err[i]);
+		err[i] *= frac;
+	}
+	sprintf(strl, "%15s: A: %6.1f #pm %4.1f   B: %6.1f #pm %4.1f   C: %6.1f #pm %4.1f",
+		title, val[0], err[0], val[1], err[1], val[2], err[2]);
+	lx.DrawLatexNDC(x, y, strl);
+}
+
+void print_stat_info(const char *name, double frac, double x, double y)
+{
+	const double step = 0.03;
+	TString tname(name);
+	TLatex lx;
+	
+	lx.SetTextSize(0.028);
+	lx.SetTextFont(102);
+	lx.DrawLatexNDC(x, y, name);
+	lx.DrawLatexNDC(x + 0.15, y, "Ranges: A:[0.75, 8.0]   B:[1.0, 7.0]   C:[1.5, 6.0]");
+	
+	print_stat_line(("hUp_" + tname).Data(),       "Signal Up",   1.0, x, y - step);
+	print_stat_line(("hUpSub_" + tname).Data(),    "Bgnd. Up",    1.0, x, y - 2*step);
+	print_stat_line(("hAccUp_" + tname).Data(),    "Random Up",   1.0, x, y - 3*step);
+	print_stat_line(("hUpCosm_" + tname).Data(),   "Cosm. Up",   frac, x, y - 4*step);
+	
+	print_stat_line(("hMid_" + tname).Data(),      "Signal Mid",  1.0, x, y - 5*step);
+	print_stat_line(("hMidSub_" + tname).Data(),   "Bgnd. Mid",   1.0, x, y - 6*step);
+	print_stat_line(("hAccMid_" + tname).Data(),   "Random Mid",  1.0, x, y - 7*step);
+	print_stat_line(("hMidCosm_" + tname).Data(),  "Cosm. Mid",  frac, x, y - 8*step);
+
+	print_stat_line(("hDown_" + tname).Data(),     "Signal Down", 1.0, x, y - 9*step);
+	print_stat_line(("hDownSub_" + tname).Data(),  "Bgnd. Down",  1.0, x, y - 10*step);
+	print_stat_line(("hAccDown_" + tname).Data(),  "Random Down", 1.0, x, y - 11*step);
+	print_stat_line(("hDownCosm_" + tname).Data(), "Cosm. Down", frac, x, y - 12*step);
+}
+
+void print_fun_info(const char *name, const char *title, double x, double y)
+{
+	char strl[256];
+	double val[3];
+	const double rg[3][2] = {{0.75, 8.0}, {1.0, 7.0}, {1.5, 6.0}};
+	int i;
+	TLatex lx;
+
+	lx.SetTextSize(0.028);
+	lx.SetTextFont(102);
+	TF1 f("FFFF", name, 0.0, 16.0);
+	for (i=0; i<3; i++) val[i] = f.Integral(rg[i][0], rg[i][1]) * NEBINS / 16.0;
+	sprintf(strl, "%10s: A: %6.1f       B: %6.1f       C: %6.1f", title, val[0], val[1], val[2]);
+	lx.DrawLatexNDC(x, y, strl);
+}
+
 void danss_calc_ratio_v6(const char *fname, double bgScale = 5.6/2.5, double Nscale = 1.0)
 {
 	TCanvas *cv;
 	TFile *f;
 	TFile *fOut;
-	char str[1024], strs[128];
+	char str[1024], strs[128], stru[128];
 	char strl[1024], strm[128];
 	TLatex *txt;
 	double val, err;
@@ -1386,6 +1543,22 @@ void danss_calc_ratio_v6(const char *fname, double bgScale = 5.6/2.5, double Nsc
 		cv->Print(pname);
 	}
 
+//	Ratios Mid/sqrt(Up*Down)
+	for (i = 0; i < sizeof(PeriodList) / sizeof(PeriodList[0]); i++) {
+		if (PeriodList[i].pwr != 1) continue;
+		sprintf(stru, "hUp_%s", PeriodList[i].name);
+		sprintf(strm, "hMid_%s", PeriodList[i].name);
+		sprintf(strs, "hDown_%s", PeriodList[i].name);
+		sprintf(strl, "hMidUpDown_%s", PeriodList[i].name);
+		if (((TH1D*) gROOT->FindObject(stru))->Integral() < 10) continue;
+		if (((TH1D*) gROOT->FindObject(strm))->Integral() < 10) continue;
+		if (((TH1D*) gROOT->FindObject(strs))->Integral() < 10) continue;
+		sprintf(str, "Ratio Mid/#sqrt{Down*Up} %s;Positron energy, MeV;#frac{N_{MID}}{#sqrt{N_{UP}N_{DOWN}}}", PeriodList[i].title);
+		draw_sqrt_ratio(stru, strm, strs, strl, str, 0.85, 1.15);
+		cv->Update();
+		cv->Print(pname);
+	}
+
 //	Ratios for questionable periods
 	for (i = 0; i < sizeof(spname) / sizeof(spname[0]); i++) {
 		cv->Clear();
@@ -1507,6 +1680,16 @@ void danss_calc_ratio_v6(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	
 	cv->Clear();
 	draw_4month_chi2(chi2);
+	cv->Print(pname);
+
+//	Statistics info
+	
+	cv->Clear();
+	print_stat_info("MainA", 0.025 * bgScale * Nscale, 0.05, 0.95);
+	print_stat_info("Off",   0.025 * bgScale * Nscale * rOffCosmCorr, 0.05, 0.55);
+	print_fun_info(NeutronCorrN, "Neutrons #nu", 0.05, 0.12);
+	print_fun_info(NeutronCorrC, "Neutrons #mu", 0.05, 0.09);
+	print_fun_info(LowMuonCorr, "Exponent", 0.05, 0.06);
 	cv->Print(pname);
 
 //****************	Write file	*****************//

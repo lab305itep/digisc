@@ -1,5 +1,5 @@
 //	Compare MC to IBD spectrum
-#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair7n14/MC/DataTakingPeriod01/"
+#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair7n15/MC/DataTakingPeriod01/"
 
 TChain *make_MCchain(int isotope)
 {
@@ -179,7 +179,7 @@ void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu
 		hFuel[i]->SetLineWidth(2);
 		sprintf(strl,"MC IBD for %s;MeV", name_fuel[i]);
 		hFuel[i]->SetTitle(strl);
-		sprintf(strl, "%6.4f * PositronEnergy - %5.3f", kScale, kShift);
+		sprintf(strl, "%6.4f * PositronEnergy - (%5.3f)", kScale, kShift);
 		tFuel[i]->Project(hFuel[i]->GetName(), strl, cSel);
 		hFuel[i]->Scale(1.0/nfiles[i]);
 	}

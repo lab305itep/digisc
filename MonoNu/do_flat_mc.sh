@@ -1,5 +1,5 @@
 #!/bin/bash
-#DBG="echo"
+###DBG="echo"
 ROOTVER=${ROOTVER:-6n12}
 PAIRVER=${PAIRVER:-7n15}
 REBUILD=${REBUILD:-NO}
@@ -12,11 +12,11 @@ fi
 DIRNAME=`printf "R%5.3fC%5.3fS%5.3f" $1 $2 $3`
 
 case "x"$4 in 
-	xMIN ) 	
+	"xMIN" ) 	
 		DEAD="-deadlist dch_002210_078234_min.list" 
 		DIRNAME=${DIRNAME}_DMIN
 		;;
-	xMAX ) 
+	"xMAX" ) 
 		DEAD="-deadlist dch_002210_078234_max.list"
 		DIRNAME=${DIRNAME}_DMAX
 		;;
@@ -30,7 +30,6 @@ RAW=/home/itep/alekseev/igor/MC_rawGd/Flat_spectrum_new_Gd_big_stat
 DIGI=/home/clusters/rrcmpi/alekseev/igor/MCFlat
 ROOTDIR=/home/clusters/rrcmpi/alekseev/igor/root${ROOTVER}/MC/DataTakingPeriod01/FlatGd/${DIRNAME}
 PAIRDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PAIRVER}/MC/DataTakingPeriod01/FlatGd/${DIRNAME}
-DEAD=${DEAD_FILE:-"-deadlist dch_002210_078234.list"}
 LIST=${PAIRDIR}/run_list.txt
 HIST=${PAIRDIR}/${DIRNAME}
 DLIST=${ROOTDIR}/.tmp.list

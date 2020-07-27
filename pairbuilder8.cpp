@@ -456,7 +456,8 @@ int main(int argc, char **argv)
 		TrigArray[iEvt].globalTime = DanssEvent.globalTime;
 		TrigArray[iEvt].flags = 0;
 		if ((RawChain) ? IsIgnore(&DanssEvent, &RawHits) : IsIgnore(&DanssEvent, NULL)) TrigArray[iEvt].flags |= FLAG_IGNORE;
-		if (IsNeutron(&DanssEvent) && !IsVeto(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_NEUTRON;
+//		if (IsNeutron(&DanssEvent) && !IsVeto(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_NEUTRON;
+		if (IsNeutron(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_NEUTRON;
 		if (IsPositron(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_POSITRON;
 		if (IsVeto(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_VETO;
 		if (IsShower(&DanssEvent)) TrigArray[iEvt].flags |= FLAG_SHOWER;
@@ -498,7 +499,8 @@ int main(int argc, char **argv)
 						if (gtDiff >= -TISOLATIONM * GFREQ2US && gtDiff < -MAXTDIFF * GFREQ2US) {
 							outCnt++;		// outer count
 						} else if (gtDiff >= -MAXTDIFF * GFREQ2US && gtDiff < 0) {
-							if ((TrigArray[i].flags & FLAG_POSITRON) && !(TrigArray[i].flags & FLAG_VETO)) {
+//							if ((TrigArray[i].flags & FLAG_POSITRON) && !(TrigArray[i].flags & FLAG_VETO)) {
+							if (TrigArray[i].flags & FLAG_POSITRON) {
 								inCnt++;
 							} else {
 								outCnt++;

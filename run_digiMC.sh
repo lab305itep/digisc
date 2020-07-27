@@ -96,7 +96,11 @@ do_radmuons()
 do_orbitmuons()
 {
 	${EXE} ${DIGIGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/mc_Muons_glbLY_transcode_rawProc_pedSim_electronsFromMuminusInCorbitDecayNewPaint.digi.bz2 \
-		0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/DANSS.root
+		0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/DANSS.root
+	for f in 0 1 2 3 ; do
+		${EXE} ${DIGIGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/mc_Muons_glbLY_transcode_rawProc_pedSim_electronsFromMuminusInCorbitDecayNewPaint_${f}.digi.bz2 \
+		0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/DANSS${f}.root
+	done
 }
 
 do_sources()

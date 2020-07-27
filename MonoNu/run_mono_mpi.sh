@@ -11,7 +11,6 @@ cd /home/itep/alekseev/igor/MonoNu
 #export REBUILD=YES
 export ROOTVER=6n12
 export PAIRVER=7n15
-#export DEAD_FILE="dch_002210_078234.list"
 export MONO_ARG00="0.06 0.02 0.98"
 export MONO_ARG01="0.12 0.04 0.98"
 export MONO_ARG02="0.18 0.06 0.98"

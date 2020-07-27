@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 		goto fin;
 	}
 	
-	for(;;) {
+	for(i=0;;i++) {
 		if (!fgets(str, sizeof(str), fList)) break;
 		ptr = strchr(str, '\n');
 		if (ptr) *ptr = '\0';
@@ -167,6 +167,7 @@ int main(int argc, char **argv)
 	fclose(fList);
 
 	nEvt = EventChain->GetEntries();
+	printf("%d files with %d triggers\n", i, nEvt);
 	CmCnt = 0;
 	nCnt = 0;
 	lastVeto = lastgTime = -GLOBALFREQ;
@@ -207,7 +208,7 @@ int main(int argc, char **argv)
 		SumInfo.events += DanssInfo.events;
 		if (!i) SumInfo.startTime = DanssInfo.startTime;
 	}
-	InfoOut->Fill();	
+	InfoOut->Fill();
 
 	printf("%Ld events processed - %d fissions found. Aquired time %f7.0 s\n", iEvt, CmCnt, SumInfo.upTime / GLOBALFREQ);
 	printf("Trigger freq = %7.1f Hz\n", 1.0 * iEvt * GLOBALFREQ / SumInfo.upTime);

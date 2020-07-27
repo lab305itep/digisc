@@ -8,8 +8,8 @@
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/spectr.err
 cd /home/itep/alekseev/igor
 export STAT_ALL=apr16_feb20/stat_all_n2.txt
-export SPECTR_BGSCALE=2.0
-export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair7n14
+export SPECTR_BGSCALE=1.9
+export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair7n15
 export SPECTR_WHAT="PositronEnergy"
 export SPECTR_MUCUT="gtFromVeto > 90"
 export SPECTR_CUT00="gtFromPrevious > 50 && gtToNext > 80 && EventsBetween == 0"
@@ -32,7 +32,7 @@ export SPECTR_CUT11="NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20
 export SPECTR_CUT12="!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))"
 export SPECTR_CUT13="PositronHits < 8"
 
-export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v14f2.data
+export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v15f2.data
 
 date
 mkdir -p $OUT_DIR
