@@ -1,10 +1,10 @@
 #!/bin/bash
 #PBS -N run_digiMC
-#PBS -q long
+#PBS -q medium
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
 #PBS -l nodes=1
-#PBS -l walltime=100:00:00
+#PBS -l walltime=12:00:00
 cd /home/itep/alekseev/igor
 
 MCRAW=MC_raw
@@ -13,7 +13,7 @@ OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n12/MC/DataTakingPeriod01
 DIGI=digi_MC/DataTakingPeriod01
 DIGIGD=digi_MCGd/DataTakingPeriod01
 EXE=./evtbuilder5
-DEAD="-deadlist dch_002210_078234.list"
+DEAD="-deadlist dch_002210_089039.list"
 #EXE=echo
 
 # We need just a list...
@@ -128,6 +128,37 @@ do_sources()
 #do_fuelGd
 #do_flatGd
 #do_muons
-do_orbitmuons
+#do_orbitmuons
+
+# NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4/v3.2/DataTakingPeriod01/Fuel/
+# RAWG4=/home/clusters/rrcmpi/danss/DANSS/MC_raw/newG4/Fuel/235U_fuel/
+# NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4/v3.2/DataTakingPeriod01/RadSources/
+# RAWG4=/home/clusters/rrcmpi/danss/DANSS/MC_raw/newG4/
+
+#NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4_test4/v3.2/DataTakingPeriod01/Fuel/
+#RAWG4=/home/clusters/rrcmpi/danss/DANSS/MC_raw/newG4_test4/Fuel/
+#OUTG4=${OUTDIR}/FuelNewG4v4
+#${EXE} ${NEWG4}mc_12B_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/12B/DANSS.root ${DEAD}
+#${EXE} ${NEWG4}mc_22Na_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/22Na/DANSS.root ${DEAD}
+#${EXE} ${NEWG4}mc_22Na_90cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/22Na_90_cm_pos/DANSS.root ${DEAD}
+#${EXE} ${NEWG4}mc_60Co_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/60Co/DANSS.root ${DEAD}
+#${EXE} ${NEWG4}mc_60Co_90cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/60Co_90_cm_pos/DANSS.root ${DEAD}
+
+#mkdir -p $OUTG4
+#${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_235U.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/235U_fuel/DANSS.root ${DEAD}
+#${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/239Pu_fuel/DANSS.root ${DEAD}
+#for ((i=0;$i<4;i=$i+1)) ; do
+#	${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_235U_0${i}.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/235U_fuel/DANSS${i}.root ${DEAD}
+#	${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_0${i}.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/239Pu_fuel/DANSS${i}.root ${DEAD}
+#done 
+
+NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4_test4/v3.2/DataTakingPeriod01/Muons_corrected/
+OUTG4=${OUTDIR}/MuonsG4v4
+mkdir -p $OUTG4
+
+${EXE} ${NEWG4}mc_Muons_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTG4}
+for ((i=0;$i<4;i=$i+1)) ; do
+	${EXE} ${NEWG4}mc_Muons_glbLY_transcode_rawProc_pedSim_0${i}.digi.bz2 0x70000 ${OUTG4}
+done
 
 exit 0

@@ -8,6 +8,6 @@
 date
 cd /home/itep/alekseev/igor
 mkdir -p /home/clusters/rrcmpi/alekseev/igor/root6n12/stat
-mpirun --mca btl ^tcp run_stat_mpi 45445 55
+mpirun --mca btl ^tcp run_stat_mpi 81739 1
 date
 exit 0

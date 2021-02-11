@@ -1,10 +1,10 @@
 #!/bin/bash
 #PBS -N run_pairMC
-#PBS -q long
+#PBS -q medium
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_pairMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_pairMC.err
 #PBS -l nodes=1
-#PBS -l walltime=100:00:00
+#PBS -l walltime=12:00:00
 cd /home/itep/alekseev/igor
 RVER="6n12"
 PVER="7n15"
@@ -69,8 +69,26 @@ do_flat()
 	done
 }
 
+do_fuelg4()
+{
+	LIST=`find /home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC/DataTakingPeriod01/FuelNewG4v4 -name "*.root" -print`
+	for f in $LIST ; do
+		OF=${f/root${RVER}/pair${PVER}}
+		./pairbuilder8 $f $OF
+	done
+	PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/DataTakingPeriod01/FuelNewG4v4
+	RAWDIR=/home/clusters/rrcmpi/danss/DANSS/MC_raw/newG4_test4/Fuel/
+	mkdir -p $PDIR
+	./getMCinfo $PDIR/mc_IBD_glbLY_transcode_rawProc_pedSim_235U.root  $RAWDIR/235U_fuel/DANSS.root  $PDIR/mc_IBD_info_235U.root
+	./getMCinfo $PDIR/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu.root  $RAWDIR/239Pu_fuel/DANSS.root  $PDIR/mc_IBD_info_239Pu.root
+	for (( i=0; $i<4; i=$i+1 )) ; do
+		./getMCinfo $PDIR/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_0${i}.root  $RAWDIR/235U_fuel/DANSS${i}.root  $PDIR/mc_IBD_info_235U_0${i}.root
+		./getMCinfo $PDIR/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_0${i}.root  $RAWDIR/239Pu_fuel/DANSS${i}.root  $PDIR/mc_IBD_info_239Pu_0${i}.root
+	done
+}
+
 date
-do_fuel
+do_fuelg4
 date
 
 exit 0

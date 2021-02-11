@@ -223,7 +223,7 @@ void background_draw(const char *rootname, const char *mcname, double muFraction
 	TF1 *fExpo = new TF1("fExpo", "expo", 0, 500);
 	TF1 *fExpo2 = new TF1("fExpo2", "expo(0)+expo(2)", 0, 500);
 	txt.SetTextSize(0.07);
-	
+//		Draw time hists
 	for (i=0; i<THISTS; i++) {
 		switch(i) {
 		case 0:	// TSHOWER
@@ -257,6 +257,30 @@ void background_draw(const char *rootname, const char *mcname, double muFraction
 		txt.DrawLatexNDC(0.65, 0.7, strl);
 		cv->SaveAs(pdfname);
 	}
+//		Draw moderation and capture
+	TF1 *fExpoGt = new TF1("fExpoGt", "expo", 0, 50);
+	fExpoGt->SetLineColor(kRed);
+	TF1 *fExpoMC = new TF1("fExpoMC", "expo", 0, 50);
+	txt.SetTextSize(0.04);
+
+	h[0][1]->Fit("fExpoGt", "Q", "", 16, 50);
+	cv->Update();
+	TPaveStats *pv = (TPaveStats *) h[0][1]->FindObject("stats");
+	double y1 = pv->GetY1NDC();
+	double y2 = pv->GetY2NDC();
+	pv->SetY1NDC(2 * y1 - y2);
+	pv->SetY2NDC(y1);
+	pv->SetLineColor(kBlue);
+	pv->SetTextColor(kBlue);
+	sprintf(strl, "#tau_{EXP} = %5.2f us", -1.0/fExpoGt->GetParameter(1));
+	txt.SetTextColor(kBlue);
+	txt.DrawLatexNDC(0.7, 0.5, strl);
+	hMC[0]->Fit("fExpoMC", "Q", "hist,sames", 16, 50);
+	sprintf(strl, "#tau_{MC} = %5.2f us", -1.0/fExpoMC->GetParameter(1));
+	txt.SetTextColor(kBlack);
+	txt.DrawLatexNDC(0.7, 0.43, strl);
+	cv->Update();
+	cv->SaveAs(pdfname);
 	
 	sprintf(strl, "%s]", pdfname);
 	cv->SaveAs(strl);

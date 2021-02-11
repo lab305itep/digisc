@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 					break;
 				}
 				mod = rec->module;
-				if (mod < 1 || mod > 50) {
+				if (mod < 1 || mod > 60) {
 					printf("Module %d is out of range.\n", mod);
 					continue;
 				}

@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 	sprintf(str, "root -l -b -q \"tstat.C(%d, %d, \\\"%s%2.2dc\\\")\"",
 		first, last, prefix, serial + 1);
 	irc = system(str);
-	if (irc) printf("Run for module %d: error %d returned: %m\n", serial, irc);
+	if (irc) printf("Run for module %d: error %d returned: %m\n", serial+1, irc);
 //		time and print
 	t1 = time(NULL);
 	printf("Module %d: elapsed time %d s:\n", serial+1, t1 - t0);

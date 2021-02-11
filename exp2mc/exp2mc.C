@@ -1,5 +1,5 @@
 //	Compare MC to IBD spectrum
-#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair7n15/MC/DataTakingPeriod01/"
+#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair7n14/MC/DataTakingPeriod01/"
 
 TChain *make_MCchain(int isotope)
 {
