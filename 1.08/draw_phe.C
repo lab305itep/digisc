@@ -76,12 +76,25 @@ double Average(TH1 *h, double leftedge = 0.0, double rightedge = 1.0)
 {
 	int leftbin, rightbin;
 	int i;
-	double sum;
+	double sum, sumx;
+	double Evt;
 	
 	sum = 0;
-	for (i=0; i<h->GetNbinX()+2; i++) {
-		if (sum 
+	leftbin = rightbin = -1;
+	Evt = h->Integral(0, h->GetNbinsX()+2);
+	for (i=0; i<h->GetNbinsX()+2; i++) {
+		if (sum >= leftedge * Evt && leftbin < 0) leftbin = i;
+		sum += h->GetBinContent(i);
+		if (sum >= rightedge * Evt && rightbin < 0) rightbin = i;
 	}
+	if (rightedge < leftedge) rightedge = leftedge;
+	sum = sumx = 0;
+	for (i=leftbin; i<rightbin; i++) {
+		sum += h->GetBinContent(i);
+		sumx += h->GetBinContent(i) * h->GetBinCenter(i);
+//		printf("%d: %f %f\n", i, sum, sumx);
+	}
+	return sumx / sum;
 }
 
 double Median(TH1 *h, int firstbin=0, int lastbin=-1)
