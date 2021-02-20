@@ -13,11 +13,11 @@ int main(int argc, char **argv)
 	time_t t0, t1;
 	int irc;
 	int kr, kc;
-	double r0SiPM = 1.0;
+	double r0SiPM = 1.000;
 	double srSiPM = 0.005;
-	double r0PMT = 1.0;
+	double r0PMT = 0.82;
 	double srPMT = 0.005;
-	double c0SiPM = 0.2;
+	double c0SiPM = 0.1;
 	double scSiPM = 0.005;
 	double c0PMT = 0.1;
 	double scPMT = 0.005;
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 	kc = serial / 21 - 10;
 	kr = serial % 21 - 10;
 //		The run itself
-	sprintf(str, "root -l -b -q -x \"draw_phe.C+(%5.3f, %5.3f, 0.12, 0.12, %5.3f, %5.3f, 10000)\"", 
+	sprintf(str, "root -l -b -q -x \"draw_phe.C(%5.3f, %5.3f, 0.12, 0.12, %5.3f, %5.3f, 2000)\"", 
 		r0SiPM + kr * srSiPM, r0PMT + kr * srPMT,
 		c0SiPM + kc * scSiPM, c0PMT + kc * scPMT);
 	irc = system(str);

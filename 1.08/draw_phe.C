@@ -15,8 +15,10 @@
 
 #define MAXWFD		60
 #define MAXCHAN		64
-#define MINEVENTS	500
-#define MAXCHI2		500
+#define MINEVENTS	300
+#define MAXCHI2		5000.0
+#define MINMEDIAN	13.0
+#define MINMPV		22.0
 
 class RandomSmear:public TRandom2 {
 private:
@@ -70,7 +72,19 @@ double hDiff(TH1D *hA, TH1D *hB, int first, int last)
 	return sum;
 }
 
-double Median(TH1 *h, int firstbin, int lastbin)
+double Average(TH1 *h, double leftedge = 0.0, double rightedge = 1.0)
+{
+	int leftbin, rightbin;
+	int i;
+	double sum;
+	
+	sum = 0;
+	for (i=0; i<h->GetNbinX()+2; i++) {
+		if (sum 
+	}
+}
+
+double Median(TH1 *h, int firstbin=0, int lastbin=-1)
 {
 	double half;
 	double sum;
@@ -78,6 +92,9 @@ double Median(TH1 *h, int firstbin, int lastbin)
 	double x;
 	int i;
 	
+	if (lastbin < 0) lastbin = h->GetNbinsX() + 1;	// overflow
+	if (firstbin < 0) firstbin = 0;			// underflow
+	if (firstbin > lastbin) firstbin = lastbin;
 	half = 0.5 * h->Integral(firstbin, lastbin);
 	sum = 0;
 	for (i = firstbin; i <= lastbin; i++) {
@@ -159,7 +176,7 @@ void draw_phe(
 	const double pheSiPM = 19.9;
 	const double phePMT = 18.5;
 	char strs[128], strl[1024];
-	int i, j, N, adc, chan, index;
+	int i, j, N, adc, chan, index, irc;
 	struct {
 		double index;
 		double value;
@@ -170,6 +187,20 @@ void draw_phe(
 	} dDiff;
 	TH1D *hExpC[MAXWFD][MAXCHAN];
 	double gain[MAXWFD][MAXCHAN];
+	double mpv[MAXWFD][MAXCHAN];
+
+	// Get gains
+	irc = 0;
+	FILE *fGain = fopen("calib.bin", "rb");
+	if (fGain) {
+		fseek(fGain, sizeof(mpv), SEEK_CUR);
+		fread(mpv, sizeof(mpv), 1, fGain);
+		fseek(fGain, sizeof(gain), SEEK_CUR);
+		irc = fread(gain, sizeof(gain), 1, fGain);
+	}
+	if (irc != 1) for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) gain[i][j] = 1.0;
+//	printf("gains: %f %f %f\n", gain[1][5], gain[1][12], gain[2][2]);
+//	return;
 
 	gROOT->SetStyle("Plain");
 	gStyle->SetOptStat(0);
@@ -232,16 +263,16 @@ void draw_phe(
 				sprintf(strl, "Muon energy deposit, PMT %d;ph.e.", chan);
 				hExpC[adc][chan] = new TH1D(strs, strl, 150, 0, 600);
 			}
-			hExpPMT->Fill(Signal.value * PMTintcorr / PMTpheADC[chan]);
 			hExpC[adc][chan]->Fill(Signal.value * PMTintcorr / PMTpheADC[chan]);
+			if (gain[adc][chan] > 0.7) hExpPMT->Fill(Signal.value * PMTintcorr / PMTpheADC[chan] / gain[adc][chan]);
 		} else if (adc != 3) {	// SiPM - we do nothing with veto and don't expect it here
-			hExpSiPM->Fill(Signal.value);
 			if (!hExpC[adc][chan]) {
 				sprintf(strs, "hExpC%2.2d%2.2d", adc, chan);
 				sprintf(strl, "Muon energy deposit, SiPM %d.%2.2d;ph.e.", adc, chan);
 				hExpC[adc][chan] = new TH1D(strs, strl, 150, 0, 150);
 			}
 			hExpC[adc][chan]->Fill(Signal.value);
+			if (mpv[adc][chan] > MINMPV) hExpSiPM->Fill(Signal.value / gain[adc][chan]);
 		}
 	}
 	hExpSiPM->Sumw2();
@@ -329,17 +360,32 @@ void draw_phe(
 
 }
 
-void get_calibration(const char *fname)
+void get_calibration(const char *fname, int toWFD = 100)
 {
 	int i, j, Cnt;
 	double mdn[MAXWFD][MAXCHAN];
 	double mpv[MAXWFD][MAXCHAN];
 	double MeanMdn, MeanMpv;
 	char str[1024];
+	char pdfname[1024];
 	TH1 *h;
 	TF1 *fL;
 	char *ptr;
-	
+
+	TH1D *hMedianSiPM = new TH1D("hMedianSiPM", "Median for SiPM;ph.e.", 100, 0, 50);
+	TH1D *hMPVSiPM = new TH1D("hMPVSiPM", "MPV for SiPM;ph.e.", 100, 0, 50);
+	TH1D *hMedianPMT = new TH1D("hMedianPMT", "Median for PMT;ph.e.", 40, 200, 400);
+	TH1D *hMPVPMT = new TH1D("hMPVPMT", "MPV for PMT;ph.e.", 40, 200, 400);
+	TH1D *hMedian2MPVSiPM = new TH1D("hMedian2MPVSiPM", "Median to MPV ratio, SiPM;Median/MPV", 60, 0.9, 1.5);
+	TH1D *hMedian2MPVPMT = new TH1D("hMedian2MPVPMT", "Median to MPV ratio, PMT;Median/MPV", 30, 0.9, 1.2);
+	TH1D *hLwidthSiPM = new TH1D("hLwidthSiPM", "Landau width, SiPM;ph.e.", 100, 0, 10);
+	TH1D *hLwidthPMT = new TH1D("hLwidthPMT", "Landau width, PMT;ph.e.", 100, 0, 50);
+	TH1D *hGwidthSiPM = new TH1D("hGwidthSiPM", "Gauss width, SiPM;ph.e.", 100, 0, 30);
+	TH1D *hGwidthPMT = new TH1D("hGwidthPMT", "Gauss width, PMT;ph.e.", 100, 0, 100);
+	TH1D *hChi2SiPM = new TH1D("hChi2SiPM", "#chi^{2}, SiPM", 100, 0, 1000);
+	TH1D *hChi2PMT = new TH1D("hChi2PMT", "#chi^{2}, PMT", 100, 0, 1000);
+	TLatex *ltx = new TLatex();
+	ltx->SetTextSize(0.025);
 	TFile *f = new TFile(fname);
 	if (!f->IsOpen()) return;
 	memset(mdn, 0, sizeof(mdn));
@@ -347,8 +393,15 @@ void get_calibration(const char *fname)
 	fL = (TF1*) gROOT->FindObject("fL");
 	if (fL) delete fL;
 	fL = new TF1("fL", langaufun, 0, 1000, 4);
-	
-	for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) {
+	strcpy(pdfname, fname);
+	for(ptr = pdfname + strlen(pdfname); ptr >= str; ptr--) if (*ptr == '.') break;
+	if (*ptr == '.') *ptr = '\0';
+	strcat(pdfname, ".pdf[");
+	TCanvas ccv("CCV", "CCV", 800, 800);
+	ccv.SaveAs(pdfname);
+	ptr[4] = '\0';
+
+	for (i=0; i<MAXWFD && i < toWFD; i++) for (j=0; j<MAXCHAN; j++) {
 		sprintf(str, "hExpC%2.2d%2.2d", i, j);
 		h = (TH1 *) f->Get(str);
 		if (!h) continue;
@@ -358,44 +411,131 @@ void get_calibration(const char *fname)
 			mpv[i][j] = -1;
 			continue;
 		}
-		mdn[i][j] = Median(h, 5, 120);
-		fL->SetParameters(5, (i==1) ? 300 : 30, h->Integral(5, 120), 10);
-		h->Fit(fL, "Q", "0", (i==1) ? 20 : 5, (i==1) ? 480 : 120);
+		mdn[i][j] = Median(h);
+		if (mdn[i][j] < MINMEDIAN) continue;
+		fL->SetParameters(mdn[i][j] / ((i==1) ? 40 : 9), mdn[i][j], h->Integral(5, 120), 10);
+		fL->FixParameter(0, mdn[i][j] / ((i==1) ? 40 : 9));
+		h->Fit(fL, "Q", "", (i==1) ? 180 : 5, (i==1) ? 480 : 120);
 		if (fL->GetChisquare() > MAXCHI2) {
 			printf("%d.%2.2d: bad fit chi2 = %f\n", i, j, fL->GetChisquare());
 			mpv[i][j] = -2;
-			continue;
+		} else {
+			mpv[i][j] = fL->GetParameter(1);
 		}
-		mpv[i][j] = fL->GetParameter(1);
+		sprintf(str, "%2.2d.%2.2d: Evts = %d, Median = %6.2f, MPV = %6.2f, #chi^{2} = %5.0f", 
+			i, j, (int)h->GetEntries(), mdn[i][j], mpv[i][j], fL->GetChisquare());
+		ltx->DrawLatexNDC(0.12, 0.89, str);
+		sprintf(str, "Lwidth = %6.2f, Gwidth = %6.2f", 
+			fL->GetParameter(0), fL->GetParameter(3));
+		ltx->DrawLatexNDC(0.12, 0.85, str);
+		ccv.SaveAs(pdfname);
+		if (i == 1) {
+			hMedianPMT->Fill(mdn[i][j]);
+			hMPVPMT->Fill(mpv[i][j]);
+			if (mpv[i][j] > 0) {
+				hMedian2MPVPMT->Fill(mdn[i][j]/mpv[i][j]);
+				hLwidthPMT->Fill(fL->GetParameter(0));
+				hGwidthPMT->Fill(fL->GetParameter(3));
+				hChi2PMT->Fill(fL->GetChisquare());
+			}
+		} else {
+			hMedianSiPM->Fill(mdn[i][j]);
+			hMPVSiPM->Fill(mpv[i][j]);
+			if (mpv[i][j] > 0) {
+				hMedian2MPVSiPM->Fill(mdn[i][j]/mpv[i][j]);
+				hLwidthSiPM->Fill(fL->GetParameter(0));
+				hGwidthSiPM->Fill(fL->GetParameter(3));
+				hChi2SiPM->Fill(fL->GetChisquare());
+			}
+		}
 	}
-	
+
+	hMedianSiPM->SetStats(1);
+	hMedianSiPM->Draw();
+	ccv.SaveAs(pdfname);
+	hMPVSiPM->SetStats(1);
+	hMPVSiPM->Draw();
+	ccv.SaveAs(pdfname);
+	hMedian2MPVSiPM->SetStats(1);
+	hMedian2MPVSiPM->Draw();
+	ccv.SaveAs(pdfname);
+	hLwidthSiPM->SetStats(1);
+	hLwidthSiPM->Draw();
+	ccv.SaveAs(pdfname);
+	hGwidthSiPM->SetStats(1);
+	hGwidthSiPM->Draw();
+	ccv.SaveAs(pdfname);
+	hChi2SiPM->SetStats(1);
+	hChi2SiPM->Draw();
+	ccv.SaveAs(pdfname);
+	hMedianPMT->SetStats(1);
+	hMedianPMT->Draw();
+	ccv.SaveAs(pdfname);
+	hMPVPMT->SetStats(1);
+	hMPVPMT->Draw();
+	ccv.SaveAs(pdfname);
+	hMedian2MPVPMT->SetStats(1);
+	hMedian2MPVPMT->Draw();
+	ccv.SaveAs(pdfname);
+	hLwidthPMT->SetStats(1);
+	hLwidthPMT->Draw();
+	ccv.SaveAs(pdfname);
+	hGwidthPMT->SetStats(1);
+	hGwidthPMT->Draw();
+	ccv.SaveAs(pdfname);
+	hChi2PMT->SetStats(1);
+	hChi2PMT->Draw();
+	ccv.SaveAs(pdfname);
+
+	strcat(pdfname, "]");
+	ccv.SaveAs(pdfname);
 	f->Close();
-	
+
 	strcpy(str, fname);
-	ptr = strrchr(str, '.');
-	if (ptr) *ptr = '\0';
+	for(ptr = str + strlen(str); ptr >= str; ptr--) if (*ptr == '.') break;
+	if (*ptr == '.') *ptr = '\0';
 	strcat(str, ".bin");
 	FILE *fOut = fopen(str, "wb");
 	fwrite(mdn, sizeof(mdn), 1, fOut);
-	fwrite(mpv, sizeof(mdn), 1, fOut);
+	fwrite(mpv, sizeof(mpv), 1, fOut);
+//		PMT
 	MeanMdn = MeanMpv = 0;
 	Cnt = 0;
-	for(i=0; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) if (mdn[i][j] > 0) {
+	for(j=0; j<MAXCHAN; j++) if (mdn[1][j] > 0) {
+		MeanMdn += mdn[1][j];
+		Cnt++;
+	}
+	MeanMdn /= Cnt;
+	Cnt = 0;
+	for(j=0; j<MAXCHAN; j++) if (mpv[1][j] > 0) {
+		MeanMpv += mpv[1][j];
+		Cnt++;
+	}
+	MeanMpv /= Cnt;
+	for(j=0; j<MAXCHAN; j++) {
+		mdn[1][j] /= MeanMdn;
+		mpv[1][j] /= MeanMpv;
+	}
+//		SiPM
+	MeanMdn = MeanMpv = 0;
+	Cnt = 0;
+	for (i=2; i<MAXWFD && i<toWFD ; i++) for(j=0; j<MAXCHAN; j++) if (mdn[i][j] > 0) {
 		MeanMdn += mdn[i][j];
 		Cnt++;
 	}
 	MeanMdn /= Cnt;
 	Cnt = 0;
-	for(i=0; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) if (mpv[i][j] > 0) {
+	for (i=2; i<MAXWFD && i<toWFD; i++) for(j=0; j<MAXCHAN; j++) if (mpv[i][j] > MINMPV) {
 		MeanMpv += mpv[i][j];
 		Cnt++;
 	}
 	MeanMpv /= Cnt;
-	for(i=0; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) {
+	for (i=2; i<MAXWFD && i<toWFD; i++) for(j=0; j<MAXCHAN; j++) {
 		mdn[i][j] /= MeanMdn;
 		mpv[i][j] /= MeanMpv;
 	}
+
 	fwrite(mdn, sizeof(mdn), 1, fOut);
-	fwrite(mpv, sizeof(mdn), 1, fOut);
+	fwrite(mpv, sizeof(mpv), 1, fOut);
 	fclose(fOut);
 }
