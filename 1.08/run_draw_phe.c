@@ -15,12 +15,12 @@ int main(int argc, char **argv)
 	int kr, kc;
 	double r0SiPM = 1.000;
 	double srSiPM = 0.005;
-	double r0PMT = 0.82;
-	double srPMT = 0.005;
-	double c0SiPM = 0.1;
+	double r0PMT  = 1.000;
+	double srPMT  = 0.005;
+	double c0SiPM = 0.100;
 	double scSiPM = 0.005;
-	double c0PMT = 0.1;
-	double scPMT = 0.005;
+	double c0PMT  = 0.060;
+	double scPMT  = 0.005;
 	
 	t0 = time(NULL);
 //		Get our run number

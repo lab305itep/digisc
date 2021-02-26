@@ -18,7 +18,7 @@ void draw_mu_calib(const char *fname)
 	TFile fOut(str, "RECREATE");
 	if (!fOut.IsOpen()) return;
 	TH2D *hSiPM = new TH2D("hSiPM", "SiPM scan;scale;smearing", 21, 0.9475, 1.0525, 21, 0.0475, 0.1525);
-	TH2D *hPMT  = new TH2D("hPMT",  "PMT scan;scale;smearing",  21, 0.7675, 0.8725, 21, 0.0475, 0.1525);
+	TH2D *hPMT  = new TH2D("hPMT",  "PMT scan;scale;smearing",  21, 0.9475, 1.0525, 21, 0.0075, 0.1125);
 	for(;;) {
 		if(!fgets(str, sizeof(str), fIn)) break;
 		ptr = str;

@@ -15,11 +15,18 @@
 
 #define MAXWFD		60
 #define MAXCHAN		64
-#define MINEVENTS	300
+#define MINEVENTS	500
 #define MAXCHI2		5000.0
 #define MINMEDIAN	13.0
-#define MINMPV		22.0
+#define MINMDN		28.0
 
+/* MC nominal values */
+const double pheSiPM = 20.4;
+const double phePMT = 15.2;
+
+/*
+ *  Do random smearing as adding Gaus with width^2 = eCoef^2 * E + cCoef^2 * E^2
+ */
 class RandomSmear:public TRandom2 {
 private:
 	double eC;
@@ -34,6 +41,9 @@ public:
 	};
 };
 
+/*
+ *  Calculate average and RMS
+ */
 class AvrSum {
 private:
 	double sum;
@@ -56,6 +66,9 @@ public:
 	}
 };
 
+/*
+ * Chi^2 difference of two histograms hA and hB with errors between bins first and last
+ */
 double hDiff(TH1D *hA, TH1D *hB, int first, int last)
 {
 	int i;
@@ -72,6 +85,9 @@ double hDiff(TH1D *hA, TH1D *hB, int first, int last)
 	return sum;
 }
 
+/*
+ *  Calculate histogram average rejecting portions below leftedge and above rightedge
+ */
 double Average(TH1 *h, double leftedge = 0.0, double rightedge = 1.0)
 {
 	int leftbin, rightbin;
@@ -97,6 +113,10 @@ double Average(TH1 *h, double leftedge = 0.0, double rightedge = 1.0)
 	return sumx / sum;
 }
 
+/*
+ * Caculate histogram median in the range [firstbin, lastbin]
+ * The default includes underflow and overflow
+ */
 double Median(TH1 *h, int firstbin=0, int lastbin=-1)
 {
 	double half;
@@ -124,7 +144,6 @@ double Median(TH1 *h, int firstbin=0, int lastbin=-1)
 }
 
 Double_t langaufun(Double_t *x, Double_t *par) {
-
 //Fit parameters:
 //par[0]=Width (scale) parameter of Landau density
 //par[1]=Most Probable (MP, location) parameter of Landau density
@@ -168,6 +187,14 @@ Double_t langaufun(Double_t *x, Double_t *par) {
         return (par[2] * step * sum * invsq2pi / par[3]);
 }
 
+
+/*
+ * Fill experiment and MC histograms of muon energy deposit in ph.e.
+ * For PMT ADC units are translated to ph.e. using 1 ph.e. LED data
+ * and integral correction
+ * If file calib.bin exists it provides channel by channel gains
+ * SiPM channels with median < MINMDN are not used for sum histogramm (experiment)
+ */
 void draw_phe(
     double rSiPM = 1.0,		// MC SiPM coef
     double rPMT = 1.0, 		// MC PMT coef
@@ -186,8 +213,8 @@ void draw_phe(
 		77.6, 78.2, 71.5, 0,    0,    0,    0,    0,    0,    0,
 		0,    0,    0,    0};
 	const double PMTintcorr = 0.905; // integral to positive part integral ratio
-	const double pheSiPM = 19.9;
-	const double phePMT = 18.5;
+	const double pheSiPM = 20.4;
+	const double phePMT = 15.2;
 	char strs[128], strl[1024];
 	int i, j, N, adc, chan, index, irc;
 	struct {
@@ -200,15 +227,15 @@ void draw_phe(
 	} dDiff;
 	TH1D *hExpC[MAXWFD][MAXCHAN];
 	double gain[MAXWFD][MAXCHAN];
-	double mpv[MAXWFD][MAXCHAN];
+	double mdn[MAXWFD][MAXCHAN];
 
 	// Get gains
 	irc = 0;
 	FILE *fGain = fopen("calib.bin", "rb");
 	if (fGain) {
-		fseek(fGain, sizeof(mpv), SEEK_CUR);
-		fread(mpv, sizeof(mpv), 1, fGain);
-		fseek(fGain, sizeof(gain), SEEK_CUR);
+//		fseek(fGain, sizeof(mpv), SEEK_CUR);
+		fread(mdn, sizeof(mdn), 1, fGain);
+		fseek(fGain, sizeof(mdn), SEEK_CUR);
 		irc = fread(gain, sizeof(gain), 1, fGain);
 	}
 	if (irc != 1) for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) gain[i][j] = 1.0;
@@ -221,15 +248,15 @@ void draw_phe(
 	// Create chains
 	TChain *tExp = new TChain("DANSSSignal", "ExpSignal");
 	for (i=53500; i<53650; i++) {
-		sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/Rdata/danss_data_%6.6d_Ttree.root", i);
+		sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
 		tExp->AddFile(strl);
 	}
 	tExp->SetBranchAddress("DANSSSignalNpe", &Signal);
 	
 	TChain *tMC = new TChain("DANSSSignal", "MCSignal");
-	tMC->AddFile("/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF/mc_Muons_glbLY_transcode_rawProc_pedSim.root");
+	tMC->AddFile("/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_glbLY_transcode_rawProc_pedSim.root");
 	for (i=0; i<12; i++) {
-		sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF/mc_Muons_glbLY_transcode_rawProc_pedSim_%2.2d.root", i);
+		sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_glbLY_transcode_rawProc_pedSim_%2.2d.root", i);
 		tMC->AddFile(strl);
 	}
 	tMC->SetBranchAddress("DANSSSignalNpe", &Signal);
@@ -277,7 +304,7 @@ void draw_phe(
 				hExpC[adc][chan] = new TH1D(strs, strl, 150, 0, 600);
 			}
 			hExpC[adc][chan]->Fill(Signal.value * PMTintcorr / PMTpheADC[chan]);
-			if (gain[adc][chan] > 0.7) hExpPMT->Fill(Signal.value * PMTintcorr / PMTpheADC[chan] / gain[adc][chan]);
+			hExpPMT->Fill(Signal.value * PMTintcorr / PMTpheADC[chan] / gain[adc][chan]); // no small gain channels
 		} else if (adc != 3) {	// SiPM - we do nothing with veto and don't expect it here
 			if (!hExpC[adc][chan]) {
 				sprintf(strs, "hExpC%2.2d%2.2d", adc, chan);
@@ -285,7 +312,7 @@ void draw_phe(
 				hExpC[adc][chan] = new TH1D(strs, strl, 150, 0, 150);
 			}
 			hExpC[adc][chan]->Fill(Signal.value);
-			if (mpv[adc][chan] > MINMPV) hExpSiPM->Fill(Signal.value / gain[adc][chan]);
+			if (mdn[adc][chan] > MINMDN) hExpSiPM->Fill(Signal.value / gain[adc][chan]);
 		}
 	}
 	hExpSiPM->Sumw2();
@@ -322,9 +349,9 @@ void draw_phe(
 			}
 		}
 		hMCSiPM->Scale(hExpSiPM->Integral(20,150) / hMCSiPM->Integral(20,150));
-		hMCPMT->Scale(hExpPMT->Integral(30,150) / hMCPMT->Integral(30,150));
+		hMCPMT->Scale(hExpPMT->Integral(50,100) / hMCPMT->Integral(50,100));
 		dDiff.SiPM = hDiff(hExpSiPM, hMCSiPM, 20, 150);
-		dDiff.PMT = hDiff(hExpPMT, hMCPMT, 30, 150);
+		dDiff.PMT = hDiff(hExpPMT, hMCPMT, 50, 100);
 		AvrSiPM->Add(dDiff.SiPM);
 		AvrPMT->Add(dDiff.PMT);
 		tDiff->Fill();
@@ -351,7 +378,7 @@ void draw_phe(
 	cv->cd(2);
 	hMCPMT->DrawCopy("hist");
 	hExpPMT->DrawCopy("sames,hist");
-	sprintf(strl, "#chi^{2}/n.d.f. = %6.1f+-%4.1f/%d", AvrPMT->Avr(), AvrPMT->RMS()/sqrt(NRNDM), 150 - 30);
+	sprintf(strl, "#chi^{2}/n.d.f. = %6.1f+-%4.1f/%d", AvrPMT->Avr(), AvrPMT->RMS()/sqrt(NRNDM), 100 - 50);
 	lt->DrawLatexNDC(0.3, 0.87, strl);
 	sprintf(strl, "k = %5.3f", rPMT);
 	lt->DrawLatexNDC(0.6, 0.65, strl);
@@ -373,6 +400,11 @@ void draw_phe(
 
 }
 
+/*
+ * Calculate per channel calibration from histogramms.
+ * Bin file with medians, MPVs and gains calculated from them is created.
+ * SiPM channels with Median < MINMDN are not used in the averaging.
+ */
 void get_calibration(const char *fname, int toWFD = 100)
 {
 	int i, j, Cnt;
@@ -532,16 +564,12 @@ void get_calibration(const char *fname, int toWFD = 100)
 //		SiPM
 	MeanMdn = MeanMpv = 0;
 	Cnt = 0;
-	for (i=2; i<MAXWFD && i<toWFD ; i++) for(j=0; j<MAXCHAN; j++) if (mdn[i][j] > 0) {
+	for (i=2; i<MAXWFD && i<toWFD ; i++) for(j=0; j<MAXCHAN; j++) if (mdn[i][j] > MINMDN) {
 		MeanMdn += mdn[i][j];
-		Cnt++;
-	}
-	MeanMdn /= Cnt;
-	Cnt = 0;
-	for (i=2; i<MAXWFD && i<toWFD; i++) for(j=0; j<MAXCHAN; j++) if (mpv[i][j] > MINMPV) {
 		MeanMpv += mpv[i][j];
 		Cnt++;
 	}
+	MeanMdn /= Cnt;
 	MeanMpv /= Cnt;
 	for (i=2; i<MAXWFD && i<toWFD; i++) for(j=0; j<MAXCHAN; j++) {
 		mdn[i][j] /= MeanMdn;
@@ -551,4 +579,67 @@ void get_calibration(const char *fname, int toWFD = 100)
 	fwrite(mdn, sizeof(mdn), 1, fOut);
 	fwrite(mpv, sizeof(mpv), 1, fOut);
 	fclose(fOut);
+}
+
+/*
+ * SiPM transformation from Ira's index to Sasha's (row,coulmn)
+ */
+void SiPMTransformCellIndexToColumnRow(int cell, int *column, int *row)
+{
+	if (cell<1250) {
+		*row = (cell / 25) * 2;
+		*column = 24 - (cell % 25);
+	} else {
+		*row = ((cell-1250) / 25) * 2 + 1;
+		*column = 24 - (cell % 25);
+	}
+}
+
+/*
+ * Calculate per channel calibration in ph.e/MeV in format sutable for MC
+ * MC median values for K=1 should be provided
+ * The result is written in two files (for SiPM and PMT)
+ */
+void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT)
+{
+	int i;
+	double mdn[MAXWFD][MAXCHAN];
+	struct {
+		double cellindex;
+		double row;
+		double column;
+		double energy;
+	} data;
+	int mod, chan, column, row;
+	TFile *fOut;
+	
+	FILE *fIn = fopen(fname, "rb");
+	if (!fIn) {
+		printf("Can not open file %s: %m\n", fname);
+		return;
+	}
+	i = fread(mdn, sizeof(mdn), 1, fIn);
+	if (i != 1) {
+		printf("file %s read error: %m\n", fname);
+		fclose(fIn);
+		return
+	}
+	fclose(fIn);
+//		Cycle over SiPM
+	fOut = new TFile("SiPM_response_data_root", "RECREATE");
+	TTree *tSiPM = new TTree("EnergyTree", "Tree with coefficients");
+	tSiPM->Branch("EnergyBranch", &data, "cellindex/D:row:column:energy");
+	
+	for (i=0; i<2500; i++) {
+		SiPMTransformCellIndexToColumnRow(i, &column, &row);
+		SiPMTransformCellIndexToModChan(i, &mod, &chan);
+		data.energy = (mdn[mod][chan] > 0) ? mdn[mod][cnan] * pheSiPM / MedMCSiPM : MedMCSiPM;	// use average for dead channels here
+		data.cellindex = cell;
+		data.row = row;
+		data.column = column;
+		tSiPM->Fill();
+	}
+	
+	tSiPM->Write();
+	fOut->Close();
 }
