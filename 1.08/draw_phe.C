@@ -581,23 +581,101 @@ void get_calibration(const char *fname, int toWFD = 100)
 	fclose(fOut);
 }
 
+
 /*
- * SiPM transformation from Ira's index to Sasha's (row,coulmn)
+ *  DANSS geometry translation from Ira's cell index to WFD.chan and Sasha's row.column
+ */ 
+class DANSSGeom {
+private:
+	int wfd[2500];		// SiPM WFDs
+	int chan[2500];		// SiPM WFD channels
+	int pmtchan[50];	// PMT WFD channels
+	int GetKey(const char *str, const char *key);
+public:
+	DANSSGeom(void);
+	inline int SiPMWFD(int index)    { return wfd[index]; };
+	inline int SiPMchan(int index)   { return chan[index]; };
+	inline int PMTchan(int index)    { return pmtchan[index]; };
+	inline int SiPMrow(int index)    { return (index < 1250) ? (index / 25) * 2 : ((index-1250) / 25) * 2 + 1; };
+	inline int SiPMcolumn(int index) { return 24 - (index % 25); };
+	inline int PMTrow(int index)     { return (index % 5); };
+	inline int PMTcolumn(int index)  { return (index < 25) ? 4 - (index / 5) : 9 - (index / 5); };
+};
+
+/*
+ * Look for the integer value of a key in the string
  */
-void SiPMTransformCellIndexToColumnRow(int cell, int *column, int *row)
+int DANSSGeom::GetKey(const char *str, const char *key)
 {
-	if (cell<1250) {
-		*row = (cell / 25) * 2;
-		*column = 24 - (cell % 25);
-	} else {
-		*row = ((cell-1250) / 25) * 2 + 1;
-		*column = 24 - (cell % 25);
+	char *ptr = strstr(str, key);
+	if (!ptr) return -1;	// not found
+	return strtol(ptr + strlen(key), NULL, 10);
+}
+
+/*
+ * Initialize translation tables from Ira's config files.
+ */
+DANSSGeom::DANSSGeom(void)
+{
+	FILE *f;
+	int index, mod, chn;
+	int wfdtab[MAXWFD];
+	char str[1024];
+//	Clear all tables
+	memset(wfdtab, 0, sizeof(wfdtab));
+	memset(wfd, 0, sizeof(wfd));
+	memset(chan, 0, sizeof(chan));
+	memset(pmtchan, 0, sizeof(pmtchan));
+//	Read WFD translation table
+	f = fopen("geom/danssAdcBoardHwPars.txt", "rt");
+	if (!f) {
+		printf("!!! No WFD translation file geom/danssAdcBoardHwPars.txt\n");
+		return;
 	}
+	for(;;) {
+		if (!fgets(str, sizeof(str), f)) break;
+		index = GetKey(str, "Index=");
+		mod = GetKey(str, "Address=");
+		if (index < 0 || mod < 0) continue;
+		wfdtab[index] = mod;
+	}
+	fclose(f);
+//	Read PMT channels translation
+	f = fopen("geom/danssModuleHwPars.txt", "rt");
+	if (!f) {
+		printf("!!! No PMT translation file geom/danssModuleHwPars.txt\n");
+		return;
+	}
+	for(;;) {
+		if (!fgets(str, sizeof(str), f)) break;
+		index = GetKey(str, "Index=");
+		chn = GetKey(str, "AdcBoardCh=");
+		if (index < 0 || chn < 0) continue;
+		pmtchan[index] = chn;
+	}
+	fclose(f);
+//	Read SiPM channels translation
+	f = fopen("geom/danssCellHwPars.txt", "rt");
+	if (!f) {
+		printf("!!! No SiPM translation file geom/danssCellHwPars.txt\n");
+		return;
+	}
+	for(;;) {
+		if (!fgets(str, sizeof(str), f)) break;
+		index = GetKey(str, "Index=");
+		mod = GetKey(str, "AdcBoardNum=");
+		chn = GetKey(str, "AdcBoardCh=");
+		if (index < 0 || chn < 0 || mod < 0) continue;
+		chan[index] = chn;
+		wfd[index] = wfdtab[mod];
+	}
+	fclose(f);
 }
 
 /*
  * Calculate per channel calibration in ph.e/MeV in format sutable for MC
  * MC median values for K=1 should be provided
+ * MedMCSiPM = 35.63  MedMCPMT = 282.0
  * The result is written in two files (for SiPM and PMT)
  */
 void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT)
@@ -613,6 +691,8 @@ void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT)
 	int mod, chan, column, row;
 	TFile *fOut;
 	
+	DANSSGeom geom;
+	
 	FILE *fIn = fopen(fname, "rb");
 	if (!fIn) {
 		printf("Can not open file %s: %m\n", fname);
@@ -622,24 +702,51 @@ void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT)
 	if (i != 1) {
 		printf("file %s read error: %m\n", fname);
 		fclose(fIn);
-		return
+		return;
 	}
 	fclose(fIn);
 //		Cycle over SiPM
-	fOut = new TFile("SiPM_response_data_root", "RECREATE");
+	fOut = new TFile("SiPM_response_data.root", "RECREATE");
 	TTree *tSiPM = new TTree("EnergyTree", "Tree with coefficients");
 	tSiPM->Branch("EnergyBranch", &data, "cellindex/D:row:column:energy");
 	
 	for (i=0; i<2500; i++) {
-		SiPMTransformCellIndexToColumnRow(i, &column, &row);
-		SiPMTransformCellIndexToModChan(i, &mod, &chan);
-		data.energy = (mdn[mod][chan] > 0) ? mdn[mod][cnan] * pheSiPM / MedMCSiPM : MedMCSiPM;	// use average for dead channels here
-		data.cellindex = cell;
+		column = geom.SiPMcolumn(i);
+		row    = geom.SiPMrow(i);
+		mod    = geom.SiPMWFD(i);
+		chan   = geom.SiPMchan(i);
+		data.energy = (mdn[mod][chan] > 0) ? mdn[mod][chan] * pheSiPM / MedMCSiPM : pheSiPM;	// nominal for dead channels
+		data.cellindex = i;
 		data.row = row;
 		data.column = column;
 		tSiPM->Fill();
 	}
-	
 	tSiPM->Write();
+	fOut->Close();
+
+//		Cycle over PMT
+	fOut = new TFile("PMT_response_data.root", "RECREATE");
+	TTree *tPMTeven = new TTree("EnergyTreeEven", "Even tree with coefficients");
+	tPMTeven->Branch("EnergyBranchEven", &data, "modindex/D:row:column:energy");
+	TTree *tPMTodd = new TTree("EnergyTreeOdd", "Odd tree with coefficients");
+	tPMTodd->Branch("EnergyBranchOdd", &data, "modindex/D:row:column:energy");
+	
+	for (i=0; i<50; i++) {
+		column = geom.PMTcolumn(i);
+		row    = geom.PMTrow(i);
+		mod    = 1;
+		chan   = geom.PMTchan(i);
+		data.energy = mdn[mod][chan] * phePMT / MedMCPMT;
+		data.cellindex = i;
+		data.row = row;
+		data.column = column;
+		if (i < 25) {
+			tPMTodd->Fill();
+		} else {
+			tPMTeven->Fill();
+		}
+	}
+	tPMTeven->Write();
+	tPMTodd->Write();
 	fOut->Close();
 }
