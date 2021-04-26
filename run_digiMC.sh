@@ -7,158 +7,29 @@
 #PBS -l walltime=12:00:00
 cd /home/itep/alekseev/igor
 
-MCRAW=MC_raw
-MCRAWGD=MC_rawGd
-OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root6n12/MC/DataTakingPeriod01
-DIGI=digi_MC/DataTakingPeriod01
-DIGIGD=digi_MCGd/DataTakingPeriod01
+MCRAW=MC_RAW
+OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/
+DIGI=digi_MC
 EXE=./evtbuilder5
 DEAD="-deadlist dch_002210_089039.list"
-#EXE=echo
-
-# We need just a list...
-#${EXE}  input.digi flags output_dir -mcfile mc.root
-do_monopositrons() 
-{
-#	Monopositrons
-	for ((E=625; $E<120000; E=$E+1250)) ; do
-		let EM=$E/10000
-		let EF=$E-10000*$EM
-		FN=`printf "mc_MonoPositrons_glbLY_transcode_rawProc_pedSim_%2.2d-%4.4d.digi.bz2" $EM $EF`
-		DN=`printf "%d.%4.4dMeV" $EM $EF`
-		${EXE} ${DIGI}/MonoPositronsLargeStat/${FN} 0x71000 ${OUTDIR}/MonoPositronsLargeStat -mcfile ${MCRAW}/Positrons/${DN}/DANSS.root ${DEAD}
-	done  
-}
-
-#	Fuel
-do_fuel()
-{
-	for f in 235U 238U 239Pu 241Pu ; do 
-		${EXE} ${DIGI}/Fuel/mc_IBD_glbLY_transcode_rawProc_pedSim_${f}.digi.bz2 0x870000 ${OUTDIR}/Fuel -mcfile ${MCRAW}/Fuel_IBD/${f}_fuel/DANSS.root ${DEAD}
-	done
-	for f in 235U 238U 239Pu 241Pu ; do 
-		for ((n=0; $n<10; n=$n+1)) ; do
-			fn=`printf "mc_IBD_glbLY_transcode_rawProc_pedSim_%s_%2.2d.digi.bz2" $f $n`
-			fm=`printf "%s_fuel/DANSS%d.root" $f $n`
-			if [ -f ${DIGI}/Fuel_largeStat/${fn} ] ; then 
-				${EXE} ${DIGI}/Fuel_largeStat/${fn} 0x870000 ${OUTDIR}/Fuel -mcfile ${MCRAW}/Fuel_IBD_largeStat/${fm} ${DEAD}
-			fi
-		done
-	done
-}
-
-do_fuelGd()
-{
-	for f in 235U 238U 239Pu 241Pu ; do 
-		${EXE} ${DIGIGD}/Fuel/mc_IBD_glbLY_transcode_rawProc_pedSim_${f}.digi.bz2 0x870000 ${OUTDIR}/FuelGd -mcfile ${MCRAWGD}/Fuel/${f}_fuel/DANSS.root ${DEAD}
-	done
-	for f in 235U 238U 239Pu 241Pu ; do 
-		for ((n=0; $n<10; n=$n+1)) ; do
-			fn=`printf "mc_IBD_glbLY_transcode_rawProc_pedSim_%s_%2.2d.digi.bz2" $f $n`
-			fm=`printf "%s_fuel/DANSS%d.root" $f $n`
-			if [ -f ${DIGIGD}/Fuel_largeStat/${fn} ] ; then 
-				${EXE} ${DIGIGD}/Fuel_largeStat/${fn} 0x870000 ${OUTDIR}/FuelGd -mcfile ${MCRAWGD}/Fuel_new_Gd_big_stat/${fm} ${DEAD}
-			fi
-		done
-	done
-}
-
-do_flatGd()
-{
-#	${EXE} ${DIGIGD}/Flat_spectrum/mc_FlatSpectrum_glbLY_transcode_rawProc_pedSim.digi.bz2 0x870000 ${OUTDIR}/FlatGd -mcfile ${MCRAWGD}/Flat_spectrum/DANSS.root ${DEAD}
-	for i in 0 1 2 ; do
-		for j in A B C D E ; do
-			${EXE} ${DIGIGD}/Flat_spectrum_new_Gd_big_stat/Ready_2/mc_NeutrinoFlat_glbLY_transcode_rawProc_pedSim_${i}_${j}.digi.bz2 0x870000 \
-				${OUTDIR}/FlatGd/2 -mcfile ${MCRAWGD}/Flat_spectrum_new_Gd_big_stat/Ready_2/DANSS${i}_${j}.root ${DEAD}
-		done
-	done
-}
-
-do_muons()
-{
-	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAW}/Muons/DANSS.root
-	for f in 0 1 2 3 ; do
-		${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_${f}.digi.bz2 0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAW}/Muons/DANSS${f}.root
-	done
-	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS.root
-	${EXE} ${DIGI}/Muons/mc_MuonsStoppedCenter_glbLY_transcode_rawProc_pedSim_0.digi.bz2 0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAW}/Stopped_muons_central_part/DANSS0.root
-	${EXE} ${DIGI}/Muons/mc_Muons_glbLY_transcode_rawProc_pedSim_cutted_energy.digi.bz2  0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAW}/Muons_cutted_energy/DANSS.root
-}
-
-do_radmuons()
-{
-	for f in 0 1 2 3 ; do
-		${EXE} ${DIGIGD}/Muons/Positrons_from_muplus_decay_new_paint/mc_Muons_glbLY_transcode_rawProc_pedSim_positronsFromMuplusDecayNewPaint_${f}.digi.bz2 0x70000 \
-		${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Positrons_from_muplus_decay_new_paint/DANSS${f}.root
-	done
-}
-
-do_orbitmuons()
-{
-	${EXE} ${DIGIGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/mc_Muons_glbLY_transcode_rawProc_pedSim_electronsFromMuminusInCorbitDecayNewPaint.digi.bz2 \
-		0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/DANSS.root
-	for f in 0 1 2 3 ; do
-		${EXE} ${DIGIGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/mc_Muons_glbLY_transcode_rawProc_pedSim_electronsFromMuminusInCorbitDecayNewPaint_${f}.digi.bz2 \
-		0x70000 ${OUTDIR}/MuonsNoDead -mcfile ${MCRAWGD}/Muons/Electrons_from_muminus_in_C_orbit_decay_new_paint/DANSS${f}.root
-	done
-}
+##EXE=echo
 
 do_sources()
 {
-	${EXE} ${DIGI}/12B/mc_12B_glbLY_transcode_rawProc_pedSim.digi.bz2                    0x70000 ${OUTDIR}/12B        -mcfile ${MCRAW}/12B/DANSS.root               ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_22Na_glbLY_transcode_rawProc_pedSim.digi.bz2            0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/22Na/DANSS.root              ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_22Na_90cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2    0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/22Na_90_cm_pos/DANSS.root    ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_60Co_glbLY_transcode_rawProc_pedSim.digi.bz2            0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/60Co/DANSS.root              ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_60Co_90cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2    0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/60Co_90_cm_pos/DANSS.root    ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_glbLY_transcode_rawProc_pedSim.digi.bz2           0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm/DANSS.root             ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_glbLY_transcode_rawProc_pedSim_0.digi.bz2         0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm/DANSS0.root            ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_glbLY_transcode_rawProc_pedSim_1.digi.bz2         0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm/DANSS1.root            ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_glbLY_transcode_rawProc_pedSim_2.digi.bz2         0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm/DANSS2.root            ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_50cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_50_cm_pos/DANSS.root   ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_50cmPos_glbLY_transcode_rawProc_pedSim_0.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_50_cm_pos/DANSS0.root  ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_50cmPos_glbLY_transcode_rawProc_pedSim_1.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_50_cm_pos/DANSS1.root  ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_50cmPos_glbLY_transcode_rawProc_pedSim_2.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_50_cm_pos/DANSS2.root  ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_90cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_90_cm_pos/DANSS.root   ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_92cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2   0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_92_cm_pos/DANSS.root   ${DEAD}
-	${EXE} ${DIGI}/RadSources/mc_248Cm_92_5cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/248Cm_92_5_cm_pos/DANSS.root ${DEAD}
+	declare -a SRCLIST
+	SRCLIST=(mc_12B_indLY_transcode_rawProc_pedSim.digi.bz2 mc_248Cm_indLY_transcode_rawProc_pedSim.digi.bz2\
+		 mc_22Na_90cmPos_indLY_transcode_rawProc_pedSim.digi.bz2 mc_60Co_90cmPos_indLY_transcode_rawProc_pedSim.digi.bz2\
+		 mc_22Na_indLY_transcode_rawProc_pedSim.digi.bz2 mc_60Co_indLY_transcode_rawProc_pedSim.digi.bz2\
+		 mc_248Cm_90cmPos_indLY_transcode_rawProc_pedSim.digi.bz2)
+	declare -a RAWLIST
+	RAWLIST=(12B 248Cm 22Na_90_cm_pos 22Na 60Co_90_cm_pos 60Co 248Cm_90_cm_pos)
+
+	for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
+		${EXE} ${DIGI}/RadSources/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$i]}/DANSS.root ${DEAD}
+	done
 }
 
-#do_sources
-#do_monopositrons
-#do_fuelGd
-#do_flatGd
-#do_muons
-#do_orbitmuons
-
-# NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4/v3.2/DataTakingPeriod01/Fuel/
-# RAWG4=/home/clusters/rrcmpi/danss/DANSS/MC_raw/newG4/Fuel/235U_fuel/
-# NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4/v3.2/DataTakingPeriod01/RadSources/
-# RAWG4=/home/clusters/rrcmpi/danss/DANSS/MC_raw/newG4/
-
-#NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4_test4/v3.2/DataTakingPeriod01/Fuel/
-#RAWG4=/home/clusters/rrcmpi/danss/DANSS/MC_raw/newG4_test4/Fuel/
-#OUTG4=${OUTDIR}/FuelNewG4v4
-#${EXE} ${NEWG4}mc_12B_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/12B/DANSS.root ${DEAD}
-#${EXE} ${NEWG4}mc_22Na_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/22Na/DANSS.root ${DEAD}
-#${EXE} ${NEWG4}mc_22Na_90cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/22Na_90_cm_pos/DANSS.root ${DEAD}
-#${EXE} ${NEWG4}mc_60Co_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/60Co/DANSS.root ${DEAD}
-#${EXE} ${NEWG4}mc_60Co_90cmPos_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTDIR}/RadSourcesG4 -mcfile ${RAWG4}/60Co_90_cm_pos/DANSS.root ${DEAD}
-
-#mkdir -p $OUTG4
-#${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_235U.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/235U_fuel/DANSS.root ${DEAD}
-#${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/239Pu_fuel/DANSS.root ${DEAD}
-#for ((i=0;$i<4;i=$i+1)) ; do
-#	${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_235U_0${i}.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/235U_fuel/DANSS${i}.root ${DEAD}
-#	${EXE} ${NEWG4}mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_0${i}.digi.bz2 0x870000 ${OUTG4} -mcfile ${RAWG4}/239Pu_fuel/DANSS${i}.root ${DEAD}
-#done 
-
-NEWG4=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newG4_test4/v3.2/DataTakingPeriod01/Muons_corrected/
-OUTG4=${OUTDIR}/MuonsG4v4
-mkdir -p $OUTG4
-
-${EXE} ${NEWG4}mc_Muons_glbLY_transcode_rawProc_pedSim.digi.bz2 0x70000 ${OUTG4}
-for ((i=0;$i<4;i=$i+1)) ; do
-	${EXE} ${NEWG4}mc_Muons_glbLY_transcode_rawProc_pedSim_0${i}.digi.bz2 0x70000 ${OUTG4}
-done
+${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/newLY/DataTakingPeriod02/mc_IBD_glbLY_transcode_rawProc_pedSim.digi \
+	0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/NewTimeLine/IBD_small.root ${DEAD}
 
 exit 0

@@ -19,6 +19,9 @@ digi_evtbuilder6_v3: digi_evtbuilder6.cpp
 run_digi_mpi: run_digi_mpi.c
 	mpicc -o $@ $^
 
+check_digi_mpi: check_digi_mpi.c
+	mpicc -o $@ $^
+
 run_pair_mpi: run_pair_mpi.c
 	mpicc -o $@ $^
 

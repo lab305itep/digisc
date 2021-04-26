@@ -6,8 +6,8 @@
 #PBS -l nodes=1
 #PBS -l walltime=12:00:00
 cd /home/itep/alekseev/igor
-RVER="6n12"
-PVER="7n15"
+RVER="8n1"
+PVER="8n1"
 
 do_fuel()
 {
@@ -88,7 +88,10 @@ do_fuelg4()
 }
 
 date
-do_fuelg4
+mkdir -p /home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/RadSources/
+./pairbuilder8 /home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_IBD_glbLY_transcode_rawProc_pedSim.root \
+	/home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/RadSources/mc_IBD_glbLY_transcode_rawProc_pedSim_pair.root 
+
 date
 
 exit 0

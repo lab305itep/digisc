@@ -116,18 +116,21 @@ double Average(TH1 *h, double leftedge = 0.0, double rightedge = 1.0)
 /*
  * Caculate histogram median in the range [firstbin, lastbin]
  * The default includes underflow and overflow
+ * Error = binwidth * sqrt(N) / 2 / binheight
+ * Histogram could be scaled
+ * Unit weights (just events) assumed during the fill
  */
-double Median(TH1 *h, int firstbin=0, int lastbin=-1)
+double Median(TH1 *h, double *err = NULL)
 {
+	int firstbin, lastbin;
 	double half;
 	double sum;
 	double val;
 	double x;
 	int i;
 	
-	if (lastbin < 0) lastbin = h->GetNbinsX() + 1;	// overflow
-	if (firstbin < 0) firstbin = 0;			// underflow
-	if (firstbin > lastbin) firstbin = lastbin;
+	firstbin = 0;			// underflow
+	lastbin = h->GetNbinsX() + 1;	// overflow
 	half = 0.5 * h->Integral(firstbin, lastbin);
 	sum = 0;
 	for (i = firstbin; i <= lastbin; i++) {
@@ -140,6 +143,7 @@ double Median(TH1 *h, int firstbin=0, int lastbin=-1)
 			break;
 		}
 	}
+	if (err) *err = h->GetXaxis()->GetBinWidth(i) * half / val / sqrt(h->GetEntries());
 	return x;
 }
 
@@ -196,13 +200,14 @@ Double_t langaufun(Double_t *x, Double_t *par) {
  * SiPM channels with median < MINMDN are not used for sum histogramm (experiment)
  */
 void draw_phe(
-    double rSiPM = 1.0,		// MC SiPM coef
-    double rPMT = 1.0, 		// MC PMT coef
-    double kSiPM = 0.12,	// MC SiPM additional smearing kSiPM/sqrt(E)
-    double kPMT = 0.12,		// MC PMT additional smearing kPMT/sqrt(E)
-    double cSiPM = 0.04,	// MC SiPM additional smearing cSiPM
-    double cPMT = 0.04,		// MC PMT additional smearing cPMT
-    int NRNDM = 1)		// Number of random iterations
+	double rSiPM = 1.0,	// MC SiPM coef
+	double rPMT = 1.0, 	// MC PMT coef
+	double kSiPM = 0.12,	// MC SiPM additional smearing kSiPM/sqrt(E)
+	double kPMT = 0.12,	// MC PMT additional smearing kPMT/sqrt(E)
+	double cSiPM = 0.04,	// MC SiPM additional smearing cSiPM
+	double cPMT = 0.04,	// MC PMT additional smearing cPMT
+	int NRNDM = 1,		// Number of random iterations
+	int MCIndLY = 1)	// MC has individual light yields
 {
 	const double PMTpheADC[64] = {
 		77.6, 74.0, 73.6, 70.7, 65.7, 81.8, 71.2, 69.6, 74.6, 78.2, 
@@ -213,8 +218,8 @@ void draw_phe(
 		77.6, 78.2, 71.5, 0,    0,    0,    0,    0,    0,    0,
 		0,    0,    0,    0};
 	const double PMTintcorr = 0.905; // integral to positive part integral ratio
-	const double pheSiPM = 20.4;
-	const double phePMT = 15.2;
+//	const double pheSiPM = 20.4;
+//	const double phePMT = 15.2;
 	char strs[128], strl[1024];
 	int i, j, N, adc, chan, index, irc;
 	struct {
@@ -228,6 +233,7 @@ void draw_phe(
 	TH1D *hExpC[MAXWFD][MAXCHAN];
 	double gain[MAXWFD][MAXCHAN];
 	double mdn[MAXWFD][MAXCHAN];
+	double merr;
 
 	// Get gains
 	irc = 0;
@@ -238,6 +244,9 @@ void draw_phe(
 		fseek(fGain, sizeof(mdn), SEEK_CUR);
 		irc = fread(gain, sizeof(gain), 1, fGain);
 	}
+	gain[1][0] = gain[1][51];	// fix moved channel
+	gain[1][9] = gain[1][52];	// fix moved channel
+	gain[1][15] = gain[1][50];	// fix moved channel
 	if (irc != 1) for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) gain[i][j] = 1.0;
 //	printf("gains: %f %f %f\n", gain[1][5], gain[1][12], gain[2][2]);
 //	return;
@@ -254,16 +263,24 @@ void draw_phe(
 	tExp->SetBranchAddress("DANSSSignalNpe", &Signal);
 	
 	TChain *tMC = new TChain("DANSSSignal", "MCSignal");
-	tMC->AddFile("/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_glbLY_transcode_rawProc_pedSim.root");
-	for (i=0; i<12; i++) {
-		sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_glbLY_transcode_rawProc_pedSim_%2.2d.root", i);
-		tMC->AddFile(strl);
+	if (MCIndLY) {
+		tMC->AddFile("/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2_indLY/mc_Muons_indLY_transcode_rawProc_pedSim.root");
+		for (i=0; i<18; i++) {
+			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2_indLY/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d.root", i);
+			tMC->AddFile(strl);
+		}
+	} else {
+		tMC->AddFile("/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_glbLY_transcode_rawProc_pedSim.root");
+		for (i=0; i<12; i++) {
+			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_glbLY_transcode_rawProc_pedSim_%2.2d.root", i);
+			tMC->AddFile(strl);
+		}
 	}
 	tMC->SetBranchAddress("DANSSSignalNpe", &Signal);
 	
 	system("mkdir -p mu-calib");
-	sprintf(strl, "mu-calib/%5.3f_%5.3f_%5.3f_%5.3f_%5.3f_%5.3f.root",
-		rSiPM, rPMT, kSiPM, kPMT, cSiPM, cPMT); 
+	sprintf(strl, "mu-calib/%s%5.3f_%5.3f_%5.3f_%5.3f_%5.3f_%5.3f.root",
+		(MCIndLY) ? "Ind_" : "", rSiPM, rPMT, kSiPM, kPMT, cSiPM, cPMT); 
 	TFile *fOut = new TFile(strl, "RECREATE");
 	// Create hists
 	TH1D *hExpSiPM = new TH1D("hExpSiPM", "Muon energy deposit, SiPM;ph.e.", 150, 0, 150);
@@ -324,6 +341,8 @@ void draw_phe(
 	// Average & RMS
 	AvrSum *AvrSiPM = new AvrSum();
 	AvrSum *AvrPMT = new AvrSum();
+	AvrSum *MdnSiPM = new AvrSum();
+	AvrSum *MdnPMT = new AvrSum();
 	
 	hMCSiPM->Sumw2();
 	hMCPMT->Sumw2();
@@ -342,10 +361,18 @@ void draw_phe(
 				printf("Strange index = %d\n", index);
 				continue;
 			}
-			if (adc == 1) {	// PMT
-				hMCPMT->Fill(SmearPMT->Smear(Signal.value * rPMT));
-			} else {	// SiPM
-				hMCSiPM->Fill(SmearSiPM->Smear(Signal.value * rSiPM));
+			if (MCIndLY) {
+				if (adc == 1) {	// PMT
+					hMCPMT->Fill(SmearPMT->Smear(Signal.value / gain[adc][chan] * rPMT));
+				} else {	// SiPM
+					if (mdn[adc][chan] > MINMDN) hMCSiPM->Fill(SmearSiPM->Smear(Signal.value / gain[adc][chan] * rSiPM));
+				}
+			} else {
+				if (adc == 1) {	// PMT
+					hMCPMT->Fill(SmearPMT->Smear(Signal.value * rPMT));
+				} else {	// SiPM
+					hMCSiPM->Fill(SmearSiPM->Smear(Signal.value * rSiPM));
+				}
 			}
 		}
 		hMCSiPM->Scale(hExpSiPM->Integral(20,150) / hMCSiPM->Integral(20,150));
@@ -355,13 +382,15 @@ void draw_phe(
 		AvrSiPM->Add(dDiff.SiPM);
 		AvrPMT->Add(dDiff.PMT);
 		tDiff->Fill();
+		MdnSiPM->Add(Median(hMCSiPM));
+		MdnPMT->Add(Median(hMCPMT));
 	}
 
 	TCanvas *cv = (TCanvas *)gROOT->FindObject("CV");
 	if (!cv) cv = new TCanvas("CV", "CV", 1600, 1024);
 	cv->Divide(2,1);
 	TLatex *lt = new TLatex();
-	lt->SetTextSize(0.05);
+	lt->SetTextSize(0.04);
 	TLegend *lg = new TLegend(0.6, 0.7, 0.95, 0.82);
 	lg->AddEntry(hExpSiPM, "Experiment", "l");
 	lg->AddEntry(hMCSiPM, "Monte-Carlo", "l");
@@ -374,6 +403,11 @@ void draw_phe(
 	lt->DrawLatexNDC(0.45, 0.65, strl);
 	sprintf(strl, "%5.3f/#sqrt{E} #oplus %5.3f", kSiPM, cSiPM);
 	lt->DrawLatexNDC(0.45, 0.59, strl);
+	sprintf(strl, "Mdn: Exp: %5.2f+-%4.2f", Median(hExpSiPM, &merr), merr);
+	lt->DrawLatexNDC(0.45, 0.53, strl);
+	Median(hMCSiPM, &merr);
+	sprintf(strl, "MC: %5.2f+-%4.2f(%4.2f)", MdnSiPM->Avr(), merr, MdnSiPM->RMS()/sqrt(NRNDM));
+	lt->DrawLatexNDC(0.45, 0.47, strl);
 	lg->DrawClone();
 	cv->cd(2);
 	hMCPMT->DrawCopy("hist");
@@ -381,9 +415,14 @@ void draw_phe(
 	sprintf(strl, "#chi^{2}/n.d.f. = %6.1f+-%4.1f/%d", AvrPMT->Avr(), AvrPMT->RMS()/sqrt(NRNDM), 100 - 50);
 	lt->DrawLatexNDC(0.3, 0.87, strl);
 	sprintf(strl, "k = %5.3f", rPMT);
-	lt->DrawLatexNDC(0.6, 0.65, strl);
+	lt->DrawLatexNDC(0.55, 0.65, strl);
 	sprintf(strl, "%5.3f/#sqrt{E} #oplus %5.3f", kPMT, cPMT);
-	lt->DrawLatexNDC(0.6, 0.59, strl);
+	lt->DrawLatexNDC(0.55, 0.59, strl);
+	sprintf(strl, "Mdn: Exp: %5.2f+-%4.2f", Median(hExpPMT, &merr), merr);
+	lt->DrawLatexNDC(0.55, 0.53, strl);
+	Median(hMCPMT, &merr);
+	sprintf(strl, "MC: %5.2f+-%4.2f(%4.2f)", MdnPMT->Avr(), merr, MdnPMT->RMS()/sqrt(NRNDM));
+	lt->DrawLatexNDC(0.55, 0.47, strl);
 	lg->DrawClone();
 	
 	fOut->cd();
@@ -749,4 +788,68 @@ void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT)
 	tPMTeven->Write();
 	tPMTodd->Write();
 	fOut->Close();
+}
+
+void dump_calib(const char *fnameIn, const char *fnameOut)
+{
+	double mdn[MAXWFD][MAXCHAN];
+	int j, k;
+	
+	FILE *fIn = fopen(fnameIn, "rb");
+	if (!fIn) {
+		printf("Can not open file %s: %m\n", fnameIn);
+		return;
+	}
+	j = fread(mdn, sizeof(mdn), 1, fIn);
+	if (j != 1) {
+		printf("file %s read error: %m\n", fnameIn);
+		fclose(fIn);
+		return;
+	}
+	fclose(fIn);
+	FILE *fOut = fopen(fnameOut, "wt");
+	if (!fOut) {
+		printf("Can not open file %s: %m\n", fnameOut);
+		return ;
+	}
+	for(j=2; j<MAXWFD; j++) for(k=0; k<MAXCHAN; k++) if (mdn[j][k] > 0) 
+		fprintf(fOut, "ADC %2.2d.%2.2d = %8.3f\n", j, k, mdn[j][k] / 1.745);
+	fclose(fOut);
+}
+
+int loadCalib(const char *fname, double clb[MAXWFD][MAXCHAN])
+{
+	char str[1024];
+	int i, j;
+	FILE *f = fopen(fname, "rt");
+	if (!f) {
+		printf("Can not open file %s: %m\n", fname);
+		return -1;
+	}
+	for (;;) {
+		if (!fgets(str, sizeof(str), f)) break;
+		if (strlen(str) < 5) continue;
+		if (str[0] != 'A') continue;
+		i = strtol(&str[4], NULL, 10);
+		j = strtol(&str[7], NULL, 10);
+		if (i < 0 || i >= MAXWFD) continue;
+		if (j < 0 || j >= MAXCHAN) continue;
+		clb[i][j] = strtod(&str[12], NULL);
+	}
+	fclose(f);
+	return 0;
+}
+
+
+void cmp2calib(const char *fA, const char *fB)
+{
+	double clbA[MAXWFD][MAXCHAN];
+	double clbB[MAXWFD][MAXCHAN];
+	int i, j;
+	
+	if (loadCalib(fA, clbA) || loadCalib(fB, clbB)) return;
+	TH1D *h = new TH1D("hcDiff", "Calibration difference", 200, -0.2, 0.2);
+	for(i=0; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) if (clbA[i][j] > 0 && clbB[i][j] > 0) 
+		h->Fill((clbA[i][j] - clbB[i][j]) / (clbA[i][j] + clbB[i][j]));
+	h->Draw();
 }
