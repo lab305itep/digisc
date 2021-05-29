@@ -87,11 +87,26 @@ do_fuelg4()
 	done
 }
 
-date
-mkdir -p /home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/RadSources/
-./pairbuilder8 /home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_IBD_glbLY_transcode_rawProc_pedSim.root \
-	/home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/RadSources/mc_IBD_glbLY_transcode_rawProc_pedSim_pair.root 
+do_neutrons()
+{
+	RDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC/Neutron_background
+	PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Neutron_background
+	MDIR=/home/clusters/rrcmpi/danss/MC_RAW/Neutron_background/Ready/
+	for ((i=0;$i<5;i=$i+1)) ; do
+		for ((j=1;$j<=16;j=$j+1)) ; do
+			rname=`printf "${RDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim%d_%d.root" $i $j`
+			pname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_pair%d_%d.root" $i $j`
+			iname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_info%d_%d.root" $i $j`
+			mname=`printf "${MDIR}/DANSS%d_%d.root" $i $j`
+			./pairbuilder8 $rname $pname
+			./getMCinfo $pname $mname $iname
+		done
+	done
+}
 
+date
+mkdir -p /home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Neutron_background
+do_neutrons
 date
 
 exit 0

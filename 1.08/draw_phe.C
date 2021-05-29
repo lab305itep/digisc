@@ -23,6 +23,15 @@
 /* MC nominal values */
 const double pheSiPM = 20.4;
 const double phePMT = 15.2;
+const double PMTpheADC[64] = {
+	77.6, 74.0, 73.6, 70.7, 65.7, 81.8, 71.2, 69.6, 74.6, 78.2, 
+	83.2, 74.8, 63.1, 73.3, 74.1, 71.5, 62.8, 72.9, 64.4, 64.6,
+	83.1, 66.4, 80.3, 68.3, 74.8, 76.4, 68.4, 58.9, 69.1, 72.3,
+	68.8, 75.1, 64.7, 71.1, 72.2, 85.2, 63.2, 62.8, 60.1, 68.7,
+	75.9, 65.5, 65.3, 66.5, 78.3, 73.5, 64.8, 78.9, 75.2, 81.2,
+	77.6, 78.2, 71.5, 0,    0,    0,    0,    0,    0,    0,
+	0,    0,    0,    0};
+const double PMTintcorr = 0.905; // integral to positive part integral ratio
 
 /*
  *  Do random smearing as adding Gaus with width^2 = eCoef^2 * E + cCoef^2 * E^2
@@ -209,17 +218,6 @@ void draw_phe(
 	int NRNDM = 1,		// Number of random iterations
 	int MCIndLY = 1)	// MC has individual light yields
 {
-	const double PMTpheADC[64] = {
-		77.6, 74.0, 73.6, 70.7, 65.7, 81.8, 71.2, 69.6, 74.6, 78.2, 
-		83.2, 74.8, 63.1, 73.3, 74.1, 71.5, 62.8, 72.9, 64.4, 64.6,
-		83.1, 66.4, 80.3, 68.3, 74.8, 76.4, 68.4, 58.9, 69.1, 72.3,
-		68.8, 75.1, 64.7, 71.1, 72.2, 85.2, 63.2, 62.8, 60.1, 68.7,
-		75.9, 65.5, 65.3, 66.5, 78.3, 73.5, 64.8, 78.9, 75.2, 81.2,
-		77.6, 78.2, 71.5, 0,    0,    0,    0,    0,    0,    0,
-		0,    0,    0,    0};
-	const double PMTintcorr = 0.905; // integral to positive part integral ratio
-//	const double pheSiPM = 20.4;
-//	const double phePMT = 15.2;
 	char strs[128], strl[1024];
 	int i, j, N, adc, chan, index, irc;
 	struct {
@@ -258,6 +256,7 @@ void draw_phe(
 	TChain *tExp = new TChain("DANSSSignal", "ExpSignal");
 	for (i=53500; i<53650; i++) {
 		sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
+//		sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/hits8n1/053xxx/muhits_%6.6d.root", i);
 		tExp->AddFile(strl);
 	}
 	tExp->SetBranchAddress("DANSSSignalNpe", &Signal);
@@ -437,6 +436,164 @@ void draw_phe(
 	printf("The result for %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f : %6.1f %6.1f\n",
 		rSiPM, rPMT, kSiPM, kPMT, cSiPM, cPMT, AvrSiPM->Avr(), AvrPMT->Avr()); 
 
+}
+
+void draw_phe_digi(int runFirst, int runLast)
+{
+	const double rPMT = 1.0;	// MC PMT coef
+	const double kPMT = 0.12;	// MC PMT additional smearing kPMT/sqrt(E)
+	const double cPMT = 0.06;	// MC PMT additional smearing cPMT
+	const double rSiPM = 1.0;	// MC SiPM coef
+	const double kSiPM = 0.12;	// MC SiPM additional smearing kPMT/sqrt(E)
+	const double cSiPM = 0.125;	// MC SiPM additional smearing cPMT
+	const int NRNDM = 1;
+	char strs[128], strl[1024];
+	int i, j, N, adc, chan, index, irc;
+	struct {
+		double index;
+		double value;
+	} Signal;
+	TH1D *hExpC[MAXWFD][MAXCHAN];
+	double merr;
+
+	// Get gains
+//	printf("gains: %f %f %f\n", gain[1][5], gain[1][12], gain[2][2]);
+//	return;
+
+	gROOT->SetStyle("Plain");
+	gStyle->SetOptStat(0);
+	
+	// Create chains
+	TChain *tExp = new TChain("Pmt", "ExpSignal");
+	for (i=runFirst; i<=runLast; i++) {
+		sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/hits8n1/%3.3dxxx/muhits_%6.6d.root", i/1000, i);
+		tExp->AddFile(strl);
+	}
+	tExp->SetBranchAddress("Hits", &Signal);
+	
+	TChain *tMC = new TChain("Pmt", "MCSignal");
+	tMC->AddFile("mc_muon_hits.root");
+	tMC->SetBranchAddress("Hits", &Signal);
+	
+	TH1D *hExpSiPM = new TH1D("hExpSiPM", "Muon energy deposit, SiPM;MeV", 50, 0, 5);
+	hExpSiPM->SetLineWidth(2);
+	hExpSiPM->SetLineColor(kRed);
+	TH1D *hMCSiPM = new TH1D("hMCSiPM", "Muon energy deposit, SiPM;MeV", 50, 0, 5);
+	hMCSiPM->SetLineWidth(2);
+	hMCSiPM->SetLineColor(kBlue);
+	TH1D *hExpPMT = new TH1D("hExpPMT", "Muon energy deposit, PMT;MeV", 140, 0, 35);
+	hExpPMT->SetLineWidth(2);
+	hExpPMT->SetLineColor(kRed);
+	TH1D *hMCPMT = new TH1D("hMCPMT", "Muon energy deposit, PMT;MeV", 140, 0, 35);
+	hMCPMT->SetLineWidth(2);
+	hMCPMT->SetLineColor(kBlue);
+
+	memset(hExpC, 0, sizeof(hExpC));
+	// Fill experimental hists
+	N = tExp->GetEntries();
+	for (i=0; i < N; i++) {
+		tExp->GetEntry(i);
+		index = Signal.index;
+		adc = index / 100;
+		chan = index % 100;
+		if (adc >= MAXWFD || chan >= MAXCHAN) {
+			printf("Strange index = %d\n", index);
+			continue;
+		}
+		if (adc == 1) {	// PMT
+			if (PMTpheADC[chan] == 0) {
+				printf("Strange index = %d\n", index);
+				continue;
+			}
+			if (!hExpC[adc][chan]) {
+				sprintf(strs, "hExpC%2.2d%2.2d", adc, chan);
+				sprintf(strl, "Muon energy deposit, PMT %d;MeV", chan);
+				hExpC[adc][chan] = new TH1D(strs, strl, 140, 0, 35);
+			}
+			hExpC[adc][chan]->Fill(Signal.value);
+			hExpPMT->Fill(Signal.value); // no small gain channels
+		} 
+		else if (adc != 3) {	// SiPM - we do nothing with veto and don't expect it here
+			if (!hExpC[adc][chan]) {
+				sprintf(strs, "hExpC%2.2d%2.2d", adc, chan);
+				sprintf(strl, "Muon energy deposit, SiPM %d.%2.2d;ph.e.", adc, chan);
+				hExpC[adc][chan] = new TH1D(strs, strl, 50, 0, 5);
+			}
+			hExpC[adc][chan]->Fill(Signal.value);
+			hExpSiPM->Fill(Signal.value);
+		}
+
+	}
+	hExpSiPM->Sumw2();
+	hExpPMT->Sumw2();
+
+	// Random numbers
+	RandomSmear *SmearSiPM = new RandomSmear(time(NULL), kSiPM * sqrt(rSiPM), cSiPM);
+	RandomSmear *SmearPMT = new RandomSmear(time(NULL) - 10, kPMT * sqrt(rPMT), cPMT);
+	// Average & RMS
+//	AvrSum *AvrSiPM = new AvrSum();
+//	AvrSum *AvrPMT = new AvrSum();
+//	AvrSum *MdnSiPM = new AvrSum();
+//	AvrSum *MdnPMT = new AvrSum();
+	
+	hMCSiPM->Sumw2();
+	hMCPMT->Sumw2();
+	
+	// Fill MC hists
+	N = tMC->GetEntries();
+	for (j = 0; j < NRNDM; j++) {
+		hMCSiPM->Reset();
+		hMCPMT->Reset();
+		for (i=0; i < N; i++) {
+			tMC->GetEntry(i);
+			index = Signal.index;
+			adc = index / 100;
+			chan = index % 100;
+			if (adc >= MAXWFD || chan >= MAXCHAN) {
+				printf("Strange index = %d\n", index);
+				continue;
+			}
+			if (adc == 1) {	// PMT
+				hMCPMT->Fill(SmearPMT->Smear(Signal.value * rPMT));
+			} else if (adc != 3) {	// SiPM
+				hMCSiPM->Fill(SmearSiPM->Smear(Signal.value * rSiPM));
+			}
+		}
+		hMCSiPM->Scale(hExpSiPM->Integral(5, 45) / hMCSiPM->Integral(5, 45));
+		hMCPMT->Scale(hExpPMT->Integral(50, 100) / hMCPMT->Integral(50, 100));
+//		dDiff.SiPM = hDiff(hExpSiPM, hMCSiPM, 20, 150);
+//		dDiff.PMT = hDiff(hExpPMT, hMCPMT, 50, 100);
+//		AvrSiPM->Add(dDiff.SiPM);
+//		AvrPMT->Add(dDiff.PMT);
+//		tDiff->Fill();
+//		MdnSiPM->Add(Median(hMCSiPM));
+//		MdnPMT->Add(Median(hMCPMT));
+	}
+
+	TCanvas *cv = (TCanvas *)gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1600, 1024);
+	cv->Divide(2, 1);
+	TLatex *lt = new TLatex();
+	lt->SetTextSize(0.04);
+	TLegend *lg = new TLegend(0.65, 0.8, 0.98, 0.9);
+	lg->AddEntry(hExpPMT, "Experiment", "l");
+	lg->AddEntry(hMCPMT, "Monte-Carlo", "l");
+	cv->cd(1);
+	hMCSiPM->DrawCopy("hist");
+	hExpSiPM->DrawCopy("hist,same");
+	sprintf(strl, "Exp: %5.3f+-%5.3f", Median(hExpSiPM, &merr), merr);
+	lt->DrawLatexNDC(0.6, 0.75, strl);
+	sprintf(strl, "MC: %5.3f+-%5.3f", Median(hMCSiPM, &merr), merr);
+	lt->DrawLatexNDC(0.6, 0.70, strl);
+	lg->DrawClone();
+	cv->cd(2);
+	hMCPMT->DrawCopy("hist");
+	hExpPMT->DrawCopy("hist,same");
+	sprintf(strl, "Exp: %5.2f+-%4.2f", Median(hExpPMT, &merr), merr);
+	lt->DrawLatexNDC(0.6, 0.75, strl);
+	sprintf(strl, "MC: %5.2f+-%4.2f", Median(hMCPMT, &merr), merr);
+	lt->DrawLatexNDC(0.6, 0.70, strl);
+	lg->DrawClone();
 }
 
 /*
@@ -812,6 +969,8 @@ void dump_calib(const char *fnameIn, const char *fnameOut)
 		printf("Can not open file %s: %m\n", fnameOut);
 		return ;
 	}
+	for(k=0; k<MAXCHAN; k++) if (mdn[1][k] > 0) 
+		fprintf(fOut, "ADC 01.%2.2d = %8.3f\n", k, (mdn[1][k] / 18.539) * (PMTpheADC[k] / PMTintcorr));
 	for(j=2; j<MAXWFD; j++) for(k=0; k<MAXCHAN; k++) if (mdn[j][k] > 0) 
 		fprintf(fOut, "ADC %2.2d.%2.2d = %8.3f\n", j, k, mdn[j][k] / 1.745);
 	fclose(fOut);
@@ -826,6 +985,7 @@ int loadCalib(const char *fname, double clb[MAXWFD][MAXCHAN])
 		printf("Can not open file %s: %m\n", fname);
 		return -1;
 	}
+	memset(clb, 0, sizeof(double) * MAXWFD * MAXCHAN);
 	for (;;) {
 		if (!fgets(str, sizeof(str), f)) break;
 		if (strlen(str) < 5) continue;
@@ -841,15 +1001,17 @@ int loadCalib(const char *fname, double clb[MAXWFD][MAXCHAN])
 }
 
 
-void cmp2calib(const char *fA, const char *fB)
+void cmp2calib(const char *fA, const char *fB, int what = 3)
 {
 	double clbA[MAXWFD][MAXCHAN];
 	double clbB[MAXWFD][MAXCHAN];
 	int i, j;
 	
 	if (loadCalib(fA, clbA) || loadCalib(fB, clbB)) return;
-	TH1D *h = new TH1D("hcDiff", "Calibration difference", 200, -0.2, 0.2);
-	for(i=0; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) if (clbA[i][j] > 0 && clbB[i][j] > 0) 
+	TH1D *h = new TH1D("hcDiff", "Calibration difference", 100, -0.1, 0.1);
+	if (what & 1) for(i=1; i<2; i++) for(j=0; j<MAXCHAN; j++) if (clbA[i][j] > 0 && clbB[i][j] > 0) 
+		h->Fill((clbA[i][j] - clbB[i][j]) / (clbA[i][j] + clbB[i][j]));
+	if (what & 2) for(i=2; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) if (clbA[i][j] > 0 && clbB[i][j] > 0 && i != 3) 
 		h->Fill((clbA[i][j] - clbB[i][j]) / (clbA[i][j] + clbB[i][j]));
 	h->Draw();
 }

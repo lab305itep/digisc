@@ -55,7 +55,7 @@ TChain *create_chain(const char *name, int from, int to)
 	ch = new TChain(name, name);
 	for (i=from; i<=to; i++) {
 		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon7n8/%3.3dxxx/muon_%6.6d.root", i/1000, i);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon8n1/%3.3dxxx/muon_%6.6d.root", i/1000, i);
 		num = access(str, R_OK);	// R_OK = 4 - test read access
 		if (num) continue;
 		ch->AddFile(str, 0);
@@ -67,9 +67,19 @@ TChain *create_chain(const char *name, int from, int to)
 	return ch;
 }
 
-void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRndm2 = 0)
+void draw12B(int from, int to)
 {
-	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n8/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
+	const double RndmSqe = 0.12;
+	const double Scale = 1.0;
+	const double RndmC = 0.04;
+	const double SiPMRndmSqe = 0.12;
+	const double SiPMScale = 1.0;
+	const double SiPMRndmC = 0.125;
+	const double PMTRndmSqe = 0.12;
+	const double PMTScale = 1.0;
+	const double PMTRndmC = 0.06;
+//	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n8/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
+	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_12B_indLY_transcode_rawProc_pedSim.root";
 
 //	gROOT->ProcessLine(".L create_chain.C+");
 	gStyle->SetOptStat(0);
@@ -82,42 +92,42 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	TFile *fMC = new TFile(mcname);
 	if (!fMC->IsOpen()) return;
 	TTree *tMC = (TTree *) fMC->Get("DanssEvent");
-	
-	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterEnergy", kScale);
+
+	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterEnergy", Scale);
 	TH1D *hExp = new TH1D("hExp12B", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterSiPMEnergy", kScale);
+	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterSiPMEnergy", SiPMScale);
 	TH1D *hExpSiPM = new TH1D("hExp12BSiPM", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterPMTEnergy", kScale);
+	sprintf(str, "Experiment with ^{12}B cuts, %s*%6.4f;MeV", "ClusterPMTEnergy", PMTScale);
 	TH1D *hExpPMT = new TH1D("hExp12BPMT", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterEnergy", kScale);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterEnergy", Scale);
 	TH1D *hRndm = new TH1D("hRndm12B", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterSiPMEnergy", kScale);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterSiPMEnergy", SiPMScale);
 	TH1D *hRndmSiPM = new TH1D("hRndm12BSiPM", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterPMTEnergy", kScale);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s*%6.4f;MeV", "ClusterPMTEnergy", PMTScale);
 	TH1D *hRndmPMT = new TH1D("hRndm12BPMT", str, 80, 0, 20);
-	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronEnergy", kRndm, kRndm2);
+	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronEnergy", RndmSqe, RndmC);
 	TH1D *hMC = new TH1D("hMC12B", str, 80, 0, 20);
-	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronSiPMEnergy", kRndm, kRndm2);
+	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronSiPMEnergy", SiPMRndmSqe, SiPMRndmC);
 	TH1D *hMCSiPM = new TH1D("hMC12BSiPM", str, 80, 0, 20);
-	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronPMTEnergy", kRndm, kRndm2);
+	sprintf(str, "MC for ^{12}B decay, %s + Random (%6.4f/#sqrt{E} #oplus %6.4f);MeV", "PositronPMTEnergy", PMTRndmSqe, PMTRndmC);
 	TH1D *hMCPMT = new TH1D("hMC12BPMT", str, 80, 0, 20);
 	TH1D *hExpT = new TH1D("hExp12BT", "Time from muon, experiment;ms", 99, 1, 100);
 	TH1D *hRndmT = new TH1D("hRndm12BT", "Time from muon, MC;ms", 99, 1, 100);
-	
-	sprintf(str, "ClusterEnergy * %6.4f", kScale);
+
+	sprintf(str, "ClusterEnergy * %6.4f", Scale);
 	chA->Project(hExp->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndm->GetName(), str, "gtDiff > 500");
-	sprintf(str, "ClusterSiPmEnergy * %6.4f", kScale);
+	sprintf(str, "ClusterSiPmEnergy * %6.4f", SiPMScale);
 	chA->Project(hExpSiPM->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndmSiPM->GetName(), str, "gtDiff > 500");
-	sprintf(str, "ClusterPmtEnergy * %6.4f", kScale);
+	sprintf(str, "ClusterPmtEnergy * %6.4f", PMTScale);
 	chA->Project(hExpPMT->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndmPMT->GetName(), str, "gtDiff > 500");
-	sprintf(str, "MyRandom::GausAdd(PositronEnergy, %6.4f, %6.4f)", kRndm, kRndm2);
+	sprintf(str, "MyRandom::GausAdd(PositronEnergy, %6.4f, %6.4f)", RndmSqe, RndmC);
 	tMC->Project(hMC->GetName(), str);
-	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy, %6.4f, %6.4f)", kRndm, kRndm2);
+	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy, %6.4f, %6.4f)", SiPMRndmSqe, SiPMRndmC);
 	tMC->Project(hMCSiPM->GetName(), str);
-	sprintf(str, "MyRandom::GausAdd(PositronPmtEnergy, %6.4f, %6.4f)", kRndm, kRndm2);
+	sprintf(str, "MyRandom::GausAdd(PositronPmtEnergy, %6.4f, %6.4f)", PMTRndmSqe, PMTRndmC);
 	tMC->Project(hMCPMT->GetName(), str);
 	chA->Project(hExpT->GetName(), "gtDiff / 1000.0");
 	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0");
@@ -138,9 +148,9 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	hExpSiPM->Add(hRndmSiPM, -1.0/16);
 	hExpPMT->Add(hRndmPMT, -1.0/16);
 	hExpT->Add(hRndmT, -1.0/16);
-	hMC->Scale(hExp->Integral(17, 64) / hMC->Integral(17, 64));
-	hMCSiPM->Scale(hExpSiPM->Integral(17, 64) / hMCSiPM->Integral(17, 64));
-	hMCPMT->Scale(hExpPMT->Integral(17, 64) / hMCPMT->Integral(17, 64));
+	hMC->Scale(hExp->Integral(16, 36) / hMC->Integral(16, 36));
+	hMCSiPM->Scale(hExpSiPM->Integral(16, 36) / hMCSiPM->Integral(16, 36));
+	hMCPMT->Scale(hExpPMT->Integral(16, 36) / hMCPMT->Integral(16, 36));
 	
 	hExp->SetMarkerStyle(kFullCircle);
 	hExp->SetMarkerColor(kRed);
@@ -162,18 +172,18 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	hMCPMT->SetLineColor(kBlue);
 	
 	TCanvas *cv = new TCanvas("CV", "12B", 1400, 800);
-	sprintf(str, "12B_78_rndm_%5.3f_%5.3f_scale_%5.3f", kRndm, kRndm2, kScale);
+	sprintf(str, "12B_81_rndm_%5.3f_%5.3f_scale_%5.3f", RndmSqe, RndmC, Scale);
 	TString oname(str);
 	cv->SaveAs((oname+".pdf[").Data());
 
-	cv->Divide(2,1);
+	cv->Divide(2, 1);
 	cv->cd(1);
 	hExp->Draw();
 	hMC->Draw("hist,same");
 	TLegend *lg = new TLegend(0.6, 0.75, 0.9, 0.9);
-	sprintf(str, "Exp * %6.4f", kScale);
+	sprintf(str, "Exp * %6.4f", Scale);
 	lg->AddEntry(hExp, str, "pe");
-	sprintf(str, "MC + %6.4f/#sqrt{E} #oplus %6.4f", kRndm, kRndm2);
+	sprintf(str, "MC + %6.4f/#sqrt{E} #oplus %6.4f", RndmSqe, RndmC);
 	lg->AddEntry(hMC, str, "l");
 	lg->Draw();
 	cv->cd(2);
@@ -185,10 +195,20 @@ void draw12B(int from, int to, double kRndm = 0, double kScale = 1.0, double kRn
 	cv->cd(1);
 	hExpSiPM->Draw();
 	hMCSiPM->Draw("hist,same");
+	lg = new TLegend(0.6, 0.75, 0.9, 0.9);
+	sprintf(str, "Exp * %6.4f", SiPMScale);
+	lg->AddEntry(hExp, str, "pe");
+	sprintf(str, "MC + %6.4f/#sqrt{E} #oplus %6.4f", SiPMRndmSqe, SiPMRndmC);
+	lg->AddEntry(hMC, str, "l");
 	lg->Draw();
 	cv->cd(2);
 	hExpPMT->Draw();
 	hMCPMT->Draw("hist,same");
+	lg = new TLegend(0.6, 0.75, 0.9, 0.9);
+	sprintf(str, "Exp * %6.4f", PMTScale);
+	lg->AddEntry(hExp, str, "pe");
+	sprintf(str, "MC + %6.4f/#sqrt{E} #oplus %6.4f", PMTRndmSqe, PMTRndmC);
+	lg->AddEntry(hMC, str, "l");
 	lg->Draw();
 	cv->SaveAs((oname+".pdf").Data());
 	cv->SaveAs((oname+".pdf]").Data());
@@ -266,4 +286,40 @@ TH2D *makeScan(const char *pattern = "12B_78_rndm_%5.3f_scale_%5.3f.root", const
 	f->Close();
 	
 	return h2d;
+}
+
+// Draw SiPM to PMT comparison
+void sipm2pmt(const char *fname)
+{
+	gStyle->SetOptStat(0);
+	TFile *f = new TFile(fname);
+	TH1D *hExp12BSiPM = (TH1D *) f->Get("hExp12BSiPM");
+	TH1D *hExp12BPMT  = (TH1D *) f->Get("hExp12BPMT");
+	TH1D *hMC12BSiPM  = (TH1D *) f->Get("hMC12BSiPM");
+	TH1D *hMC12BPMT   = (TH1D *) f->Get("hMC12BPMT");
+	hMC12BPMT->Scale(hMC12BSiPM->Integral() / hMC12BPMT->Integral());
+	hExp12BSiPM->SetLineColor(kRed);
+	hExp12BPMT->SetLineColor(kBlue);
+	hMC12BSiPM->SetLineColor(kRed);
+	hMC12BPMT->SetLineColor(kBlue);
+	hExp12BSiPM->SetLineWidth(2);
+	hExp12BPMT->SetLineWidth(2);
+	hMC12BSiPM->SetLineWidth(2);
+	hMC12BPMT->SetLineWidth(2);
+	hExp12BSiPM->SetTitle("^{12}B - Experiment, SiPM and PMT");
+	hMC12BSiPM->SetTitle("^{12}B - MC, SiPM and PMT");
+	
+	TCanvas *cv = new TCanvas("CV", "CV", 1600, 1200);
+	cv->Divide(2, 1);
+	cv->cd(1);
+	TLegend *lg = new TLegend(0.7, 0.85, 0.9, 0.93);
+	lg->AddEntry(hExp12BSiPM, "SiPM", "l");
+	lg->AddEntry(hExp12BPMT, "PMT", "l");
+	hExp12BSiPM->Draw("hist");
+	hExp12BPMT->Draw("hist,same");
+	lg->Draw();
+	cv->cd(2);
+	hMC12BSiPM->Draw("hist");
+	hMC12BPMT->Draw("hist,same");
+	lg->Draw();
 }

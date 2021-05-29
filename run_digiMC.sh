@@ -29,7 +29,24 @@ do_sources()
 	done
 }
 
-${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/newLY/DataTakingPeriod02/mc_IBD_glbLY_transcode_rawProc_pedSim.digi \
-	0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/NewTimeLine/IBD_small.root ${DEAD}
+do_neutrons()
+{
+	nbdir=${DIGI}/Neutron_background
+	for ((i=0;$i<5;i=$i+1)) ; do
+		for ((j=1;$j<=16;j=$j+1)) ; do
+			fname=`printf "${nbdir}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim%d_%d.digi.bz2" $i $j`
+			mname=`printf "${MCRAW}/Neutron_background/Ready/DANSS%d_%d.root" $i $j`
+			${EXE} $fname 0x870000 ${OUTDIR}/Neutron_background/ ${DEAD} -mcfile $mname
+		done
+	done
+}
+
+do_test()
+{
+	${EXE} /home/clusters/rrcmpi/danss/DANSS/digi_MC/newLY/DataTakingPeriod02/mc_Muons_indLY_transcode_rawProc_pedSim.digi \
+		0x70000 ${OUTDIR}/test/ -mcfile ${MCRAW}/NewTimeLine/Muonmod.root ${DEAD}
+}
+
+do_neutrons
 
 exit 0
