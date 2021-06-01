@@ -47,6 +47,6 @@ do_test()
 		0x70000 ${OUTDIR}/test/ -mcfile ${MCRAW}/NewTimeLine/Muonmod.root ${DEAD}
 }
 
-do_neutrons
+do_sources
 
 exit 0

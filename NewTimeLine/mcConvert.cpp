@@ -109,6 +109,8 @@ int main(int argc, char **argv)
  ****************************************************************/
 	long Nevents;
 	long EventID;
+	long nMax;
+	long iFirst;
 	struct SiPMHitBranchStruct *SiPMHits;
 	struct PMTHitBranchStruct *PMTHits;
 	struct VetoHitBranchStruct *VetoHits;
@@ -124,12 +126,17 @@ int main(int argc, char **argv)
  *			Files and arguments			*
  ****************************************************************/
 	if (argc < 3) {
-		printf("Usage %s new_format.root old_format.root --- convert MC new root files to old format\n", argv[0]);
+		printf("Usage %s new_format.root old_format.root [Nentries [FirstEntry]]--- convert MC new root files to old format\n", argv[0]);
+		printf("Nentries - copy Nentries only.  FirstEntry - first entry to copy.\n");
 		return 10;
 	}
 	
+	nMax = TTree::kMaxEntries;
+	iFirst = 0;
 	TFile *fIn = new TFile(argv[1]);
 	TFile *fOut = new TFile(argv[2], "RECREATE");
+	if (argc > 3) nMax = strtol(argv[3], NULL, 10);
+	if (argc > 4) iFirst = strtol(argv[4], NULL, 10);
 	if (!fIn->IsOpen() || !fOut->IsOpen()) return 20;
 /****************************************************************
  *		Input file trees				*
@@ -197,12 +204,21 @@ int main(int argc, char **argv)
 	}
 	tInVetoHit->SetBranchAddress("VetoHitBranch", &VetoHitBranch);
 /****************************************************************
+ *		Set event range					*
+ ****************************************************************/
+	Nevents = tInEvent->GetEntries();
+	if (iFirst >= Nevents) {
+		printf("FirstEntry (%Ld) >= Nentries (%Ld) - nothing to do.\n", iFirst, Nevents);
+		return 39;
+	}
+	if (iFirst + nMax > Nevents) nMax = Nevents - iFirst;
+/****************************************************************
  *		Outputfile trees				*
  ****************************************************************/
 	fOut->cd();
-	TTree *tOutParticle = tInParticle->CloneTree();
-	TTree *tOutPrimary = tInPrimary->CloneTree();
-	TTree *tOutRun = tInRun->CloneTree();
+	TTree *tOutParticle = tInParticle->CopyTree("", "fast", iFirst, nMax);
+	TTree *tOutPrimary = tInPrimary->CopyTree("", "fast", iFirst, nMax);
+	TTree *tOutRun = tInRun->CloneTree(-1, "fast");		// always just a copy
 	TTree *tOutEvent = new TTree("DANSSEvent", "DANSS event tree");
 	tOutEvent->Branch("EventData", &EventDataOld, 
 		"EventID/D:ParticleEnergy:EnergyLoss:DetectorEnergyLoss:CopperEnergyLoss:GdCoverEnergyLoss:X:Y:Z:DirX:DirY:DirZ:TimelineShift:FluxFlag/B");
@@ -226,8 +242,6 @@ int main(int argc, char **argv)
 /****************************************************************
  *		Process events					*
  ****************************************************************/
-	Nevents = tInEvent->GetEntries();
-//	if (Nevents > 10000) Nevents = 10000;
 	NSiPMHits = tInSiPMHit->GetEntries();
 	NPMTHits = tInPMTHit->GetEntries();
 	NVetoHits = tInVetoHit->GetEntries();
@@ -236,7 +250,7 @@ int main(int argc, char **argv)
 	SiPMHits = NULL;
 	PMTHits = NULL;
 	VetoHits = NULL;
-	for (EventID = 1; EventID <= Nevents; EventID++) {
+	for (EventID = iFirst + 1; EventID <= iFirst + nMax; EventID++) {
 //		Read Event data
 		tInEvent->GetEntry(EventID - 1);
 		tInSignal->GetEntry(EventID - 1);
@@ -245,7 +259,8 @@ int main(int argc, char **argv)
 		KSiPMHits = KPMTHits = KVetoHits = 0;
 		for(;PtrSiPMHits < NSiPMHits; PtrSiPMHits++) {
 			tInSiPMHit->GetEntry(PtrSiPMHits);
-			if(SiPMHitBranch.EventID != EventID) break;
+			if(SiPMHitBranch.EventID < EventID) continue;
+			if(SiPMHitBranch.EventID > EventID) break;
 			if (KSiPMHits >= LSiPMHits) {
 				LSiPMHits += SLICE;
 				SiPMHits = (struct SiPMHitBranchStruct *) realloc(SiPMHits, LSiPMHits * sizeof(struct SiPMHitBranchStruct));
@@ -259,7 +274,8 @@ int main(int argc, char **argv)
 		}
 		for(;PtrPMTHits < NPMTHits; PtrPMTHits++) {
 			tInPMTHit->GetEntry(PtrPMTHits);
-			if(PMTHitBranch.EventID != EventID) break;
+			if(PMTHitBranch.EventID < EventID) continue;
+			if(PMTHitBranch.EventID > EventID) break;
 			if (KPMTHits >= LPMTHits) {
 				LPMTHits += SLICE;
 				PMTHits = (struct PMTHitBranchStruct *) realloc(PMTHits, LPMTHits * sizeof(struct PMTHitBranchStruct));
@@ -273,7 +289,8 @@ int main(int argc, char **argv)
 		}
 		for(;PtrVetoHits < NVetoHits; PtrVetoHits++) {
 			tInVetoHit->GetEntry(PtrVetoHits);
-			if(VetoHitBranch.EventID != EventID) break;
+			if(VetoHitBranch.EventID < EventID) continue;
+			if(VetoHitBranch.EventID > EventID) break;
 			if (KVetoHits >= LVetoHits) {
 				LVetoHits += SLICE;
 				VetoHits = (struct VetoHitBranchStruct *) realloc(VetoHits, LVetoHits * sizeof(struct VetoHitBranchStruct));
