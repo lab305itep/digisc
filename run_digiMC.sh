@@ -47,6 +47,15 @@ do_test()
 		0x70000 ${OUTDIR}/test/ -mcfile ${MCRAW}/NewTimeLine/Muonmod.root ${DEAD}
 }
 
-do_sources
+do_muons()
+{
+	for ((i=0;$i<2;i=$i+1)) ; do
+		${EXE} ${DIGI}/Muons/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_0${i}.digi.bz2 0x70000 \
+			${OUTDIR}/Stopped_muons_central_part_ind_coeff/ \
+			-mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff/DANSS_0${i}.root ${DEAD}
+	done
+}
+
+do_muons
 
 exit 0

@@ -172,7 +172,7 @@ void draw12B(int from, int to)
 	hMCPMT->SetLineColor(kBlue);
 	
 	TCanvas *cv = new TCanvas("CV", "12B", 1400, 800);
-	sprintf(str, "12B_81_rndm_%5.3f_%5.3f_scale_%5.3f", RndmSqe, RndmC, Scale);
+	sprintf(str, "12B_81_rndm_%5.3f_%5.3f_scale_%5.3f_%d", RndmSqe, RndmC, Scale, to - from + 1);
 	TString oname(str);
 	cv->SaveAs((oname+".pdf[").Data());
 

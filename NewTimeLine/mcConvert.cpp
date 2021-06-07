@@ -4,11 +4,34 @@
 
 #define SLICE	1000
 #define TIMELINESHIFT	1000.0
+#define MAXNAME	1000
 
 /****************************************************************
  *			Structures				*
  ****************************************************************/
 #pragma pack(push, 1)
+//		DANSSParticle
+	struct ParticleDataStruct {
+		double EventID;
+		double ID;
+		double ParentID;
+		double ParticleEnergy;
+		double X, Y, Z, DirX, DirY, DirZ;
+		double Time;
+		double KillingFlag;
+	} ParticleData;
+	char ParticleName[MAXNAME];
+	char ParticleMaterialName[MAXNAME];
+	char ParticleCreatorProcessName[MAXNAME];
+//		DANSSPrimary
+	struct PrimaryDataStruct {
+		double EventID;
+		double ID;
+		double Energy;
+		double X, Y, Z;
+	} PrimaryData;
+	char PrimaryName[MAXNAME];
+	char PrimaryMaterialName[MAXNAME];
 //		DANSSEvent
 	struct EventDataNewStruct {
 		double EventID;
@@ -117,6 +140,7 @@ int main(int argc, char **argv)
 	long KSiPMHits, LSiPMHits, PtrSiPMHits, NSiPMHits;
 	long KPMTHits, LPMTHits, PtrPMTHits, NPMTHits;
 	long KVetoHits, LVetoHits, PtrVetoHits, NVetoHits;
+	long NPrimary, NParticle;
 	double minTime;
 	double *SiPMTimeline;
 	char SiPMArray[25][100];
@@ -147,12 +171,19 @@ int main(int argc, char **argv)
 		printf("Tree DANSSParticle not found.\n");
 		return 30;
 	}
+	tInParticle->SetBranchAddress("ParticleData", &ParticleData);
+	tInParticle->SetBranchAddress("ParticleName", ParticleName);
+	tInParticle->SetBranchAddress("ParticleMaterialName", ParticleMaterialName);
+	tInParticle->SetBranchAddress("ParticleCreatorProcessName", ParticleCreatorProcessName);
 //		DANSSPrimary - exact copy
 	TTree *tInPrimary = (TTree *) fIn->Get("DANSSPrimary");
 	if (!tInPrimary) {
 		printf("Tree DANSSPrimary not found.\n");
 		return 31;
 	}
+	tInPrimary->SetBranchAddress("PrimaryData", &PrimaryData);
+	tInPrimary->SetBranchAddress("PrimaryName", PrimaryName);
+	tInPrimary->SetBranchAddress("PrimaryMaterialName", PrimaryMaterialName);
 //		DANSSRun - exact copy
 	TTree *tInRun = (TTree *) fIn->Get("DANSSRun");
 	if (!tInRun) {
@@ -216,9 +247,9 @@ int main(int argc, char **argv)
  *		Outputfile trees				*
  ****************************************************************/
 	fOut->cd();
-	TTree *tOutParticle = tInParticle->CopyTree("", "fast", iFirst, nMax);
-	TTree *tOutPrimary = tInPrimary->CopyTree("", "fast", iFirst, nMax);
 	TTree *tOutRun = tInRun->CloneTree(-1, "fast");		// always just a copy
+	TTree *tOutParticle = tInParticle->CloneTree(0);	// create tree only
+	TTree *tOutPrimary = tInPrimary->CloneTree(0);		// create tree only
 	TTree *tOutEvent = new TTree("DANSSEvent", "DANSS event tree");
 	tOutEvent->Branch("EventData", &EventDataOld, 
 		"EventID/D:ParticleEnergy:EnergyLoss:DetectorEnergyLoss:CopperEnergyLoss:GdCoverEnergyLoss:X:Y:Z:DirX:DirY:DirZ:TimelineShift:FluxFlag/B");
@@ -240,6 +271,23 @@ int main(int argc, char **argv)
 		return 40;
 	}
 /****************************************************************
+ *		Process DANSSParticle and DANSSPrimary		*
+ ****************************************************************/
+	NPrimary = tInPrimary->GetEntries();
+	for(i=0; i < NPrimary; i++) {
+		tInPrimary->GetEntry(i);
+		if (PrimaryData.EventID < iFirst + 1) continue;
+		if (PrimaryData.EventID > iFirst + nMax) break;
+		tOutPrimary->Fill();
+	}
+	NParticle = tInParticle->GetEntries();
+	for(i=0; i < NParticle; i++) {
+		tInParticle->GetEntry(i);
+		if (ParticleData.EventID < iFirst + 1) continue;
+		if (ParticleData.EventID > iFirst + nMax) break;
+		tOutParticle->Fill();
+	}
+/****************************************************************
  *		Process events					*
  ****************************************************************/
 	NSiPMHits = tInSiPMHit->GetEntries();
@@ -250,6 +298,7 @@ int main(int argc, char **argv)
 	SiPMHits = NULL;
 	PMTHits = NULL;
 	VetoHits = NULL;
+	
 	for (EventID = iFirst + 1; EventID <= iFirst + nMax; EventID++) {
 //		Read Event data
 		tInEvent->GetEntry(EventID - 1);
