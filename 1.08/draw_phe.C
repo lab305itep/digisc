@@ -19,9 +19,10 @@
 #define MAXCHI2		5000.0
 #define MINMEDIAN	13.0
 #define MINMDN		28.0
+#define UGLY_MC_SIPM_CORR	1.08
 
 /* MC nominal values */
-const double pheSiPM = 20.4;
+const double pheSiPM = 20.4 / UGLY_MC_SIPM_CORR;
 const double phePMT = 15.2;
 const double PMTpheADC[64] = {
 	77.6, 74.0, 73.6, 70.7, 65.7, 81.8, 71.2, 69.6, 74.6, 78.2, 
@@ -213,8 +214,8 @@ void draw_phe(
 	double rPMT = 1.0, 	// MC PMT coef
 	double kSiPM = 0.12,	// MC SiPM additional smearing kSiPM/sqrt(E)
 	double kPMT = 0.12,	// MC PMT additional smearing kPMT/sqrt(E)
-	double cSiPM = 0.04,	// MC SiPM additional smearing cSiPM
-	double cPMT = 0.04,	// MC PMT additional smearing cPMT
+	double cSiPM = 0.125,	// MC SiPM additional smearing cSiPM
+	double cPMT = 0.06,	// MC PMT additional smearing cPMT
 	int NRNDM = 1,		// Number of random iterations
 	int MCIndLY = 1)	// MC has individual light yields
 {
@@ -255,7 +256,7 @@ void draw_phe(
 	// Create chains
 	TChain *tExp = new TChain("DANSSSignal", "ExpSignal");
 	for (i=53500; i<53650; i++) {
-		sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
+		sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
 //		sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/hits8n1/053xxx/muhits_%6.6d.root", i);
 		tExp->AddFile(strl);
 	}
@@ -263,9 +264,9 @@ void draw_phe(
 	
 	TChain *tMC = new TChain("DANSSSignal", "MCSignal");
 	if (MCIndLY) {
-		tMC->AddFile("/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2_indLY/mc_Muons_indLY_transcode_rawProc_pedSim.root");
-		for (i=0; i<18; i++) {
-			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2_indLY/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d.root", i);
+		for (i=0; i<32; i++) {
+			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d.root", 
+				i/16, (i%16) + 1);
 			tMC->AddFile(strl);
 		}
 	} else {
@@ -364,7 +365,7 @@ void draw_phe(
 				if (adc == 1) {	// PMT
 					hMCPMT->Fill(SmearPMT->Smear(Signal.value / gain[adc][chan] * rPMT));
 				} else {	// SiPM
-					if (mdn[adc][chan] > MINMDN) hMCSiPM->Fill(SmearSiPM->Smear(Signal.value / gain[adc][chan] * rSiPM));
+					if (mdn[adc][chan] > MINMDN) hMCSiPM->Fill(SmearSiPM->Smear(UGLY_MC_SIPM_CORR * Signal.value / gain[adc][chan] * rSiPM));
 				}
 			} else {
 				if (adc == 1) {	// PMT
@@ -874,7 +875,7 @@ DANSSGeom::DANSSGeom(void)
  * MedMCSiPM = 35.63  MedMCPMT = 282.0
  * The result is written in two files (for SiPM and PMT)
  */
-void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT)
+void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT, double corrSiPM = 1)
 {
 	int i;
 	double mdn[MAXWFD][MAXCHAN];
@@ -912,6 +913,7 @@ void calib4sasha(const char *fname, double MedMCSiPM, double MedMCPMT)
 		mod    = geom.SiPMWFD(i);
 		chan   = geom.SiPMchan(i);
 		data.energy = (mdn[mod][chan] > 0) ? mdn[mod][chan] * pheSiPM / MedMCSiPM : pheSiPM;	// nominal for dead channels
+		data.energy *= corrSiPM;		// correction to overcome Ira's bug
 		data.cellindex = i;
 		data.row = row;
 		data.column = column;

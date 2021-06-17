@@ -270,6 +270,7 @@ int main(int argc, char **argv)
 		printf("Fatal - no memory for SiPMTimeline\n");
 		return 40;
 	}
+	TTree::SetMaxTreeSize(400000000000LL);
 /****************************************************************
  *		Process DANSSParticle and DANSSPrimary		*
  ****************************************************************/
