@@ -230,6 +230,7 @@ void draw_phe(
 		float PMT;
 	} dDiff;
 	TH1D *hExpC[MAXWFD][MAXCHAN];
+	TH1D *hMCC[MAXWFD][MAXCHAN];
 	double gain[MAXWFD][MAXCHAN];
 	double mdn[MAXWFD][MAXCHAN];
 	double merr;
@@ -299,6 +300,7 @@ void draw_phe(
 	tDiff->Branch("D", &dDiff, "SiPM/F:PMT/F");
 
 	memset(hExpC, 0, sizeof(hExpC));
+	memset(hMCC, 0, sizeof(hMCC));
 	// Fill experimental hists
 	N = tExp->GetEntries();
 	for (i=0; i < N; i++) {
@@ -363,8 +365,20 @@ void draw_phe(
 			}
 			if (MCIndLY) {
 				if (adc == 1) {	// PMT
+					if (!hMCC[adc][chan]) {
+						sprintf(strs, "hMCC%2.2d%2.2d", adc, chan);
+						sprintf(strl, "MC: Muon energy deposit, PMT %d;ph.e.", chan);
+						hMCC[adc][chan] = new TH1D(strs, strl, 150, 0, 600);
+					}
+					hMCC[adc][chan]->Fill(Signal.value * rPMT);
 					hMCPMT->Fill(SmearPMT->Smear(Signal.value / gain[adc][chan] * rPMT));
 				} else {	// SiPM
+					if (!hMCC[adc][chan]) {
+						sprintf(strs, "hMCC%2.2d%2.2d", adc, chan);
+						sprintf(strl, "MC: Muon energy deposit, SiPM %d;ph.e.", chan);
+						hMCC[adc][chan] = new TH1D(strs, strl, 150, 0, 150);
+					}
+					hMCC[adc][chan]->Fill(Signal.value * rSiPM);
 					if (mdn[adc][chan] > MINMDN) hMCSiPM->Fill(SmearSiPM->Smear(UGLY_MC_SIPM_CORR * Signal.value / gain[adc][chan] * rSiPM));
 				}
 			} else {
@@ -426,7 +440,10 @@ void draw_phe(
 	lg->DrawClone();
 	
 	fOut->cd();
-	for(adc = 0; adc < MAXWFD; adc++) for(chan = 0; chan < MAXCHAN; chan++) if (hExpC[adc][chan]) hExpC[adc][chan]->Write();
+	for(adc = 0; adc < MAXWFD; adc++) for(chan = 0; chan < MAXCHAN; chan++) {
+		if (hExpC[adc][chan]) hExpC[adc][chan]->Write();
+		if (hMCC[adc][chan]) hMCC[adc][chan]->Write();
+	}
 	cv->Write();
 	hMCSiPM->Write();
 	hMCPMT->Write();
@@ -1016,4 +1033,46 @@ void cmp2calib(const char *fA, const char *fB, int what = 3)
 	if (what & 2) for(i=2; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) if (clbA[i][j] > 0 && clbB[i][j] > 0 && i != 3) 
 		h->Fill((clbA[i][j] - clbB[i][j]) / (clbA[i][j] + clbB[i][j]));
 	h->Draw();
+}
+
+void cmpExp2MCcalib(const char *fname, const char *txtname)
+{
+	char strE[256], strM[256];
+	int i, j;
+	TH1D *hExp;
+	TH1D *hMC;
+	double vExp, eExp;
+	double vMC, eMC;
+	int nExp, nMC;
+	double diff2;
+	double Sum2;
+	int Cnt;
+	
+	TFile *fIn = new TFile(fname);
+	if (!fIn->IsOpen()) return;
+	FILE *fOut = fopen(txtname, "wt");
+	if (!fOut) return;
+	
+	Sum2 = 0;
+	Cnt = 0;
+	for(i=1; i<MAXWFD; i++) for(j=0; j<MAXCHAN; j++) {
+		sprintf(strE, "hExpC%2.2d%2.2d", i, j);
+		hExp = (TH1D*) fIn->Get(strE);
+		if (!hExp) continue;
+		sprintf(strM, "hMCC%2.2d%2.2d", i, j);
+		hMC = (TH1D*) fIn->Get(strM);
+		if (!hMC) continue;
+		nExp = hExp->GetEntries();
+		nMC = hMC->GetEntries();
+		vExp = Median(hExp, &eExp);
+		vMC  = Median(hMC, &eMC);
+		diff2 = (vExp - vMC) * (vExp - vMC) / (eExp*eExp + eMC*eMC);
+		Sum2 += diff2;
+		Cnt++;
+		fprintf(fOut, "%2.2d.%2.2d : Exp %8.3f +- %6.3f [%8d hits]  <--> MC %8.3f +- %6.3f [%8d hits] ==>> %8.3f\n",
+			i, j, vExp, eExp, nExp, vMC, eMC, nMC, diff2);
+	}
+	fprintf(fOut, "Sum2/n.d.f. = %f / %d \n", Sum2, Cnt);
+	fclose(fOut);
+	fIn->Close();
 }
