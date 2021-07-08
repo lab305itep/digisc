@@ -13,8 +13,8 @@ int main(int argc, char *argv[])
 	char fin[1024];
 	char fout[1024];
 	char *ptr;
-	char *src_dir = "/home/clusters/rrcmpi/alekseev/igor/root6n2/";
-	char *tgt_dir = "/home/clusters/rrcmpi/alekseev/igor/muon_n2/";
+	char *src_dir = "/home/clusters/rrcmpi/alekseev/igor/root8n1/";
+	char *tgt_dir = "/home/clusters/rrcmpi/alekseev/igor/muon8n1/";
 	int fnum;
 	time_t t0, t1;
 	int irc;

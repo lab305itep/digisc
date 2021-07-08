@@ -37,6 +37,9 @@
 
 #include "evtbuilder.h"
 
+//	Correct calculated parameters only. No hit correction,
+#define UGLY_SIPM_CORR	0.08
+
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
 #define MAXTDIFF	50.0	// us
 #define MINPOSE		0.5	// MeV
@@ -55,13 +58,6 @@
 #define TISOLATIONM	140	// isolation us for random positron windows minus, 90 + 50 us
 #define TISOLATIONP	80	// isolation us for random positron windows plus, 80 us
 #define MUTDIFF		90	// muon window - 90 us
-//	No correction
-#define CORR_P0		0	// Positron energy correction from MC 
-#define CORR_P1		1.0	// Positron energy correction from MC
-#define CORR_PMT_P0	0	// Positron energy correction from MC
-#define CORR_PMT_P1	1.0	// Positron energy correction from MC
-#define CORR_SIPM_P0	0	// Positron energy correction from MC
-#define CORR_SIPM_P1	1.0	// Positron energy correction from MC
 
 #define iMaxDataElements 3000
 #define masterTrgRandom 2
@@ -145,7 +141,7 @@ int IsNeutron(struct DanssEventStruct7 *DanssEvent)
 	float E;
 	int rc;
 	
-	E = DanssEvent->NeutronEnergy;
+	E = DanssEvent->NeutronEnergy * (1 + UGLY_SIPM_CORR / 2);
 	rc = (E >= MINNEUTE && E < MAXNEUTE && DanssEvent->NeutronHits >= NEUTN);
 
 	return rc;
@@ -156,7 +152,7 @@ int IsPositron(struct DanssEventStruct7 *DanssEvent)
 	float E;
 	int rc;
 
-	E = DanssEvent->PositronEnergy;
+	E = DanssEvent->PositronEnergy * (1 + UGLY_SIPM_CORR / 2);
 	rc = (E >= MINPOSE && E < MAXPOSE && DanssEvent->AnnihilationGammas >= AGAMMAN);
 
 	return rc;
@@ -165,14 +161,14 @@ int IsPositron(struct DanssEventStruct7 *DanssEvent)
 int IsVeto(struct DanssEventStruct7 *Event)
 {
 	if (Event->VetoCleanEnergy > MINVETOE || Event->VetoCleanHits >= VETON || 
-		Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 2*DANSSVETOE ||
-		Event->BottomLayersEnergy > BOTTOMVETOE) return 1;
+		Event->PmtCleanEnergy + Event->SiPmCleanEnergy * (1 + UGLY_SIPM_CORR) > 2*DANSSVETOE ||
+		Event->BottomLayersEnergy * (1 + UGLY_SIPM_CORR / 2) > BOTTOMVETOE) return 1;
 	return 0;
 }
 
 int IsShower(struct DanssEventStruct7 *Event)
 {
-	if (Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 2*SHOWERMIN) return 1;
+	if (Event->PmtCleanEnergy + Event->SiPmCleanEnergy * (1 + UGLY_SIPM_CORR) > 2*SHOWERMIN) return 1;
 	return 0;
 }
 
@@ -194,24 +190,24 @@ void MakePair(
 	DanssPair->globalTime[1] = DanssEvent->globalTime;
 	DanssPair->unixTime = DanssEvent->unixTime;
 //	DanssPair->runNumber = DanssEvent->runNumber;
-	DanssPair->SiPmCleanEnergy[0] = SavedEvent->SiPmCleanEnergy;
+	DanssPair->SiPmCleanEnergy[0] = SavedEvent->SiPmCleanEnergy * (1 + UGLY_SIPM_CORR);
 	DanssPair->PmtCleanEnergy[0] = SavedEvent->PmtCleanEnergy;
-	DanssPair->SiPmCleanEnergy[1] = DanssEvent->SiPmCleanEnergy;
+	DanssPair->SiPmCleanEnergy[1] = DanssEvent->SiPmCleanEnergy * (1 + UGLY_SIPM_CORR);
 	DanssPair->PmtCleanEnergy[1] = DanssEvent->PmtCleanEnergy;
 	
 	DanssPair->PositronHits = SavedEvent->PositronHits;
-	DanssPair->PositronEnergy = SavedEvent->PositronEnergy;
+	DanssPair->PositronEnergy = SavedEvent->PositronEnergy * (1 + UGLY_SIPM_CORR / 2);
 	memcpy(DanssPair->PositronX, SavedEvent->PositronX, sizeof(SavedEvent->PositronX));
-	DanssPair->TotalEnergy = SavedEvent->TotalEnergy;
-	DanssPair->PositronSiPmEnergy = SavedEvent->PositronSiPmEnergy;
+	DanssPair->TotalEnergy = SavedEvent->TotalEnergy * (1 + UGLY_SIPM_CORR / 2);
+	DanssPair->PositronSiPmEnergy = SavedEvent->PositronSiPmEnergy * (1 + UGLY_SIPM_CORR);
 	DanssPair->PositronPmtEnergy = SavedEvent->PositronPmtEnergy;
 	DanssPair->AnnihilationGammas = SavedEvent->AnnihilationGammas;
-	DanssPair->AnnihilationEnergy = SavedEvent->AnnihilationEnergy;
+	DanssPair->AnnihilationEnergy = SavedEvent->AnnihilationEnergy * (1 + UGLY_SIPM_CORR);
 	DanssPair->AnnihilationMax = SavedEvent->AnnihilationMax;
 	DanssPair->MinPositron2GammaZ = SavedEvent->MinPositron2GammaZ;
 	
 	DanssPair->NeutronHits = DanssEvent->NeutronHits;
-	DanssPair->NeutronEnergy = DanssEvent->NeutronEnergy;
+	DanssPair->NeutronEnergy = DanssEvent->NeutronEnergy * (1 + UGLY_SIPM_CORR / 2);
 	memcpy(DanssPair->NeutronX, DanssEvent->NeutronX, sizeof(DanssEvent->NeutronX));
 	
 	DanssPair->gtDiff = (DanssEvent->globalTime - SavedEvent->globalTime) / GFREQ2US;
@@ -225,17 +221,17 @@ void MakePair(
 	DanssPair->gtFromVeto = (SavedEvent->globalTime - VetoEvent->globalTime) / GFREQ2US;
 	DanssPair->VetoHits = VetoEvent->VetoCleanHits;
 	DanssPair->VetoEnergy = VetoEvent->VetoCleanEnergy;
-	DanssPair->DanssEnergy = (VetoEvent->SiPmCleanEnergy + VetoEvent->PmtCleanEnergy) / 2;
+	DanssPair->DanssEnergy = (VetoEvent->SiPmCleanEnergy * (1 + UGLY_SIPM_CORR)+ VetoEvent->PmtCleanEnergy) / 2;
 	DanssPair->gtFromShower = (SavedEvent->globalTime - ShowerEvent->globalTime) / GFREQ2US;
-	DanssPair->ShowerEnergy = (ShowerEvent->SiPmCleanEnergy + ShowerEvent->PmtCleanEnergy) / 2;
+	DanssPair->ShowerEnergy = (ShowerEvent->SiPmCleanEnergy * (1 + UGLY_SIPM_CORR) + ShowerEvent->PmtCleanEnergy) / 2;
 
 	DanssPair->NNHits = DanssEvent->NHits;
 	DanssPair->NPHits = SavedEvent->NHits;
 	
 	NeutronCorr(DanssPair);		// correct positron energy based on neutron position if only one coordinate of positron cluster is available
-	DanssPair->PositronEnergy = (DanssPair->PositronEnergy - CORR_P0) / CORR_P1;
-	DanssPair->PositronPmtEnergy = (DanssPair->PositronPmtEnergy - CORR_PMT_P0) / CORR_PMT_P1;
-	DanssPair->PositronSiPmEnergy = (DanssPair->PositronSiPmEnergy - CORR_SIPM_P0) / CORR_SIPM_P1;
+	DanssPair->PositronEnergy = DanssPair->PositronEnergy * (1 + UGLY_SIPM_CORR / 2);
+	DanssPair->PositronPmtEnergy = DanssPair->PositronPmtEnergy;
+	DanssPair->PositronSiPmEnergy = DanssPair->PositronSiPmEnergy * (1 + UGLY_SIPM_CORR);
 }
 
 int main(int argc, char **argv)
@@ -543,7 +539,8 @@ int main(int argc, char **argv)
 						} else if (TrigArray[i].globalTime < Positron.globalTime && !(TrigArray[i].flags & FLAG_VETO)) {
 							EventChain->GetEntry(i);
 							DanssPair.gtFromPrevious = (Positron.globalTime - DanssEvent.globalTime) / GFREQ2US;
-							DanssPair.PreviousEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
+							DanssPair.PreviousEnergy = (DanssEvent.SiPmCleanEnergy * (1 + UGLY_SIPM_CORR/2) 
+								+ DanssEvent.PmtCleanEnergy) / 2;
 							break;
 						}
 					}
@@ -553,7 +550,7 @@ int main(int argc, char **argv)
 						if (TrigArray[i].flags & FLAG_IGNORE) continue;
 						EventChain->GetEntry(i);
 						DanssPair.gtToNext = (DanssEvent.globalTime - Positron.globalTime) / GFREQ2US;
-						DanssPair.NextEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
+						DanssPair.NextEnergy = (DanssEvent.SiPmCleanEnergy * (1 + UGLY_SIPM_CORR/2) + DanssEvent.PmtCleanEnergy) / 2;
 						break;
 					}
 					if (i == nEvt) {
@@ -581,7 +578,8 @@ int main(int argc, char **argv)
 								DanssPair.gtFromVeto = rDiff;		// emulated time
 								DanssPair.VetoHits = DanssEvent.VetoCleanHits;
 								DanssPair.VetoEnergy = DanssEvent.VetoCleanEnergy;
-								DanssPair.DanssEnergy = (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy) / 2;
+								DanssPair.DanssEnergy = (DanssEvent.SiPmCleanEnergy * (1 + UGLY_SIPM_CORR) + 
+									DanssEvent.PmtCleanEnergy) / 2;
 								tMuRandom->Fill();
 								PairCnt[2]++;
 								iDiffUsed = iDiff;

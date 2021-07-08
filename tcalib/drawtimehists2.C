@@ -31,7 +31,7 @@ void Print(int first, int last, const char *dirname, const char *hist)
 	TString s(str);
 	fRep = fopen((s+".log").Data(), "wt");
 	if (!fRep) {
-		printf("Can not open rep file %s: %m\n", (s+",log").Data());
+		printf("Can not open rep file %s: %m\n", (s+".log").Data());
 		return;
 	}
 	cv->Print((s+".pdf[").Data());

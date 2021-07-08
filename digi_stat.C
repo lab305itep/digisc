@@ -1,3 +1,4 @@
+//	UGLY SiPM correction 1.08 included
 void digi_statone(int num, const char *root_dir)
 {
 	char fname[1024];
@@ -8,7 +9,7 @@ void digi_statone(int num, const char *root_dir)
 	
 	TCut cNoise("((PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3) && VetoCleanHits == 0");
 	TCut cVeto("VetoCleanHits > 1 || VetoCleanEnergy > 4 || BottomLayersEnergy > 3.0");
-	TCut cDVeto("PmtCleanEnergy + SiPmCleanEnergy > 40");
+	TCut cDVeto("PmtCleanEnergy + SiPmCleanEnergy * 1.08 > 40");		// UGLY !
 	
 	sprintf(fname, "/home/clusters/rrcmpi/alekseev/igor/%s/%3.3dxxx/danss_%6.6d.root", root_dir, num/1000, num);
 	fff = fopen(fname, "rb");
@@ -58,15 +59,15 @@ void digi_statone(int num, const char *root_dir)
 	int vetoOnly = evt->GetEntries(ct.GetTitle());
 	ct = !cVeto && cDVeto && !cNoise;
 	int danssOnly = evt->GetEntries(ct.GetTitle());
-	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 2") && !cNoise;
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy*1.08 > 2") && !cNoise;	// UGLY !
 	int gt1MeV = evt->GetEntries(ct.GetTitle());
-	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 6") && !cNoise;
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy*1.08 > 6") && !cNoise;	// UGLY !
 	int gt3MeV = evt->GetEntries(ct.GetTitle());
-	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 40") && !cNoise;
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy*1.08 > 40") && !cNoise;	// UGLY !
 	int gt20MeV = evt->GetEntries(ct.GetTitle());
-	ct = TCut("PositronEnergy > 1 && PositronEnergy < 8") && !cNoise;
+	ct = TCut("PositronEnergy*1.04 > 1 && PositronEnergy*1.04 < 8") && !cNoise;	// UGLY !
 	int positrons = evt->GetEntries(ct.GetTitle());
-	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy > 6 && PmtCleanEnergy + SiPmCleanEnergy < 30 && SiPmCleanHits > 2") && !cNoise;
+	ct = TCut("PmtCleanEnergy + SiPmCleanEnergy*1.08 > 6 && PmtCleanEnergy + SiPmCleanEnergy*1.08 < 30 && SiPmCleanHits > 2") && !cNoise;	// UGLY !
 	int neutrons = evt->GetEntries(ct.GetTitle());
 //	
 	strftime(start, sizeof(start), "%F %R", localtime(&tStart));
@@ -83,7 +84,7 @@ void digi_stattitle(void)
 	printf("Run   Pos Start           Stop   len, s   Events   Trig   PickUp Veto  NoPMT NoVeto  >1MeV  >3MeV >20MeV     e+     n\n");
 }
 
-void digi_stat(int first, int last, const char *root_dir = "root6")
+void digi_stat(int first, int last, const char *root_dir = "root8n1")
 {
 	int i;
 	

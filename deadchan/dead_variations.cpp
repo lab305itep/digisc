@@ -4,7 +4,7 @@
 
 #define MAXDIFF	5
 #define MAXVAR	200
-#define MAXSTR	4096
+#define MAXSTR	16000
 #define VECLEN	3200
 
 class DetVector {

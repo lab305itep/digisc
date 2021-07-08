@@ -26,7 +26,6 @@ NF=$(($LAST-$FIRST+1))
 NB=$((($NF-1)/$NCPU+1))
 WD=`pwd`
 
-
 if (( $NF <= 0 )) ; then
 	echo Nothing to do: negative number of runs
 	exit 100

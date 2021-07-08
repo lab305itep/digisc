@@ -80,12 +80,13 @@ void draw12B(int from, int to)
 	const double PMTRndmC = 0.06;
 //	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n8/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
 	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_12B_indLY_transcode_rawProc_pedSim.root";
+	char str[1024];
+	char mccut[1024];
 
 //	gROOT->ProcessLine(".L create_chain.C+");
 	gStyle->SetOptStat(0);
 	gStyle->SetOptFit(1);
 	
-	char str[1024];
 	TChain *chA = create_chain("MuonPair", from, to);
 	TChain *chR = create_chain("MuonRandom", from, to);
 	if (!chA || !chR) return;
@@ -123,12 +124,13 @@ void draw12B(int from, int to)
 	sprintf(str, "ClusterPmtEnergy * %6.4f", PMTScale);
 	chA->Project(hExpPMT->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndmPMT->GetName(), str, "gtDiff > 500");
-	sprintf(str, "MyRandom::GausAdd(PositronEnergy, %6.4f, %6.4f)", RndmSqe, RndmC);
-	tMC->Project(hMC->GetName(), str);
-	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy, %6.4f, %6.4f)", SiPMRndmSqe, SiPMRndmC);
-	tMC->Project(hMCSiPM->GetName(), str);
+	sprintf(mccut, "PositronEnergy * 1.04");								// UGLY ! // not exact !!!
+	sprintf(str, "MyRandom::GausAdd(PositronEnergy * 1.04, %6.4f, %6.4f)", RndmSqe, RndmC);			// UGLY !
+	tMC->Project(hMC->GetName(), str, mccut);
+	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy * 1.08, %6.4f, %6.4f)", SiPMRndmSqe, SiPMRndmC);	// UGLY !
+	tMC->Project(hMCSiPM->GetName(), str, mccut);
 	sprintf(str, "MyRandom::GausAdd(PositronPmtEnergy, %6.4f, %6.4f)", PMTRndmSqe, PMTRndmC);
-	tMC->Project(hMCPMT->GetName(), str);
+	tMC->Project(hMCPMT->GetName(), str, mccut);
 	chA->Project(hExpT->GetName(), "gtDiff / 1000.0");
 	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0");
 	
@@ -306,8 +308,8 @@ void sipm2pmt(const char *fname)
 	hExp12BPMT->SetLineWidth(2);
 	hMC12BSiPM->SetLineWidth(2);
 	hMC12BPMT->SetLineWidth(2);
-	hExp12BSiPM->SetTitle("^{12}B - Experiment, SiPM and PMT");
-	hMC12BSiPM->SetTitle("^{12}B - MC, SiPM and PMT");
+	hExp12BPMT->SetTitle("^{12}B - Experiment, SiPM and PMT");
+	hMC12BPMT->SetTitle("^{12}B - MC, SiPM and PMT");
 	
 	TCanvas *cv = new TCanvas("CV", "CV", 1600, 1200);
 	cv->Divide(2, 1);
@@ -315,11 +317,11 @@ void sipm2pmt(const char *fname)
 	TLegend *lg = new TLegend(0.7, 0.85, 0.9, 0.93);
 	lg->AddEntry(hExp12BSiPM, "SiPM", "l");
 	lg->AddEntry(hExp12BPMT, "PMT", "l");
-	hExp12BSiPM->Draw("hist");
-	hExp12BPMT->Draw("hist,same");
+	hExp12BPMT->Draw("hist");
+	hExp12BSiPM->Draw("hist,same");
 	lg->Draw();
 	cv->cd(2);
-	hMC12BSiPM->Draw("hist");
-	hMC12BPMT->Draw("hist,same");
+	hMC12BPMT->Draw("hist");
+	hMC12BSiPM->Draw("hist,same");
 	lg->Draw();
 }

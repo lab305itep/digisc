@@ -266,7 +266,7 @@ void draw_phe(
 	TChain *tMC = new TChain("DANSSSignal", "MCSignal");
 	if (MCIndLY) {
 		for (i=0; i<32; i++) {
-			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d.root", 
+			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2_v2/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d.root", 
 				i/16, (i%16) + 1);
 			tMC->AddFile(strl);
 		}
@@ -821,7 +821,7 @@ public:
  */
 int DANSSGeom::GetKey(const char *str, const char *key)
 {
-	char *ptr = strstr(str, key);
+	char *ptr = (char *)strstr(str, key);
 	if (!ptr) return -1;	// not found
 	return strtol(ptr + strlen(key), NULL, 10);
 }
@@ -1035,7 +1035,7 @@ void cmp2calib(const char *fA, const char *fB, int what = 3)
 	h->Draw();
 }
 
-void cmpExp2MCcalib(const char *fname, const char *txtname)
+void cmpExp2MCcalib(const char *fname, const char *calibname, const char *txtname)
 {
 	char strE[256], strM[256];
 	int i, j;
@@ -1047,6 +1047,14 @@ void cmpExp2MCcalib(const char *fname, const char *txtname)
 	double diff2;
 	double Sum2;
 	int Cnt;
+	double mdn[MAXWFD][MAXCHAN];
+
+	// Get gains
+	FILE *fGain = fopen(calibname, "rb");
+	if (fGain) {
+		fread(mdn, sizeof(mdn), 1, fGain);
+	}
+	fclose(fGain);
 	
 	TFile *fIn = new TFile(fname);
 	if (!fIn->IsOpen()) return;
@@ -1069,8 +1077,8 @@ void cmpExp2MCcalib(const char *fname, const char *txtname)
 		diff2 = (vExp - vMC) * (vExp - vMC) / (eExp*eExp + eMC*eMC);
 		Sum2 += diff2;
 		Cnt++;
-		fprintf(fOut, "%2.2d.%2.2d : Exp %8.3f +- %6.3f [%8d hits]  <--> MC %8.3f +- %6.3f [%8d hits] ==>> %8.3f\n",
-			i, j, vExp, eExp, nExp, vMC, eMC, nMC, diff2);
+		fprintf(fOut, "%2.2d.%2.2d : Exp %8.3f +- %6.3f [%8d hits]  <--> MC %8.3f +- %6.3f [%8d hits] ==>> %8.3f Calib = %8.3f\n",
+			i, j, vExp, eExp, nExp, vMC, eMC, nMC, diff2, mdn[i][j]);
 	}
 	fprintf(fOut, "Sum2/n.d.f. = %f / %d \n", Sum2, Cnt);
 	fclose(fOut);

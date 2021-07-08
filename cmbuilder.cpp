@@ -45,13 +45,15 @@
 
 int IsFission(struct DanssEventStruct7 *DanssEvent)
 {
-	if (DanssEvent->PmtCleanEnergy + DanssEvent->SiPmCleanEnergy < 2*MINTRIGE || DanssEvent->PmtCleanEnergy + DanssEvent->SiPmCleanEnergy > 2*MAXTRIGE) return 0;
+	if (DanssEvent->PmtCleanEnergy + DanssEvent->SiPmCleanEnergy*1.08 < 2*MINTRIGE || 		// UGLY !
+		DanssEvent->PmtCleanEnergy + DanssEvent->SiPmCleanEnergy*1.08 > 2*MAXTRIGE) return 0;	// UGLY !
 	return 1;
 }
 
 int IsVeto(struct DanssEventStruct7 *Event)
 {
-	if (Event->VetoCleanEnergy > MINVETOE || Event->VetoCleanHits >= VETON || Event->PmtCleanEnergy > DANSSVETOE || Event->SiPmCleanEnergy > DANSSVETOE) return 1;
+	if (Event->VetoCleanEnergy > MINVETOE || Event->VetoCleanHits >= VETON || 
+		Event->PmtCleanEnergy + Event->SiPmCleanEnergy*1.08 > 2*DANSSVETOE) return 1;		// UGLY !
 	return 0;
 }
 
@@ -60,15 +62,15 @@ void Add2Cm(struct DanssEventStruct7 *DanssEvent, struct DanssCmStruct *DanssCm,
 	if (num >= 10) return;
 	DanssCm->number[num] = DanssEvent->number;
 	if (!num) DanssCm->unixTime = DanssEvent->unixTime;
-	DanssCm->SiPmCleanEnergy[num] = DanssEvent->SiPmCleanEnergy;
+	DanssCm->SiPmCleanEnergy[num] = DanssEvent->SiPmCleanEnergy * 1.08;				// UGLY !
 	DanssCm->PmtCleanEnergy[num] = DanssEvent->PmtCleanEnergy;
 
 	DanssCm->Hits[num] = DanssEvent->SiPmCleanHits;
-	DanssCm->NeutronEnergy[num] = (DanssEvent->SiPmCleanEnergy + DanssEvent->PmtCleanEnergy) / 2;
+	DanssCm->NeutronEnergy[num] = (DanssEvent->SiPmCleanEnergy*1.08 + DanssEvent->PmtCleanEnergy) / 2;	// UGLY !
 	memcpy(DanssCm->NeutronX[num], DanssEvent->NeutronX, sizeof(DanssEvent->NeutronX));
 	memcpy(DanssCm->PositronX[num], DanssEvent->PositronX, sizeof(DanssEvent->PositronX));
 	DanssCm->NeutronRadius[num] = -1;
-	DanssCm->PositronEnergy[num] = DanssEvent->PositronEnergy;
+	DanssCm->PositronEnergy[num] = DanssEvent->PositronEnergy * 1.04;				// UGLY !
 	
 	DanssCm->gtDiff[num] = DanssEvent->globalTime - globalTime;
 	DanssCm->Distance[num] = sqrt(

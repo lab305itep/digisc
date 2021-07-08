@@ -112,7 +112,7 @@ found:
 	sprintf(hitinfo, "%s/%3.3dxxx/hits_%6.6d.txt.bz2", HITINFODIR, fnum/1000, fnum);
 	
 	sprintf(str, "./digi_evtbuilder6_v%d -no_hit_tables -file %s -output %s/%3.3dxxx/danss_%6.6d.root "
-		"-flag 0x250002 -tcalib %s -hitinfo %s -deadlist dch_002210_089039.list", iver, clist, tdir, fnum/1000, fnum, tcalib, hitinfo);
+		"-flag 0x250002 -tcalib %s -hitinfo %s -deadlist dch_002210_102856.list", iver, clist, tdir, fnum/1000, fnum, tcalib, hitinfo);
 	irc = system(str);
 	if (irc) printf("Run %d: error %d returned: %m\n", fnum, irc);
 //		delete list file

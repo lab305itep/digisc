@@ -1,4 +1,4 @@
-void tstat(int first, int last, const char *hname = "hDT01c", const char *dir = "/home/clusters/rrcmpi/alekseev/igor/root6n12")
+void tstat(int first, int last, const char *hname = "hDT01c", const char *dir = "/home/clusters/rrcmpi/alekseev/igor/root8n1")
 {
 	int num, i, j;
 	TFile *f;

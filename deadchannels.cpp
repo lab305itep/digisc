@@ -34,7 +34,7 @@
 #include "TH1.h"
 #include "TH2.h"
 
-#define MAXMODULE	51
+#define MAXMODULE	56
 #define MAXCHANNEL	64
 #define MINEVENTS	1000000
 #define MINHITS		300
@@ -63,6 +63,9 @@ void ModTranslate(int Period, int hMod, int hChan, int &mod, int &chan)
 		case 51:
 			mod = 13;	// module 51 is the replacement of 13
 			break;
+		case 52:
+			mod = 43;	// module 52 is the replacement of 43
+			break;
 		default:
 			mod = hMod;
 			break;
@@ -83,14 +86,17 @@ void process(int run, const char *fmt, FILE *fOut)
     2 - board 13 repalced by board 51 : runs 69765 - XXXXXX
         board 20 repalced by board 25
         and connector 25.0 moved to 24.0 
+        board 43 replaced by board 52
     Boards appearence/disappearence:
     47 - 59260 - last run
     4  - 61541 - first run
     13 - 69739 - last run
-    51 - 69765 - first run
     20 - 69739 - last run
+    51 - 69765 - first run
     25.1 --> 24.1 - 69765 - first run
     20 --> 25 - 69765 - first run
+    43 - 89039 - last run
+    52 - 89360 - first run
 */
 	const unsigned short ChanMask[MAXMODULE][4] = {
 //			Runs 2210 - 61540 - we translate everything to this module/channel numeration
@@ -144,7 +150,12 @@ void process(int run, const char *fmt, FILE *fOut)
 		{0, 0, 0, 0},				// 48 - never used
 		{0, 0, 0, 0},				// 49 - never used
 		{0, 0, 0, 0},				// 50 - never used
-		{0, 0, 0, 0}				// 51 - not now
+		{0, 0, 0, 0},				// 51 - not now
+		{0, 0, 0, 0},				// 52 - not now
+		{0, 0, 0, 0},				// 53 - never used
+		{0, 0, 0, 0},				// 54 - never used
+		{0, 0, 0, 0},				// 55 - never used
+		{0, 0, 0, 0}				// 56 - never used
 	};
 	unsigned short ChanMet[MAXMODULE][4];
 	TTree *DanssEvent;

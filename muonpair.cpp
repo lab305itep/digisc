@@ -40,18 +40,6 @@
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
 #define MAXPHITS	10
 #define NRANDOM		16	// increase random statistics
-//#define CORR_P0		0.179	// cluster energy correction from MC
-//#define CORR_P1		0.929	// cluster energy correction from MC
-//#define CORR_PMT_P0	0.165	// cluster energy correction from MC
-//#define CORR_PMT_P1	0.929	// cluster energy correction from MC
-//#define CORR_SIPM_P0	0.187	// cluster energy correction from MC + 34 keV from SiPM to PMT comparison
-//#define CORR_SIPM_P1	0.920	// cluster energy correction from MC
-//#define CORR_P0		0.137	// Positron energy correction from MC 
-//#define CORR_P1		0.975	// Positron energy correction from MC
-//#define CORR_PMT_P0	0.126	// Positron energy correction from MC
-//#define CORR_PMT_P1	0.947	// Positron energy correction from MC
-//#define CORR_SIPM_P0	0.114	// Positron energy correction from MC
-//#define CORR_SIPM_P1	0.996	// Positron energy correction from MC
 
 #define iMaxDataElements 3000
 
@@ -97,7 +85,7 @@ int IsVeto(struct DanssEventStruct7 *DanssEvent)
 	float E;
 	int rc;
 	
-	E = (DanssEvent->SiPmCleanEnergy + DanssEvent->PmtCleanEnergy) / 2;
+	E = (DanssEvent->SiPmCleanEnergy*1.08 + DanssEvent->PmtCleanEnergy) / 2;			// UGLY !
 	rc = (E >= 20) || (DanssEvent->VetoCleanEnergy >= 4) || (DanssEvent->VetoCleanHits >= 2);
 	
 	return rc;
@@ -108,7 +96,7 @@ int IsMuon(struct DanssEventStruct7 *DanssEvent, struct HitStruct *Hits, int *NP
 	float E;
 	int i, j, rc;
 	
-	E = (DanssEvent->SiPmCleanEnergy + DanssEvent->PmtCleanEnergy) / 2;
+	E = (DanssEvent->SiPmCleanEnergy*1.08 + DanssEvent->PmtCleanEnergy) / 2;			// UGLY !
 	if (E < Criteria.MuonEnergy && DanssEvent->VetoCleanEnergy < Criteria.VetoEnergy) return 0;
 	if (DanssEvent->PmtCleanEnergy < Criteria.ProtonEnergy) return 0;
 	if (!Criteria.CheckHits) return 1;
@@ -120,7 +108,7 @@ int IsMuon(struct DanssEventStruct7 *DanssEvent, struct HitStruct *Hits, int *NP
 			if (Hits->type[j].z == Hits->type[i].z && abs(Hits->type[j].xy - Hits->type[i].xy) == 1) rc++;
 			if (abs(Hits->type[j].z - Hits->type[i].z) == 2 && abs(Hits->type[j].xy - Hits->type[i].xy) <= 1) rc++;
 		}
-		if (!rc && Hits->E[i] >= Criteria.ProtonEnergy) {
+		if (!rc && Hits->E[i]*1.08 >= Criteria.ProtonEnergy) {					// UGLY !
 			if (*NPHits < MAXPHITS) {
 				PHits[*NPHits].xy = Hits->type[i].xy;
 				PHits[*NPHits].z  = Hits->type[i].z;
@@ -147,8 +135,8 @@ int PatternCheck(int N0, struct HitStruct *Hits, int N1, struct PHits *PHits)
 int IsDelayed(struct DanssEventStruct7 *DanssEvent, struct HitStruct *HitArray, int NPHits, struct PHits *PHits)
 {
 	if (IsVeto(DanssEvent)) return 0;
-	if (DanssEvent->PositronEnergy < Criteria.ClusterEnergy) return 0;
-	if (DanssEvent->AnnihilationEnergy > Criteria.ExtraEnergy) return 0;
+	if (DanssEvent->PositronEnergy*1.04 < Criteria.ClusterEnergy) return 0;				// UGLY !
+	if (DanssEvent->AnnihilationEnergy*1.08 > Criteria.ExtraEnergy) return 0;			// UGLY !
 	if (Criteria.CheckHits && !PatternCheck(DanssEvent->NHits, HitArray, NPHits, PHits)) return 0;
 	return 1;
 }
@@ -170,37 +158,33 @@ void MakePair(
 	DanssPair->unixTime = PromptEvent->unixTime;
 	
 	DanssPair->SiPmHits[0] = PromptEvent->SiPmCleanHits;
-	DanssPair->SiPmEnergy[0] = PromptEvent->SiPmCleanEnergy;
+	DanssPair->SiPmEnergy[0] = PromptEvent->SiPmCleanEnergy * 1.08;					// UGLY !
 	DanssPair->PmtHits[0] = PromptEvent->PmtCleanHits;
 	DanssPair->PmtEnergy[0] = PromptEvent->PmtCleanEnergy;
 	DanssPair->VetoHits[0] = PromptEvent->VetoCleanHits;
 	DanssPair->VetoEnergy[0] = PromptEvent->VetoCleanEnergy;
 	DanssPair->SiPmHits[1] = DelayedEvent->SiPmCleanHits;
-	DanssPair->SiPmEnergy[1] = DelayedEvent->SiPmCleanEnergy;
+	DanssPair->SiPmEnergy[1] = DelayedEvent->SiPmCleanEnergy * 1.08;				// UGLY !
 	DanssPair->PmtHits[1] = DelayedEvent->PmtCleanHits;
 	DanssPair->PmtEnergy[1] = DelayedEvent->PmtCleanEnergy;
 	DanssPair->VetoHits[1] = DelayedEvent->VetoCleanHits;
 	DanssPair->VetoEnergy[1] = DelayedEvent->VetoCleanEnergy;
 
-	DanssPair->TotalEnergy = DelayedEvent->TotalEnergy;
+	DanssPair->TotalEnergy = DelayedEvent->TotalEnergy * 1.04;					// UGLY !
 	DanssPair->ClusterHits = DelayedEvent->PositronHits;
-	DanssPair->ClusterEnergy = DelayedEvent->PositronEnergy;
+	DanssPair->ClusterEnergy = DelayedEvent->PositronEnergy * 1.04;					// UGLY !
 	memcpy(DanssPair->ClusterX, DelayedEvent->PositronX, sizeof(DelayedEvent->PositronX));
-	DanssPair->ClusterSiPmEnergy = DelayedEvent->PositronSiPmEnergy;
+	DanssPair->ClusterSiPmEnergy = DelayedEvent->PositronSiPmEnergy * 1.08;				// UGLY !
 	DanssPair->ClusterPmtEnergy = DelayedEvent->PositronPmtEnergy;
 	DanssPair->OffClusterHits = DelayedEvent->AnnihilationGammas;
-	DanssPair->OffClusterEnergy = DelayedEvent->AnnihilationEnergy;
+	DanssPair->OffClusterEnergy = DelayedEvent->AnnihilationEnergy *1.08;				// UGLY !
 	
-	DanssPair->MuonEnergy = (PromptEvent->SiPmCleanEnergy + PromptEvent->PmtCleanEnergy) / 2;
+	DanssPair->MuonEnergy = (PromptEvent->SiPmCleanEnergy*1.08 + PromptEvent->PmtCleanEnergy) / 2;	// UGLY !
 	
 	DanssPair->gtDiff = (DelayedEvent->globalTime - PromptEvent->globalTime) / GFREQ2US;
 
 	DanssPair->NPHits = PromptEvent->NHits;
 	DanssPair->NDHits = DelayedEvent->NHits;
-//		31/10/19 - We don't need this correction for 12B electrons !!!
-//	DanssPair->ClusterEnergy = (DanssPair->ClusterEnergy - CORR_P0) / CORR_P1;
-//	DanssPair->ClusterPmtEnergy = (DanssPair->ClusterPmtEnergy - CORR_PMT_P0) / CORR_PMT_P1;
-//	DanssPair->ClusterSiPmEnergy = (DanssPair->ClusterSiPmEnergy - CORR_SIPM_P0) / CORR_SIPM_P1;
 }
 
 void SetCriteria(void)

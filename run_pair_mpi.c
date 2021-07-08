@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
 	char *runlist;
 	char *runnum;
 	int i;
-	const char *src_dir = "/home/clusters/rrcmpi/alekseev/igor/root6n1";
-	const char *tgt_dir = "/home/clusters/rrcmpi/alekseev/igor/pair7n1";
+	const char *src_dir = "/home/clusters/rrcmpi/alekseev/igor/root8n1";
+	const char *tgt_dir = "/home/clusters/rrcmpi/alekseev/igor/pair8n1";
 	const char *ptr;
 	
 	t0 = time(NULL);
