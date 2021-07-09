@@ -45,7 +45,7 @@
 int IsVeto(struct DanssEventStruct7 *Event)
 {
 	if (Event->VetoCleanEnergy > 4 || Event->VetoCleanHits >= 2 || 
-		Event->PmtCleanEnergy + Event->SiPmCleanEnergy > 40 || 
+		Event->PmtCleanEnergy + Event->SiPmCleanEnergy*1.08 > 40 || 	// UGLY !
 		Event->BottomLayersEnergy > 3) return 1;
 	return 0;
 }

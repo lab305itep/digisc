@@ -157,16 +157,17 @@ int main(int argc, char **argv)
 	
 	nMax = TTree::kMaxEntries;
 	iFirst = 0;
-	TFile *fIn = new TFile(argv[1]);
+//	TFile *fIn = new TFile(argv[1]);
 	TFile *fOut = new TFile(argv[2], "RECREATE");
 	if (argc > 3) nMax = strtol(argv[3], NULL, 10);
 	if (argc > 4) iFirst = strtol(argv[4], NULL, 10);
-	if (!fIn->IsOpen() || !fOut->IsOpen()) return 20;
+	if (!fOut->IsOpen()) return 20;
 /****************************************************************
  *		Input file trees				*
  ****************************************************************/
 //		DANSSParticle - exact copy
-	TTree *tInParticle = (TTree *) fIn->Get("DANSSParticle");
+	TFile *fInParticle = new TFile(argv[1]);
+	TTree *tInParticle = (TTree *) fInParticle->Get("DANSSParticle");
 	if (!tInParticle) {
 		printf("Tree DANSSParticle not found.\n");
 		return 30;
@@ -176,7 +177,8 @@ int main(int argc, char **argv)
 	tInParticle->SetBranchAddress("ParticleMaterialName", ParticleMaterialName);
 	tInParticle->SetBranchAddress("ParticleCreatorProcessName", ParticleCreatorProcessName);
 //		DANSSPrimary - exact copy
-	TTree *tInPrimary = (TTree *) fIn->Get("DANSSPrimary");
+	TFile *fInPrimary = new TFile(argv[1]);
+	TTree *tInPrimary = (TTree *) fInPrimary->Get("DANSSPrimary");
 	if (!tInPrimary) {
 		printf("Tree DANSSPrimary not found.\n");
 		return 31;
@@ -185,20 +187,23 @@ int main(int argc, char **argv)
 	tInPrimary->SetBranchAddress("PrimaryName", PrimaryName);
 	tInPrimary->SetBranchAddress("PrimaryMaterialName", PrimaryMaterialName);
 //		DANSSRun - exact copy
-	TTree *tInRun = (TTree *) fIn->Get("DANSSRun");
+	TFile *fInRun = new TFile(argv[1]);
+	TTree *tInRun = (TTree *) fInRun->Get("DANSSRun");
 	if (!tInRun) {
 		printf("Tree DANSSRun not found.\n");
 		return 32;
 	}
 //		DANSSEvent - Open new
-	TTree *tInEvent = (TTree *) fIn->Get("DANSSEvent");
+	TFile *fInEvent = new TFile(argv[1]);
+	TTree *tInEvent = (TTree *) fInEvent->Get("DANSSEvent");
 	if (!tInEvent) {
 		printf("Tree DANSSEvent not found.\n");
 		return 33;
 	}
 	tInEvent->SetBranchAddress("EventData", &EventDataNew);
 //		DANSSSignal - Open new
-	TTree *tInSignal = (TTree *) fIn->Get("DANSSSignal");
+	TFile *fInSignal = new TFile(argv[1]);
+	TTree *tInSignal = (TTree *) fInSignal->Get("DANSSSignal");
 	if (!tInSignal) {
 		printf("Tree DANSSSignal not found.\n");
 		return 34;
@@ -207,28 +212,32 @@ int main(int argc, char **argv)
 	tInSignal->SetBranchAddress("PMTSignalData", &PMTSignalData);
 	tInSignal->SetBranchAddress("RealSignalData",&RealSignalDataNew);
 //		DANSSVeto - Open new
-	TTree *tInVeto = (TTree *) fIn->Get("DANSSVeto");
+	TFile *fInVeto = new TFile(argv[1]);
+	TTree *tInVeto = (TTree *) fInVeto->Get("DANSSVeto");
 	if (!tInVeto) {
 		printf("Tree DANSSVeto not found.\n");
 		return 35;
 	}
 	tInVeto->SetBranchAddress("VetoSignalData", &VetoSignalData);
 //		DANSS*Hit - new only
-	TTree *tInSiPMHit = (TTree *) fIn->Get("DANSSSiPMHit");
+	TFile *fInSiPMHit = new TFile(argv[1]);
+	TTree *tInSiPMHit = (TTree *) fInSiPMHit->Get("DANSSSiPMHit");
 	if (!tInSiPMHit) {
 		printf("Tree DANSSSiPMHit not found.\n");
 		return 36;
 	}
 	tInSiPMHit->SetBranchAddress("SiPMHitBranch", &SiPMHitBranch);
 	
-	TTree *tInPMTHit = (TTree *) fIn->Get("DANSSPMTHit");
+	TFile *fInPMTHit = new TFile(argv[1]);
+	TTree *tInPMTHit = (TTree *) fInPMTHit->Get("DANSSPMTHit");
 	if (!tInPMTHit) {
 		printf("Tree DANSSPMTHit not found.\n");
 		return 37;
 	}
 	tInPMTHit->SetBranchAddress("PMTHitBranch", &PMTHitBranch);
 	
-	TTree *tInVetoHit = (TTree *) fIn->Get("DANSSVetoHit");
+	TFile *fInVetoHit = new TFile(argv[1]);
+	TTree *tInVetoHit = (TTree *) fInVetoHit->Get("DANSSVetoHit");
 	if (!tInVetoHit) {
 		printf("Tree DANSSVetoHit not found.\n");
 		return 38;
@@ -416,7 +425,15 @@ int main(int argc, char **argv)
 	tOutVeto->Write();
 	tOutSiPMTimeline->Write();
 	fOut->Close();
-	fIn->Close();
+	fInParticle->Close();
+	fInPrimary->Close();
+	fInEvent->Close();
+	fInRun->Close();
+	fInSignal->Close();
+	fInVeto->Close();
+	fInSiPMHit->Close();
+	fInPMTHit->Close();
+	fInVetoHit->Close();
 	if (SiPMHits) free(SiPMHits);
 	if (PMTHits) free(PMTHits);
 	if (VetoHits) free(VetoHits);
