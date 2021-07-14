@@ -7,7 +7,7 @@
 
 char * strptime (const char *S, const char *FMT, struct tm *TP);
 
-#define MAXRUN		100000
+#define MAXRUN		200000
 #define MAXTOKEN	25
 #define POWER_ZERO	10		// MW
 #define POWER_FULL	2850		// MW
@@ -45,7 +45,8 @@ int GlobalPeriod(int run, enum PowerType ptype)
 	if (run < 24000) return 2;		// October 2016 - July 2017: till the end of Campaign 4
 	if (run < 37000) return 3;		// August 2017 - March 2018: Campaign 5 till detector repair
 	if (run < 56000) return 4;		// May 2018 - January 2019: after detector repair till the end of  Campaign 5
-	return 5;				// Campaign 6
+	if (run < 87500) return 5;		// Campaign 6
+	return 6;				// Campaign 7
 }
 
 void StrSplit(char *str, char **token)

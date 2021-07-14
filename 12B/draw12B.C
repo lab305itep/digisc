@@ -124,7 +124,7 @@ void draw12B(int from, int to)
 	sprintf(str, "ClusterPmtEnergy * %6.4f", PMTScale);
 	chA->Project(hExpPMT->GetName(), str, "gtDiff > 500");
 	chR->Project(hRndmPMT->GetName(), str, "gtDiff > 500");
-	sprintf(mccut, "PositronEnergy * 1.04");								// UGLY ! // not exact !!!
+	sprintf(mccut, "AnnihilationEnergy * 1.08 < 0.25");							// UGLY ! // not exact !!!
 	sprintf(str, "MyRandom::GausAdd(PositronEnergy * 1.04, %6.4f, %6.4f)", RndmSqe, RndmC);			// UGLY !
 	tMC->Project(hMC->GetName(), str, mccut);
 	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy * 1.08, %6.4f, %6.4f)", SiPMRndmSqe, SiPMRndmC);	// UGLY !

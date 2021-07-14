@@ -29,9 +29,9 @@ int main(int argc, char *argv[])
 	serial += start_run;
 	
 	rootdir = getenv("ROOT_DIR");
-	if (!rootdir) rootdir = "/home/clusters/rrcmpi/alekseev/igor/root6n4/MC/DataTakingPeriod01/Eff/";
+	if (!rootdir) rootdir = "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/Eff/";
 	pairdir = getenv("PAIR_DIR");
-	if (!pairdir) pairdir = "/home/clusters/rrcmpi/alekseev/igor/pair7n4/MC/DataTakingPeriod01/Eff/";
+	if (!pairdir) pairdir = "/home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/Eff/";
 	fuellist = getenv("FUEL_LIST");
 	if (!fuellist) fuellist = "fuel.list";
 	vardir = getenv("VAR_DIR");
@@ -40,6 +40,20 @@ int main(int argc, char *argv[])
 	sprintf(str, "%s/%d.list", vardir, serial);
 	irc = access(str, R_OK);
 	if (irc) goto fin;
+	
+	sprintf(str, "mkdir -p %s", rootdir);
+	irc = system(str);
+	if (irc) {
+		printf("DIGI Run %d: mkdir %s error %d returned: %m\n", serial, rootdir, irc);
+		goto fin;
+	}
+
+	sprintf(str, "mkdir -p %s", pairdir);
+	irc = system(str);
+	if (irc) {
+		printf("DIGI Run %d: mkdir %s error %d returned: %m\n", serial, rootdir, irc);
+		goto fin;
+	}
 	
 	setenv("DANSSRAWREC_HOME", "../lib_v3.2", 1);
 //			Run digi

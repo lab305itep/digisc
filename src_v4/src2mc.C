@@ -1,6 +1,23 @@
+double chi2Hist(TH1 *hA, TH1* hB, int firstbin, int lastbin)
+{
+	double sum;
+	int i;
+	double val, err2;
+	
+	sum = 0;
+	for (i=firstbin; i<= lastbin; i++)
+	{
+		val = hA->GetBinContent(i) - hB->GetBinContent(i);
+		err2 = hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i);
+		sum += val * val / err2;
+	}
+	return sum;
+}
+
 void src2mc(const char *exp, const char *mc, const char *fname = NULL)
 {
 	int i;
+	char str[128];
 	TObject *fun;
 	const char *expHists[4] = {"hExpC", "hExpSiPMC", "hExpPMTC", "hHitsC"};
 	const char *mcHists[4] = {"hMc", "hMcSiPM", "hMcPMT", "hMcHits"};
@@ -38,6 +55,7 @@ void src2mc(const char *exp, const char *mc, const char *fname = NULL)
 	TLegend *lg = new TLegend(0.65, 0.75, 0.9, 0.9);
 	lg->AddEntry(hExp[3], "Experiment", "pl");
 	lg->AddEntry(hMc[3], "Monte Carlo", "l");
+	TLatex *txt = new TLatex();
 	
 	TCanvas *cv = new TCanvas("CV", "Exp versus MC", 1200, 900);
 	cv->Divide(2, 2);
@@ -46,6 +64,10 @@ void src2mc(const char *exp, const char *mc, const char *fname = NULL)
 		hMc[i]->Draw("hist");
 		hExp[i]->Draw("e,same");
 		lg->Draw();
+		if (i != 3) {
+			sprintf(str, "#chi^{2}/n.d.f.=%5.1f / %d", chi2Hist(hExp[i], hMc[i], 10, 30), 30 - 10);
+			txt->DrawLatexNDC(0.5, 0.65, str);
+		}
 	}
 	if (fname) cv->SaveAs(fname);
 }

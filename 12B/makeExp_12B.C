@@ -48,7 +48,7 @@ TChain *create_chain(const char *name, int from, int to)
 	ch = new TChain(name, name);
 	for (i=from; i<=to; i++) {
 		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon2n2/%3.3dxxx/muon_%6.6d.root", i/1000, i);
+		sprintf(str, "muon_dir/%3.3dxxx/muon_%6.6d.root", i/1000, i);
 		num = access(str, R_OK);	// R_OK = 4 - test read access
 		if (num) continue;
 		ch->AddFile(str, 0);
@@ -60,7 +60,7 @@ TChain *create_chain(const char *name, int from, int to)
 	return ch;
 }
 
-void makeExp_12B(int from, int to, double scale)
+void makeExp_12B(int from, int to)
 {
 	char str[1024];
 
@@ -68,21 +68,46 @@ void makeExp_12B(int from, int to, double scale)
 	TChain *chR = create_chain("MuonRandom", from, to);
 	if (!chA || !chR) return;
 	
-	sprintf(str, "Danss_12B_scale_%5.3f.root", scale);
-	TFile *fOut = new TFile(str, "RECREATE");
+	TFile *fOut = new TFile("Danss_12B_v8.1.root", "RECREATE");
 
-	sprintf(str, "Experiment with ^{12}B cuts, %s;MeV", "ClusterEnergy");
-	TH1D *hExp = new TH1D("hExp12B", str, 80, 0, 20);
-	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV", "ClusterEnergy");
-	TH1D *hRndm = new TH1D("hRndm12B", str, 80, 0, 20);
-	sprintf(str, "ClusterEnergy * %6.4f", scale);
-	chA->Project(hExp->GetName(), str, "gtDiff > 500");
-	chR->Project(hRndm->GetName(), str, "gtDiff > 500");
+	TH1D *hExp = new TH1D("hExp12B", "Experiment with ^{12}B cuts, SiPM+PMT;MeV", 80, 0, 20);
+	TH1D *hExpSiPM = new TH1D("hExp12BSiPM", "Experiment with ^{12}B cuts, SiPM;MeV", 80, 0, 20);
+	TH1D *hExpPMT = new TH1D("hExp12BPMT", "Experiment with ^{12}B cuts, PMT;MeV", 80, 0, 20);
+	TH1D *hRndm = new TH1D("hRndm12B", "Random with ^{12}B cuts, SiPM+PMT;MeV", 80, 0, 20);
+	TH1D *hRndmSiPM = new TH1D("hRndm12BSiPM", "Random with ^{12}B cuts, SiPM;MeV", 80, 0, 20);
+	TH1D *hRndmPMT = new TH1D("hRndm12BPMT", "Random with ^{12}B cuts, PMT;MeV", 80, 0, 20);
+	TH1D *hExpT = new TH1D("hExp12BT", "Time from muon, experiment;ms", 99, 1, 100);
+	TH1D *hRndmT = new TH1D("hRndm12BT", "Time from muon, MC;ms", 99, 1, 100);
+
+	chA->Project(hExp->GetName(), "ClusterEnergy", "gtDiff > 500");
+	chR->Project(hRndm->GetName(), "ClusterEnergy", "gtDiff > 500");
+	chA->Project(hExpSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500");
+	chR->Project(hRndmSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500");
+	chA->Project(hExpPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500");
+	chR->Project(hRndmPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500");
+	chA->Project(hExpT->GetName(), "gtDiff / 1000.0");
+	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0");
+	
 	hExp->Sumw2();
 	hRndm->Sumw2();
 	hExp->Add(hRndm, -1.0/16);
+	hExpSiPM->Sumw2();
+	hRndmSiPM->Sumw2();
+	hExpSiPM->Add(hRndmSiPM, -1.0/16);
+	hExpPMT->Sumw2();
+	hRndmPMT->Sumw2();
+	hExpPMT->Add(hRndmPMT, -1.0/16);
+	hExpT->Sumw2();
+	hRndmT->Sumw2();
+	hExpT->Add(hRndmT, -1.0/16);
 	fOut->cd();
 	hExp->Write();
 	hRndm->Write();
+	hExpSiPM->Write();
+	hRndmSiPM->Write();
+	hExpPMT->Write();
+	hRndmPMT->Write();
+	hExpT->Write();
+	hRndmT->Write();
 	fOut->Close();
 }

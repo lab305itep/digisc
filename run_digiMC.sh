@@ -1,12 +1,13 @@
 #!/bin/bash
 #PBS -N run_digiMC
-#PBS -q medium
+#PBS -q long
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
 #PBS -l nodes=1
-#PBS -l walltime=23:00:00
+#PBS -l walltime=48:00:00
 cd /home/itep/alekseev/igor
 
+OVERWRITE=NO
 MCRAW=MC_RAW
 OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/
 DIGI=digi_MC
@@ -28,9 +29,13 @@ do_sources()
 	RAWLIST=(12B_v2 22Na_v2 22Na_92_5_cm_pos_v2 248Cm_v2 248Cm_92_5_cm_pos_v2 60Co_v2 60Co_92_5_cm_pos_v2)
 	
 	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/RadSources_v2
-	for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
-		${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$i]}/DANSS0_1.root ${DEAD}
-	done
+	if [ "x$1" == "x" ] ; then
+		for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
+			${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$i]}/DANSS0_1.root ${DEAD}
+		done
+	else
+		${EXE} ${DIGIN}/${SRCLIST[$1]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$1]}/DANSS0_1.root ${DEAD} -events 500000
+	fi
 }
 
 do_neutrons()
@@ -67,6 +72,43 @@ do_mudecay()
 		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff_v2/DANSS0_2.root ${DEAD}
 }
 
-do_mudecay
+# Usage: do_IBDdir templatein templateraw outdir nser ninser
+do_IBDdir()
+{
+	tplin=$1
+	tplraw=$2
+	outdir=$3
+	nser=$4
+	ninser=$5
+	for ((i=0;$i<nser;i=$i+1)) ; do
+		for ((j=1;$j<=ninser;j=$j+1)) ; do
+			namein=`printf "$tplin" $i $j`
+			nameraw=`printf "$tplraw" $i $j`
+			if [ $OVERWRITE == "NO" ] ; then
+				nameout=$outdir/`basename $namein`
+				nameout=${nameout/.digi/.root}
+				if [ -f $nameout ] ; then
+					continue
+				fi
+			fi
+			if [ -f $namein ] ; then
+				${EXE} $namein 0x870000 $outdir -mcfile $nameraw ${DEAD}
+			fi
+		done
+	done
+}
+
+do_IBD()
+{
+	digi_ibd=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/IBD/
+	raw_ibd=/home/clusters/rrcmpi/danss/MC_RAW/IBD/
+	do_IBDdir "${digi_ibd}235U/mc_IBD_indLY_transcode_rawProc_pedSim_235U_%2.2d_%2.2d.digi" "${raw_ibd}235U/DANSS%d_%d.root" ${OUTDIR}/IBD/235U 3 4
+	do_IBDdir "${digi_ibd}238U/mc_IBD_indLY_transcode_rawProc_pedSim_238U_%2.2d_%2.2d.digi" "${raw_ibd}238U/DANSS%d_%d.root" ${OUTDIR}/IBD/238U 1 4
+	do_IBDdir "${digi_ibd}239Pu/mc_IBD_indLY_transcode_rawProc_pedSim_239Pu_%2.2d_%2.2d.digi" "${raw_ibd}239Pu/DANSS%d_%d.root" ${OUTDIR}/IBD/239Pu 3 4
+	do_IBDdir "${digi_ibd}241Pu/mc_IBD_indLY_transcode_rawProc_pedSim_241Pu_%2.2d_%2.2d.digi" "${raw_ibd}241Pu/DANSS%d_%d.root" ${OUTDIR}/IBD/241Pu 1 4
+	do_IBDdir "${digi_ibd}FS/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d.digi" "${raw_ibd}Flat_spectrum/DANSS%d_%d.root" ${OUTDIR}/IBD/FS 10 16
+}
+
+do_sources 3
 
 exit 0

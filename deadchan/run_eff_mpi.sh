@@ -1,21 +1,18 @@
 #!/bin/bash
-#PBS -N efficiency
+#PBS -N efficiency241Pu
 #PBS -q mpi
-#PBS -l nodes=19
+#PBS -l nodes=23
 #PBS -l walltime=50:00:00
-#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/efficiency.out
-#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/efficiency.err
+#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/efficiency241Pu.out
+#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/efficiency241Pu.err
 date
 cd /home/itep/alekseev/igor/deadchan
-export ROOT_DIR=/home/clusters/rrcmpi/alekseev/igor/root6n12/MC/DataTakingPeriod01/EffGd/
-export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair7n15/MC/DataTakingPeriod01/EffGd/
-export FUEL_LIST=/home/itep/alekseev/igor/deadchan/fuelGd.list
-export VAR_DIR=var_fixed
+export ROOT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/Eff/241Pu
+export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/Eff/241Pu
+export FUEL_LIST=/home/itep/alekseev/igor/deadchan/fuel_241Pu_v8.1.list
+export VAR_DIR=var_fixed_241Pu_v8.1
 
-### for ((i=0; $i<173; i=$i + 45 )) ; do
-	mpirun --mca btl ^tcp run_eff_mpi
-### done
+mpirun --mca btl ^tcp run_eff_mpi
 
-## root -l -q -b "calc_eff.C(19, \"2210_78234\", \"$VAR_DIR\", 15000000)"
 date
 exit 0
