@@ -1,15 +1,15 @@
 #!/bin/bash
 #PBS -N MonoNu6
 #PBS -q mpi
-#PBS -l nodes=200
+#PBS -l nodes=160
 #PBS -l walltime=5:00:00
 #PBS -l pmem=3Gb
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu6.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu6.err
 cd /home/itep/alekseev/igor/MonoNu
 
-export ROOTVER=6n12
-export PAIRVER=7n15
+export ROOTVER=8n1
+export PAIRVER=8n1
 #export MONO_ARG="0.12 0.04 1.00"
 #export MONO_ARG="0.12 0.04 0.98"
 #export MONO_ARG="0.12 0.04 1.02"
@@ -41,10 +41,10 @@ esac
 export FLAT_DEAD
 export FLAT_OPT="-smear $ARG1 $ARG2 -mcscale $ARG3"
 
-export FLAT_RAW=/home/itep/alekseev/igor/MC_rawGd/Flat_spectrum_new_Gd_big_stat
-export FLAT_DIGI=/home/clusters/rrcmpi/alekseev/igor/MCFlat
-export ROOTDIR=/home/clusters/rrcmpi/alekseev/igor/root${ROOTVER}/MC/DataTakingPeriod01/FlatGd/${DIRNAME}
-export PAIRDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PAIRVER}/MC/DataTakingPeriod01/FlatGd/${DIRNAME}
+export FLAT_RAW=/home/clusters/rrcmpi/danss/MC_RAW/IBD/FS
+export FLAT_DIGI=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/IBD/FS
+export ROOTDIR=/home/clusters/rrcmpi/alekseev/igor/root${ROOTVER}/MC/IBD/${DIRNAME}
+export PAIRDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PAIRVER}/MC/IBD/${DIRNAME}
 LIST=${PAIRDIR}/run_list.txt
 HIST=${PAIRDIR}/${DIRNAME}
 DLIST=${ROOTDIR}/.tmp.list
@@ -57,20 +57,20 @@ rm -f $LIST
 
 mpirun --mca btl ^tcp run_flat_mpi
 
-for k in 1 2 3 4 5 6 7 8 ; do
-	for i in 0 1 2 3 4 ; do
-		for j in A B C D E ; do
-			PNAME=${PAIRDIR}/Ready_${k}/mc_NeutrinoFlat_glbLY_transcode_rawProc_pedSim_${i}_${j}.root
-			INAME=${PAIRDIR}/Ready_${k}/mc_NeutrinoFlat_info_${i}_${j}.root
-			if [ -f $PNAME ] && [ -f $INAME ] ; then
-				echo $PNAME $INAME >> ${LIST}
-			fi
-		done
+for ((k=0;$k<10;k=$k+1)) ; do
+	for ((i=1;$i<=16;i=$i+1)) ; do
+		PNAME=`printf "${PAIRDIR}/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d.root" $k $i`
+		INAME=`printf "${PAIRDIR}/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d_info.root" $k $i`
+		if [ -f $PNAME ] && [ -f $INAME ] ; then
+			echo $PNAME $INAME >> ${LIST}
+		fi
 	done
 done
 
 $DBG ./mc_mono_nu $LIST ${HIST}.root
 $DBG root -l -b -q "mc_mono_neutrinos.C(\"${HIST}\")"
+
+exit 0
 
 $DBG ./mc_mono_nu $LIST ${HIST}p0.05.root "1" "0.05"
 $DBG root -l -b -q "mc_mono_neutrinos.C(\"${HIST}p0.05\")"

@@ -25,8 +25,9 @@ do_sources()
 		 mc_248Cm_indLY_transcode_rawProc_pedSim.digi \
 		 mc_248Cm_92_5_cmPos_indLY_transcode_rawProc_pedSim.digi \
 		 mc_60Co_indLY_transcode_rawProc_pedSim.digi \
-		 mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.digi)
-	RAWLIST=(12B_v2 22Na_v2 22Na_92_5_cm_pos_v2 248Cm_v2 248Cm_92_5_cm_pos_v2 60Co_v2 60Co_92_5_cm_pos_v2)
+		 mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.digi\
+		 mc_12B-DB_indLY_transcode_rawProc_pedSim.digi)
+	RAWLIST=(12B_v2 22Na_v2 22Na_92_5_cm_pos_v2 248Cm_v2 248Cm_92_5_cm_pos_v2 60Co_v2 60Co_92_5_cm_pos_v2 12B-DB)
 	
 	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/RadSources_v2
 	if [ "x$1" == "x" ] ; then
@@ -68,8 +69,10 @@ do_muons()
 do_mudecay()
 {
 	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/Muons_v2
-	${EXE} ${DIGIN}/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
-		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff_v2/DANSS0_2.root ${DEAD}
+#	${EXE} ${DIGIN}/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
+#		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff_v2/DANSS0_2.root ${DEAD}
+	${EXE} ${DIGIN}/mc_MuonsMuPlus_indLY_transcode_rawProc_pedSim_01.digi 0x70000 \
+		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/muplus/DANSS0_1.root ${DEAD}
 }
 
 # Usage: do_IBDdir templatein templateraw outdir nser ninser
@@ -109,6 +112,7 @@ do_IBD()
 	do_IBDdir "${digi_ibd}FS/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d.digi" "${raw_ibd}Flat_spectrum/DANSS%d_%d.root" ${OUTDIR}/IBD/FS 10 16
 }
 
-do_sources 3
+do_mudecay
+do_sources 7
 
 exit 0

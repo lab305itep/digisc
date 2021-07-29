@@ -82,7 +82,7 @@ int main(int argc, char **argv)
         
         shift = (argc > 4) ? argv[4] : "0.0";
 	
-	sprintf(str, "PositronEnergy + %s:ParticleEnergy+MCPositronEnergy + %f", shift, deltaM);
+	sprintf(str, "PositronEnergy + %s:MCNeutronEnergy+MCPositronEnergy + %f", shift, deltaM);
 	chain->Project(h->GetName(), str, ct);
 	
 	h->Write();

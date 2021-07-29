@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
 	
-	sprintf(str, "./process_flat.sh %d %d %c", serial/25, ((serial/5) %5), 'A' + (serial % 5));
+	sprintf(str, "./process_flat.sh %d", serial);
 	irc = system(str);
 	if (irc) {
 		printf("Run %d: error %d returned: %m\n", serial, irc);

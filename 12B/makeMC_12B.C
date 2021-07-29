@@ -40,7 +40,7 @@ void makeMC_12B(const char *mcname, double scale)
 	if (!fMC->IsOpen()) return;
 	TTree *tMC = (TTree *) fMC->Get("DanssEvent");
 	
-	sprintf(str, "MC_12B_v8.1_%5.3f.root", scale);
+	sprintf(str, "MC_12B-DB_v8.1_%5.3f.root", scale);
 	TFile *fOut = new TFile(str, "RECREATE");
 	
 	TH1D *hMC = new TH1D("hMC12B", "MC of ^{12}B decay, SiPM+PMT;MeV", 80, 0, 20);
@@ -48,7 +48,8 @@ void makeMC_12B(const char *mcname, double scale)
 	TH1D *hMCPMT = new TH1D("hMC12BPMT", "MC of ^{12}B decay, PMT;MeV", 80, 0, 20);
 	TH1D *hMCT = new TH1D("hMC12BT", "Time from muon, MC;ms", 99, 1, 100);
 	
-	TCut mccut("TimelineShift > 500000 && AnnihilationEnergy*1.08 < 0.25 && PositronEnergy*1.04 > 3.0");	// UGLY !
+//	TCut mccut("TimelineShift > 500000 && AnnihilationEnergy*1.08 < 0.25 && PositronEnergy*1.04 > 3.0");	// UGLY !
+	TCut mccut("AnnihilationEnergy*1.08 < 0.25 && PositronEnergy*1.04 > 3.0");	// UGLY !
 
 	sprintf(str, "MyRandom::GausAdd(PositronEnergy*1.04*%5.3f, %6.4f, %6.4f)", scale, RndmSqe, RndmC);		// UGLY !
 	tMC->Project(hMC->GetName(), str, mccut);

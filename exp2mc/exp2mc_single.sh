@@ -7,8 +7,8 @@
 #PBS -l walltime=2:00:00
 cd /home/itep/alekseev/igor/exp2mc
 
-root -l -b -q "exp2mc.C(\"/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v3f2-calc.root\", \"hSum_Main\", 34.0, 1.005, -0.050)"
-root -l -b -q "exp2mc.C(\"/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v3f2-calc.root\", \"hSum_Main\", 34.0, 1.000, -0.050)"
-root -l -b -q "exp2mc.C(\"/home/clusters/rrcmpi/alekseev/igor/apr16_feb20/base_v3f2-calc.root\", \"hSum_Main\", 34.0, 0.995, -0.050)"
-
+for ((r=96;$r<110;r=$r+1)) ; do
+	rr=`printf "%d.%2.2d0" $((r/100)) $((r%100))`
+	root -l -b -q "exp2mc.C(\"/home/clusters/rrcmpi/alekseev/igor/apr16_apr21/base_single-calc.root\", \"hSum_Main\", 32.7, $rr, 0, \"PositronHits == 1\", \"one\")"
+done
 exit 0

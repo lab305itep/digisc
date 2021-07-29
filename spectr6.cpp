@@ -11,8 +11,13 @@
 
 #define NEBINS 128
 
-const char *NeutronCorrN = "0.003244-0.000134*x";
-const char *NeutronCorrC = "0.01087-0.000424*x";
+const char *NeutronCorrN = "0.5109-0.01932*x";		// neutron correction for signal per day
+const char *NeutronCorrC = "2.143-0.09811*x";		// neutron correction for cosmic per day
+const char *LowMuonCorr = "10.7*exp(-1.00*x)";		// low energy reactor off correction
+const double mHz2day = 86.4;				// conversion constant
+
+//const char *NeutronCorrN = "0.003244-0.000134*x";
+//const char *NeutronCorrC = "0.01087-0.000424*x";
 //const char *NeutronCorrN = "0.003475-0.000152*x";
 //const char *NeutronCorrC = "0.01138-0.000437*x";
 //const char *NeutronCorrN = "0.004800-0.000225*x";
@@ -66,6 +71,7 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 //		Background tail correction (mHz)
 	TF1 fBgndN("fBgndN", NeutronCorrN, 0, 100);
 	TF1 fBgndC("fBgndC", NeutronCorrC, 0, 100);
+	TF1 fBgndE("fBgndE", LowMuonCorr, 0, 100);
 
 	TH1D *hSig  = new TH1D("hSig",  "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
 	TH1D *hBgnd = new TH1D("hCosm", "Positron spectrum;MeV;mHz/125 keV", NEBINS, 0, 16);
@@ -86,8 +92,9 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 		hBgnd->Add(hRBgnd, -1000.0/ptr2->GetUpTime());
 	}
 
-	hSig->Add(&fBgndN, -1.0);
-	hBgnd->Add(&fBgndC, -1.0);
+	hSig->Add(&fBgndN, -1.0/mHz2day);
+	hSig->Add(&fBgndE, -1.0/mHz2day);
+	hBgnd->Add(&fBgndC, -1.0/mHz2day);
 	hRes->Add(hSig, hBgnd, 1, -bgnd * bgScale);
 	fRoot->cd();
 	hSig->Write();

@@ -71,22 +71,29 @@ int main(int argc, char **argv)
 
 	OutFile->cd();
 	OutTree = new TTree("FromMC", "FromMC");
-	OutTree->Branch("FromMC", &FromMC, "MCPositronEnergy/F:MCPositronX[3]");
+	OutTree->Branch("FromMC", &FromMC, "MCPositronEnergy/F:MCPositronX[3]:MCNeutronEnergy");
 
 	for (i=0, j=0; i<N; i++) {
 		PairTree->GetEntry(i);
-		for (;j<K; j++) {
+		for (;j<K-1; j++) {
 			MCTree->GetEntry(j);
 			if (MCEvent.EventID == MCParticle.EventID && MCParticle.ID == 1) break;	// search for positron
 		}
-		if (j == K) {
-			printf("Very strange EventID = %f not found in MC\n", MCEvent.EventID);
+		if (j == K-1) {
+			printf("Very strange EventID = %f positron not found in MC\n", MCEvent.EventID);
 			break;
 		}
 		FromMC.MCPositronEnergy = MCParticle.ParticleEnergy;
 		FromMC.MCPositronX[0] = 48.0 - MCParticle.X / 10000.0;	// um to cm
 		FromMC.MCPositronX[1] = 48.0 - MCParticle.Y / 10000.0;	// um to cm
 		FromMC.MCPositronX[2] = 49.5 + MCParticle.Z / 10000.0;	// um to cm
+		j++;
+		MCTree->GetEntry(j);
+		if (MCEvent.EventID != MCParticle.EventID || MCParticle.ID != 2) {	// neutron should be here !
+			printf("Very strange EventID = %f neutron not found in MC\n", MCEvent.EventID);
+			break;
+		}
+		FromMC.MCNeutronEnergy = MCParticle.ParticleEnergy;
 		OutTree->Fill();
 	}
 

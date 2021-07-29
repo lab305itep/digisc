@@ -759,6 +759,7 @@ struct MCParticleStruct {
 struct DanssFromMC {
 	float MCPositronEnergy;		// Positron energy, MeV
 	float MCPositronX[3];		// Positron x, y, z, cm in analysis frame
+	float MCNeutronEnergy;		// Neutron energy, MeV
 };
 
 #endif /* EVTBUILDER_H */

@@ -1,5 +1,16 @@
 //	Compare MC to IBD spectrum
-#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair7n14/MC/DataTakingPeriod01/"
+#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/IBD"
+
+void add_IBD2chain(TChain *ch, const char *what, int nser, int ninser)
+{
+	char str[1024];
+	int i, j, irc;
+	for (i=0; i<nser; i++) for (j=1; j<=ninser; j++) {
+		sprintf(str, "%s/%s/mc_IBD_indLY_transcode_rawProc_pedSim_%s_%2.2d_%2.2d.root", BASEDIR, what, what, i, j);
+		irc = access(str, R_OK);
+		if (!irc) ch->AddFile(str);
+	}
+}
 
 TChain *make_MCchain(int isotope)
 {
@@ -7,42 +18,16 @@ TChain *make_MCchain(int isotope)
 	
 	switch (isotope) {
 	case 235:
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_00.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_01.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_02.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_03.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_04.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_05.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_06.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_07.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_08.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_235U_09.root");
+		add_IBD2chain(ch, "235U", 3, 4);
 		break;
 	case 238:
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_238U.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_238U_00.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_238U_01.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_238U_02.root");
+		add_IBD2chain(ch, "238U", 1, 4);
 		break;
 	case 239:
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_00.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_01.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_02.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_03.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_04.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_05.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_06.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_07.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_08.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_239Pu_09.root");
+		add_IBD2chain(ch, "239Pu", 3, 4);
 		break;
 	case 241:
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_241Pu.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_241Pu_00.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_241Pu_01.root");
-		ch->AddFile(BASEDIR "FuelGd/mc_IBD_glbLY_transcode_rawProc_pedSim_241Pu_02.root");
+		add_IBD2chain(ch, "241Pu", 1, 4);
 		break;
 	default:
 		delete ch;
@@ -59,7 +44,7 @@ void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu
 	const char *name_fuel[4] = {"235U", "238U", "239Pu", "241Pu"};
 	double frac_fuel[4];// = {53, 7.3, 34, 5.7};		// some average for Apr16-Jan 19. 
 	const double cross_fuel[4] = {6.69, 10.10, 4.36, 6.04};
-	const int nfiles[4]={11, 4, 11, 4};
+	const int nfiles[4]={12, 4, 12, 4};
 	const int color[4] = {kRed, kBlue, kGreen, kOrange};
 	int k1, k2, k3, k4;
 	TH1D *hExp;
@@ -132,7 +117,7 @@ void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu
 	frac_fuel[3] = 0.463 * fPu239 - 9.5;
 	frac_fuel[1] = 100.0 - frac_fuel[0] - frac_fuel[2] - frac_fuel[3];
 	
-	TCut cVeto("gtFromVeto > 60");
+	TCut cVeto("gtFromVeto > 90");
 	TCut cIso("EventsBetween == 0");
 	TCut cX("PositronX[0] < 0 || (PositronX[0] > 2 && PositronX[0] < 94)");
 	TCut cY("PositronX[1] < 0 || (PositronX[1] > 2 && PositronX[1] < 94)");
@@ -153,7 +138,7 @@ void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu
 	if (cAux) cSel = cSel && TCut(cAux);
 	
 	gStyle->SetOptStat(0);
-	sprintf(strl, "ibd_v3_239Pu_%4.1f_%s_scale_%5.3f_%5.3f_%s", fPu239, name_exp, kScale, kShift, (sAux) ? sAux : "");
+	sprintf(strl, "ibd_v8.1_239Pu_%4.1f_%s_scale_%5.3f_%5.3f_%s", fPu239, name_exp, kScale, kShift, (sAux) ? sAux : "");
 	TString pdfName(strl);
 	
 //	printf("file: %s\n", file_exp);

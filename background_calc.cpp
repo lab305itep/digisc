@@ -208,15 +208,15 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cPh && cGamma && cN && "NeutronX[2] >= 0" && cSingle;
 		hp->Project(h[9][j], "NeutronX[2] + 0.5", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cZ && cR && cPh && cPe && cGamma && cSingle;
-		hp->Project(h[10][j], "NeutronEnergy", ct && cv[j] && cAux);
+		hp->Project(h[10][j], "NeutronEnergy*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPh && cPe && cGamma && cSingle && cN10;
-		hp->Project(h[11][j], "NeutronEnergy", ct && cv[j] && cAux);
+		hp->Project(h[11][j], "NeutronEnergy*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPh && cPe && cGamma && cSingle && cN20;
-		hp->Project(h[12][j], "NeutronEnergy", ct && cv[j] && cAux);
+		hp->Project(h[12][j], "NeutronEnergy*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPh && cPe && cGamma && cSingle && cN30;
-		hp->Project(h[13][j], "NeutronEnergy", ct && cv[j] && cAux);
+		hp->Project(h[13][j], "NeutronEnergy*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPh && cPe && cGamma && cSingle && cN40;
-		hp->Project(h[14][j], "NeutronEnergy", ct && cv[j] && cAux);
+		hp->Project(h[14][j], "NeutronEnergy*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPh && cPe && cGamma && cSingle;
 		hp->Project(h[15][j], "NeutronHits", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cGamma && cN && cSingle;
@@ -224,17 +224,17 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cPh && cN && cSingle && "AnnihilationEnergy < 1.8";
 		hp->Project(h[17][j], "AnnihilationGammas", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cPh && cN && cSingle && "AnnihilationGammas <= 10";
-		hp->Project(h[18][j], "AnnihilationEnergy", ct && cv[j] && cAux);
+		hp->Project(h[18][j], "AnnihilationEnergy*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cPh && cN && cSingle;
-		hp->Project(h[19][j], "AnnihilationMax", ct && cv[j] && cAux);
+		hp->Project(h[19][j], "AnnihilationMax*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cPh && cN && cGamma && cSingle;
-		hp->Project(h[20][j], "AnnihilationMax", ct && cv[j] && cAux);
+		hp->Project(h[20][j], "AnnihilationMax*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cPh && cN && cGamma;
 		hp->Project(h[21][j], "MinPositron2GammaZ", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cN && "PositronHits == 1";
 		hp->Project(h[22][j], "AnnihilationGammas", ct && cv[j] && cAux);
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cN && "PositronHits == 1";
-		hp->Project(h[23][j], "AnnihilationEnergy", ct && cv[j] && cAux);
+		hp->Project(h[23][j], "AnnihilationEnergy*0.96", ct && cv[j] && cAux);			// 4% correction
 		ct = cIso && cShower && cX && cY && cZ && cR && cPe && cN && cGamma && "PositronHits == 1";
 		hp->Project(h[24][j], "MinPositron2GammaZ", ct && cv[j] && cAux);
 		ct = cIso && cShower && cY && cZ && cR && cPe && cGamma && cN && "PositronX[0] >= 0 && PositronHits == 1";

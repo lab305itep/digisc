@@ -5,12 +5,13 @@ const struct PositionsStruct {
 	int period;
 	double bgnd;
 } positions[] = {
-#include "positions/pos_v12_2210_78234.h"
+#include "pos_apr21.h"
 };
 const char periods[][30] = {
 	"April-June 16", 
 	"October 16 - July 17", 
 	"August 17 - March 18", 
 	"May 18 - January 19", 
-	"March 19 - April 19"
+	"March 19 - July 20",
+	"August 20 - April 21"
 };
