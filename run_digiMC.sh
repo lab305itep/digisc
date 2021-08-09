@@ -71,8 +71,8 @@ do_mudecay()
 	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/Muons_v2
 #	${EXE} ${DIGIN}/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
 #		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff_v2/DANSS0_2.root ${DEAD}
-	${EXE} ${DIGIN}/mc_MuonsMuPlus_indLY_transcode_rawProc_pedSim_01.digi 0x70000 \
-		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/muplus/DANSS0_1.root ${DEAD}
+	${EXE} ${DIGIN}/mc_MuonsMuMinus_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
+		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/muminus/DANSS0_1.root ${DEAD}
 }
 
 # Usage: do_IBDdir templatein templateraw outdir nser ninser
@@ -113,6 +113,5 @@ do_IBD()
 }
 
 do_mudecay
-do_sources 7
 
 exit 0
