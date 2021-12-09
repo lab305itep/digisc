@@ -57,12 +57,24 @@ do_test()
 		0x70000 ${OUTDIR}/test/ -mcfile ${MCRAW}/NewTimeLine/Muonmod.root ${DEAD}
 }
 
-do_muons()
+do_stoppedmuons()
 {
 	for ((i=0;$i<2;i=$i+1)) ; do
 		${EXE} ${DIGI}/Muons/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_0${i}.digi.bz2 0x70000 \
 			${OUTDIR}/Stopped_muons_central_part_ind_coeff/ \
 			-mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff/DANSS_0${i}.root ${DEAD}
+	done
+}
+
+do_muons()
+{
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/Muons_v2
+	for ((i=0;$i<2;i=$i+1)) ; do
+		for ((j=1;$j<17;j=$j+1)) ; do
+			ser=`printf "%2.2d_%2.2d" $i $j`
+			${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_${ser}.digi.bz2 0x70000 \
+				${OUTDIR}/Muons/ -mcfile ${MCRAW}/Muons_v2/OldTimeLine/DANSS${i}_${j}.root ${DEAD}
+		done
 	done
 }
 
@@ -112,6 +124,6 @@ do_IBD()
 	do_IBDdir "${digi_ibd}FS/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d.digi" "${raw_ibd}Flat_spectrum/DANSS%d_%d.root" ${OUTDIR}/IBD/FS 10 16
 }
 
-do_mudecay
+do_muons
 
 exit 0
