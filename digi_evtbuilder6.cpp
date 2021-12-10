@@ -305,11 +305,11 @@ double Energy(int i)
 {
 	double E;
 	E = Energy(i);
+	if (user->type(i) == bSiPm) E *= SiPMEnergyCorrection;
 	if (IsMc) {
 		E *= MCEnergyCorrection;
 	} else {
 		E *= EnergyCorrection;
-		if (user->type(i) == bSiPm) E *= SiPMEnergyCorrection;
 	}
 	return E;
 }
@@ -1162,7 +1162,7 @@ void Help(void)
 	printf("-calib filename.txt     --- file with energy calibration. No default.\n");
 	printf("-deadlist filename.txt  --- file with explicit list of dead channels.\n");
 	printf("-dump gTime             --- dump an event with this gTime.\n");
-	printf("-ecorr EnergyCorrection --- 1.00 by default.\n");
+	printf("-ecorr EnergyCorrection --- 0.96 by default.\n");
 	printf("-ecorrsipm SiPMEnergyCorrection --- 1.08 by default - to correct for Ira's wrong dealing with SiPM waveforms.\n");
 	printf("-events number          --- stop after processing this number of events. Default - do not stop.\n");
 	printf("-file filename.txt      --- file with a list of files for processing. No default.\n");
@@ -1226,7 +1226,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	iFlags = 0;
 	MaxEvents = -1;
 	IsMc = 0;
-	EnergyCorrection = 1.00;
+	EnergyCorrection = 0.96;
 	SiPMEnergyCorrection = 1.08;
 	MCEnergyCorrection = 1.00;
 	RawHitsFileName = NULL;
