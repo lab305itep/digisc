@@ -299,6 +299,21 @@ int IsPickUp(void)
 /************************	Analysis functions					*****************************/
 /********************************************************************************************************************/
 
+// Get energy from hit number. Apply global corrections
+// i - hit number
+double Energy(int i)
+{
+	double E;
+	E = Energy(i);
+	if (IsMc) {
+		E *= MCEnergyCorrection;
+	} else {
+		E *= EnergyCorrection;
+		if (user->type(i) == bSiPm) E *= SiPMEnergyCorrection;
+	}
+	return E;
+}
+
 //	int SiPm - hit number in SiPM
 //	int Pmt  - hit number in PMT
 //	return true if SiPM is read by this PMT
@@ -421,8 +436,8 @@ void CalculatePositron(void)
 //		Find the maximum hit
 	A = 0;
 	maxHit = -1;
-	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm && user->e(i) > A) {
-		A = user->e(i);
+	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm && Energy(i) > A) {
+		A = Energy(i);
 		maxHit = i;
 	}
 	if (maxHit < 0) {	// nothing to do - no usable SiPM hits
@@ -446,13 +461,13 @@ void CalculatePositron(void)
 	for (i=0; i<N; i++) if (HitFlag[i] >= 10) {
 		DanssEvent.PositronHits++;
 		if (user->side(i) == 'X') {
-			x += user->firstCoord(i) * fStripWidth * user->e(i);
-			z += user->zCoord(i) * fStripHeight * user->e(i);
-			nx += user->e(i);
+			x += user->firstCoord(i) * fStripWidth * Energy(i);
+			z += user->zCoord(i) * fStripHeight * Energy(i);
+			nx += Energy(i);
 		} else {
-			y += user->firstCoord(i) * fStripWidth * user->e(i);
-			z += user->zCoord(i) * fStripHeight * user->e(i);
-			ny += user->e(i);
+			y += user->firstCoord(i) * fStripWidth * Energy(i);
+			z += user->zCoord(i) * fStripHeight * Energy(i);
+			ny += Energy(i);
 		}
 	}
 	DanssEvent.PositronX[0] = (nx > 0) ? x / nx : -1;		// Coordinate is unknown
@@ -462,9 +477,9 @@ void CalculatePositron(void)
 //	Step 1: Count SiPM
 	for (i=0; i<N; i++) if (HitFlag[i] >= 10) {
 		if (user->side(i) == 'X') {
-			DanssEvent.PositronSiPmEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X', bSiPm);
+			DanssEvent.PositronSiPmEnergy += acorr(Energy(i), DanssEvent.PositronX[1], 'X', bSiPm);
 		} else {
-			DanssEvent.PositronSiPmEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bSiPm);
+			DanssEvent.PositronSiPmEnergy += acorr(Energy(i), DanssEvent.PositronX[0], 'Y', bSiPm);
 		}
 	}
 //	Step 2: Count PMT
@@ -473,9 +488,9 @@ void CalculatePositron(void)
 		if (j >= N) continue;
 		HitFlag[i] = 5;
 		if (user->side(i) == 'X') {
-			DanssEvent.PositronPmtEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X', bPmt);
+			DanssEvent.PositronPmtEnergy += acorr(Energy(i), DanssEvent.PositronX[1], 'X', bPmt);
 		} else {
-			DanssEvent.PositronPmtEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bPmt);
+			DanssEvent.PositronPmtEnergy += acorr(Energy(i), DanssEvent.PositronX[0], 'Y', bPmt);
 		}
 	}
 //	Step 3: Subtract gammas in PMT
@@ -483,9 +498,9 @@ void CalculatePositron(void)
 		for (j=0; j<N; j++) if (IsInModule(i, j) && HitFlag[j] == 5) break;
 		if (j >= N) continue;
 		if (user->side(i) == 'X') {
-			DanssEvent.PositronPmtEnergy -= acorr(user->e(i), DanssEvent.PositronX[1], 'X', bSiPm);
+			DanssEvent.PositronPmtEnergy -= acorr(Energy(i), DanssEvent.PositronX[1], 'X', bSiPm);
 		} else {
-			DanssEvent.PositronPmtEnergy -= acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bSiPm);
+			DanssEvent.PositronPmtEnergy -= acorr(Energy(i), DanssEvent.PositronX[0], 'Y', bSiPm);
 		}
 	}
 	DanssEvent.PositronEnergy = DanssEvent.PositronSiPmEnergy + DanssEvent.PositronPmtEnergy;
@@ -494,9 +509,9 @@ void CalculatePositron(void)
 //	Calculate Total energy with longitudinal correction
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && (user->type(i) == bPmt || user->type(i) == bSiPm)) {
 		if (user->side(i) == 'X') {
-			DanssEvent.TotalEnergy += acorr(user->e(i), DanssEvent.PositronX[1], 'X', user->type(i));
+			DanssEvent.TotalEnergy += acorr(Energy(i), DanssEvent.PositronX[1], 'X', user->type(i));
 		} else {
-			DanssEvent.TotalEnergy += acorr(user->e(i), DanssEvent.PositronX[0], 'Y', user->type(i));
+			DanssEvent.TotalEnergy += acorr(Energy(i), DanssEvent.PositronX[0], 'Y', user->type(i));
 		}
 	}
 	DanssEvent.TotalEnergy /= 2;	// PMT + SiPM
@@ -508,9 +523,9 @@ void CalculatePositron(void)
 	case bSiPm:
 		DanssEvent.AnnihilationGammas++;	// Add SiPm hits
 		if (user->side(i) == 'X') {
-			E = acorr(user->e(i), DanssEvent.PositronX[1], 'X', bSiPm);
+			E = acorr(Energy(i), DanssEvent.PositronX[1], 'X', bSiPm);
 		} else {
-			E = acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bSiPm);
+			E = acorr(Energy(i), DanssEvent.PositronX[0], 'Y', bSiPm);
 		}
 		DanssEvent.AnnihilationEnergy += E;
 		if (A < E) A = E;
@@ -522,17 +537,17 @@ void CalculatePositron(void)
 		// Add PMT energy
 		for (j=0; j < N; j++) if (HitFlag[j] >= 0 && HitFlag[j] < 5 && user->type(i) == bSiPm && IsInModule(j, i)) break;
 		if (user->side(i) == 'X') {
-			E = acorr(user->e(i), DanssEvent.PositronX[1], 'X', bPmt);
+			E = acorr(Energy(i), DanssEvent.PositronX[1], 'X', bPmt);
 		} else {
-			E = acorr(user->e(i), DanssEvent.PositronX[0], 'Y', bPmt);
+			E = acorr(Energy(i), DanssEvent.PositronX[0], 'Y', bPmt);
 		}
 		DanssEvent.AnnihilationEnergy += E;
 		// Subtruct SiPMs in cluster if any
 		for (j=0; j < N; j++) if (HitFlag[j] >= 10 && user->type(i) == bSiPm && IsInModule(j, i)) {
 			if (user->side(j) == 'X') {
-				E = acorr(user->e(j), DanssEvent.PositronX[1], 'X', bSiPm);
+				E = acorr(Energy(j), DanssEvent.PositronX[1], 'X', bSiPm);
 			} else {
-				E = acorr(user->e(j), DanssEvent.PositronX[0], 'Y', bSiPm);
+				E = acorr(Energy(j), DanssEvent.PositronX[0], 'Y', bSiPm);
 			}
 			DanssEvent.AnnihilationEnergy -= E;
 		}
@@ -566,12 +581,12 @@ void CalculateNeutron(void)
 		if (user->side(i) == 'X') {
 			x += user->firstCoord(i) * fStripWidth;
 			z += user->zCoord(i) * fStripHeight;
-			exSiPm += user->e(i);
+			exSiPm += Energy(i);
 			nx++;
 		} else {
 			y += user->firstCoord(i) * fStripWidth;
 			z += user->zCoord(i) * fStripHeight;
-			eySiPm += user->e(i);
+			eySiPm += Energy(i);
 			ny++;
 		}
 	}
@@ -582,9 +597,9 @@ void CalculateNeutron(void)
 	if (nx && ny) {
 		for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bPmt) {
 			if (user->side(i) == 'X') {
-				exPmt += user->e(i);
+				exPmt += Energy(i);
 			} else {
-				eyPmt += user->e(i);
+				eyPmt += Energy(i);
 			}
 		}
 		DanssEvent.NeutronEnergy = (
@@ -615,7 +630,7 @@ void CleanZeroes(void)
 
 	N = user->nhits();
 	for (i=0; i<N; i++) if ((user->type(i) == bSiPm && user->npix(i) <= 0) || (!isfinite(user->e(i))) ||
-		user->e(i) <= 0 || user->t_raw(i) < -1000 || user->isBadChannel(user->chanIndex(i)) || DeadList[user->adc(i)-1][user->adcChan(i)]) {
+		Energy(i) <= 0 || user->t_raw(i) < -1000 || user->isBadChannel(user->chanIndex(i)) || DeadList[user->adc(i)-1][user->adcChan(i)]) {
 		HitFlag[i] = -1;
 		DanssInfo.Cuts[0]++;
 	}
@@ -763,17 +778,17 @@ void DebugFullPrint(void)
 		for(i=0; i<N; i++) switch(user->type(i)) {
 		case bSiPm:
 			printf("%4d SiPM %3.0f %7.1f %4.1f %5.1f %2d.%2.2d    %c  %2d %2d  %c\n", i+1, user->npix(i), user->signal(i),
-				user->e(i), user->adc(i), user->t_raw(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
+				Energy(i), user->adc(i), user->t_raw(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
 				(HitFlag[i]<0) ? 'X' : ' ');
 			break;
 		case bPmt:
 			printf("%4d PMT      %7.1f %4.1f %5.1f %2d.%2.2d    %c  %2d %2d  %c\n", i+1, user->signal(i),
-				user->e(i), user->t_raw(i), user->adc(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
+				Energy(i), user->t_raw(i), user->adc(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
 				(HitFlag[i]<0) ? 'X' : ' ');
 			break;
 		case bVeto:
 			printf("%4d VETO     %7.1f %4.1f %5.1f %2d.%2.2d    -  xx xx  %c\n", i+1, user->signal(i),
-				user->e(i), user->t_raw(i), user->adc(i), user->adcChan(i),
+				Energy(i), user->t_raw(i), user->adc(i), user->adcChan(i),
 				(HitFlag[i]<0) ? 'X' : ' ');
 			break;
 		}
@@ -843,26 +858,26 @@ void DumpEvent(void)
 		switch(user->type(i)) {
 		case bSiPm:
 			if (user->side(i) == 'X') {
-				SiPmX->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, user->e(i));
-				if (HitFlag[i] >= 0) SiPmCleanX->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, user->e(i));
+				SiPmX->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, Energy(i));
+				if (HitFlag[i] >= 0) SiPmCleanX->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, Energy(i));
 			} else {
-				SiPmY->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, user->e(i));
-				if (HitFlag[i] >= 0) SiPmCleanY->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, user->e(i));
+				SiPmY->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, Energy(i));
+				if (HitFlag[i] >= 0) SiPmCleanY->Fill(user->firstCoord(i)*4.0 + 2.0, user->zCoord(i)+0.5, Energy(i));
 			}
 			break;
 		case bPmt:
 			if (user->side(i) == 'X') {
-				PmtX->Fill(user->firstCoord(i)*20.0 + 10.0, user->zCoord(i)*20.0+10.0, user->e(i));
+				PmtX->Fill(user->firstCoord(i)*20.0 + 10.0, user->zCoord(i)*20.0+10.0, Energy(i));
 			} else {
-				PmtY->Fill(user->firstCoord(i)*20.0 + 10.0, user->zCoord(i)*20.0+10.0, user->e(i));
+				PmtY->Fill(user->firstCoord(i)*20.0 + 10.0, user->zCoord(i)*20.0+10.0, Energy(i));
 			}
 			break;
 		case bVeto:
-			Veto->Fill(user->adcChan(i), user->e(i));
+			Veto->Fill(user->adcChan(i), Energy(i));
 			break;
 		}
-		Time->Fill(user->t_raw(i), user->e(i));
-		if (HitFlag[i] >= 0) TimeClean->Fill(user->t_raw(i), user->e(i));
+		Time->Fill(user->t_raw(i), Energy(i));
+		if (HitFlag[i] >= 0) TimeClean->Fill(user->t_raw(i), Energy(i));
 	}
 	SiPmX->Write();
 	SiPmY->Write();
@@ -893,7 +908,7 @@ void FillTimeHists(void)
 {
 	int i, N;
 	N = user->nhits();
-	for (i=0; i<N; i++) if (user->e(i) > MINENERGY4TIME && user->t_raw(i) > 0) {
+	for (i=0; i<N; i++) if (Energy(i) > MINENERGY4TIME && user->t_raw(i) > 0) {
 		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - DanssEvent.fineTime);
 //		time relative to PMT - we need some common calibration of delays
 		if (PmtFineTime > 0) hPMTTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - PmtFineTime);
@@ -917,17 +932,17 @@ void FindFineTime(void)
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0) {
 		switch(user->type(i)) {
 		case bSiPm:
-			e = user->e(i);
+			e = Energy(i);
 			if (user->npix(i) < MINSIPMPIXELS) e = 0;
 			break;
 		case bPmt:
-			e = user->e(i);
+			e = Energy(i);
 			PMTsumT += user->t_raw(i) * e;
 			PMTsumA += e;
 			n++;
 			break;
 		case bVeto:
-			e = user->e(i);
+			e = Energy(i);
 			break;
 		}
 		if (e > MINENERGY4TIME && user->t_raw(i) > MINAVRTIME) {
@@ -959,7 +974,7 @@ void StoreHits(void)
 	j = 0;
 	N = user->nhits();
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0) {
-		HitArray.E[j] = user->e(i);
+		HitArray.E[j] = Energy(i);
 		HitArray.T[j] = user->t_raw(i);
 		HitArray.type[j].type = user->type(i);
 		HitArray.type[j].flag = HitFlag[i];
@@ -994,14 +1009,14 @@ void SumClean(void)
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0) switch (user->type(i)) {
 	case bSiPm:
 		DanssEvent.SiPmCleanHits++;
-		DanssEvent.SiPmCleanEnergy += user->e(i);
-		if (user->zCoord(i) < NBOTTOMLAYERS) DanssEvent.BottomLayersEnergy += user->e(i);
+		DanssEvent.SiPmCleanEnergy += Energy(i);
+		if (user->zCoord(i) < NBOTTOMLAYERS) DanssEvent.BottomLayersEnergy += Energy(i);
 		if (user->npe(i) > 3) hCrossTalk->Fill(user->npix(i) / user->npe(i));
 		if (IsMc && user->e_McTruth(i) > 0.3) {
-			hEtoEMC->Fill(user->e(i) / user->e_McTruth(i));
+			hEtoEMC->Fill(Energy(i) / user->e_McTruth(i));
 			hNPEtoEMC->Fill(user->npe(i) / user->e_McTruth(i));
 		}
-//		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
+//		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : Energy(i);
 //		Calculate asymmetry, clean hits 
 		if (user->side(i) == 'X') {
 			DanssEvent.NXYSiPmClean++;
@@ -1011,9 +1026,9 @@ void SumClean(void)
 		break;
 	case bPmt:
 		DanssEvent.PmtCleanHits++;
-		DanssEvent.PmtCleanEnergy += user->e(i);
-		if (user->e(i) > 0) hPMTAmpl[user->adcChan(i)]->Fill(user->signal(i) / user->e(i));
-//		DanssEvent.PmtCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->pmtAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
+		DanssEvent.PmtCleanEnergy += Energy(i);
+		if (Energy(i) > 0) hPMTAmpl[user->adcChan(i)]->Fill(user->signal(i) / Energy(i));
+//		DanssEvent.PmtCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->pmtAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : Energy(i);
 //		Calculate asymmetry, clean hits 
 		if (user->side(i) == 'X') {
 			DanssEvent.NXYPmt++;
@@ -1023,14 +1038,14 @@ void SumClean(void)
 		break;
 	case bVeto:
 		DanssEvent.VetoCleanHits++;
-		DanssEvent.VetoCleanEnergy += user->e(i);
-//		DanssEvent.VetoCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->vetoAmp(user->indexByHit(i)) : user->e(i);
+		DanssEvent.VetoCleanEnergy += Energy(i);
+//		DanssEvent.VetoCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->vetoAmp(user->indexByHit(i)) : Energy(i);
 		break;
 	}
 
 	for (i=0; i<N; i++) if (HitFlag[i] == -100) {
 		DanssEvent.SiPmEarlyHits++;
-		DanssEvent.SiPmEarlyEnergy += user->e(i);
+		DanssEvent.SiPmEarlyEnergy += Energy(i);
 	}
 }
 
@@ -1042,7 +1057,7 @@ void SumEverything(void)
 	for (i=0; i<N; i++) switch (user->type(i)) {
 	case bSiPm:
 		DanssExtra.SiPmHits++;
-		DanssExtra.SiPmEnergy += user->e(i);
+		DanssExtra.SiPmEnergy += Energy(i);
 		if (user->side(i) == 'X') {
 			DanssEvent.NXYSiPmRaw++;
 		} else {
@@ -1051,11 +1066,11 @@ void SumEverything(void)
 		break;
 	case bPmt:
 		DanssExtra.PmtHits++;
-		DanssExtra.PmtEnergy += user->e(i);
+		DanssExtra.PmtEnergy += Energy(i);
 		break;
 	case bVeto:
 		DanssExtra.VetoHits++;
-		DanssExtra.VetoEnergy += user->e(i);
+		DanssExtra.VetoEnergy += Energy(i);
 		break;
 	}
 	
