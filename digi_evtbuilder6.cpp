@@ -45,15 +45,14 @@
 /***********************	Definitions	****************************/
 #define MYVERSION	"4.50"
 //	Initial clean parameters
-#define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit
-#define MINSIPMPIXELS2	2			// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
-#define MINPMTENERGY	0.1			// Minimum PMT energy for a hit
-#define MINVETOENERGY	0.1			// Minimum VETO energy for a hit
+#define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit for FineTime calculation
+// #define MINSIPMPIXELS2	2			// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
+// #define MINPMTENERGY	0.1			// Minimum PMT energy for a hit
+// #define MINVETOENERGY	0.1			// Minimum VETO energy for a hit
 #define SIPMEARLYTIME	45			// ns - shift from fine time
 #define SOMEEARLYTIME	130			// ns - absolute if fineTime is not defined
 #define MAXPOSITRONENERGY	20		// Maximum Total clean energy to calculate positron parameters
 #define MAXCLUSTITER		10		// Maximum number of iterations in cluster search
-#define EDGEPMARK		1.0		// Minimum energy to flag event with edge hits
 #define MCNEUTRONSIGGMA		20.0		// Sigma for neutron based longitudinal correction for MC
 #define NBOTTOMLAYERS		2		// Use two bottom SiPM layers as additional VETO
 //#define ENERGY_CORRECTION	0.95		// Energy correction to be applied for experimental data
@@ -66,14 +65,14 @@
 //	Flags
 #define FLG_PRINTALL		       1	// do large debuggging printout
 #define FLG_DTHIST		       2	// create time delta histogramms
-//#define FLG_EAMPLITUDE		       4	// put amplitude instead of energy to XXCleanEnergy cells - abandoned
-#define FLG_POSECORRECTIONA	   0x100	// do positron energy correction based on MC and NHITS
-#define FLG_POSECORRECTIONB	   0x200	// do positron energy correction based on average MC
-#define FLG_SIMLONGCORR		  0x1000	// simulate "neutron" correction for MC events
-#define FLG_NOCLEANNOISE 	 0x10000	// do not clean low energy signals
+//#define FLG_EAMPLITUDE	       4	// put amplitude instead of energy to XXCleanEnergy cells - abandoned
+//#define FLG_POSECORRECTIONA	   0x100	// do positron energy correction based on MC and NHITS
+//#define FLG_POSECORRECTIONB	   0x200	// do positron energy correction based on average MC
+#define FLG_SIMLONGCORR	  	  0x1000	// simulate "neutron" correction for MC events
+//#define FLG_NOCLEANNOISE 	 0x10000	// do not clean low energy signals
 #define FLG_NOTIMECUT		 0x20000	// do not clean signals by time
 #define FLG_NOCONFIRM		 0x40000	// do not search PMT confirmation for SiPM and vice versa
-#define FLG_NOCONFIRM2		 0x80000	// do not search PMT confirmation for 1 pixel SiPM signals
+//#define FLG_NOCONFIRM2	 0x80000	// do not search PMT confirmation for 1 pixel SiPM signals
 #define FLG_NOPMTCORR		0x100000	// do not correct PMT energy of cluster for out of cluster SiPM hits
 #define FLG_PMTTIMECUT		0x200000	// Cut PMT and Veto by time
 #define FLG_CONFIRMSIPM		0x400000	// do not confirm all SiPM hits
@@ -87,7 +86,7 @@
 using namespace std;
 
 // Globals:
-
+ReadDigiDataUser		*user;
 long long			iNevtTotal;
 long long			upTime;
 long long			fileFirstTime;
@@ -100,8 +99,9 @@ char *				chOutputFile;
 int				iFlags;
 int				MaxEvents;
 int				IsMc;				// MC run flag
-double				EnergyCorrection;
-double				MCEnergyCorrection;
+double				EnergyCorrection;		// energy correction based on 12B
+double				SiPMEnergyCorrection;		// correct SiPM energy based on MC single pixel response
+double				MCEnergyCorrection;		// MC energy correction
 
 TRandom2 *			Random;
 struct {	// additional energy smear for MC events
@@ -160,10 +160,8 @@ int RawHitsCnt;
 TH1D *hCrossTalk;
 TH1D *hPMTAmpl[iNChannels_AdcBoard];
 
-#ifndef DIGI_V2
-	TH1D *hEtoEMC;
-	TH1D *hNPEtoEMC;
-#endif
+TH1D *hEtoEMC;
+TH1D *hNPEtoEMC;
 /********************************************************************************************************************/
 /************************	Raw hits - fight with the pickup			*****************************/
 /********************************************************************************************************************/
@@ -258,6 +256,7 @@ fin:
 	return RawHitsCnt;
 }
 
+// Find raw hits numbers for the trigger being processed
 void FindRawHits(void)
 {
 	long long gtA;
@@ -282,6 +281,9 @@ void FindRawHits(void)
 		}
 }
 
+// Check if the current trigger is associated with pickup noise. 
+// We never consider VETO triggers as PickUp
+// We consider PickUp either less than 30% of SiPM or PMT hits pass Ira's analysis
 int IsPickUp(void)
 {
 	if (!RawHitsArray) return 0;		// no RawHits information
@@ -299,9 +301,8 @@ int IsPickUp(void)
 
 //	int SiPm - hit number in SiPM
 //	int Pmt  - hit number in PMT
-//	ReadDigiDataUser *user - event reader
 //	return true if SiPM is read by this PMT
-int IsInModule(int SiPm, int Pmt, ReadDigiDataUser *user)
+int IsInModule(int SiPm, int Pmt)
 {
 	int SiPmXY, PmtXY;
 	int SiPmZ, PmtZ;
@@ -317,20 +318,21 @@ int IsInModule(int SiPm, int Pmt, ReadDigiDataUser *user)
 }
 
 //	int hitA, hitB - hits in SiPM
-//	ReadDigiDataUser *user - event reader
 //	return true if the SiPMs are neighbors or coinside
-int IsNeighbor(int hitA, int hitB, ReadDigiDataUser *user)
+int IsNeighbor(int hitA, int hitB)
 {
 	if (user->zCoord(hitA) == user->zCoord(hitB) && abs(user->firstCoord(hitA) - user->firstCoord(hitB)) <= 1) return 1;
 	if (abs(user->zCoord(hitA) - user->zCoord(hitB)) == 1) return 1;
 	return 0;
 }
 
+// Do MC extra energy smearing 
 double MCEnergySmear(double E)
 {
 	return Random->Gaus(E, sqrt(MCsmear.st * MCsmear.st * E + MCsmear.ct * MCsmear.ct * E * E));
 }
 
+// Longitudinal correction for PMT
 double PMTYAverageLightColl(double x)
 {
     //<func(x)=1>
@@ -341,6 +343,7 @@ double PMTYAverageLightColl(double x)
 	return rez;
 }
 
+// Longitudinal correction for SiPM
 double SiPMYAverageLightColl(double x)
 {
     //<func(x)=1>
@@ -351,6 +354,7 @@ double SiPMYAverageLightColl(double x)
 	return rez;
 }
 
+// Longitudinal light correctrion
 double YAverageLightColl(double x, int type)
 {
 	double rez;
@@ -390,45 +394,12 @@ float acorr(float energy, float dist, char side = 'Y', int type = bSiPm)
 	return C * energy;
 }
 
-//	Calculate corrected energy from MC taking number of cluster hits into account
-double HitNumberCorrection(double E, int N)
-{
-	const double coef[6][2] = {{0.0197, -0.0444}, {0.1976, -0.1081}, {0.3504, -0.1272}, {0.4837, -0.1372}, {0.5737, -0.1388}, {0.6682, -0.1346}};
-	int i;
-	double EC;
-	
-	if (N < 1) return -1;	// internal error.
-	i = (N < 6) ? N : 6;
-	EC = (E - coef[i-1][0])/ (1 + coef[i-1][1]);
-	return EC;
-}
-
-//	Calculate corrected energy from MC not taking number of cluster hits into account
-double MCAverageCorrection(double E)
-{
-	const double coef[2] = {0.1702, -0.0868};
-	double EC;
-	
-	EC = (E - coef[0])/ (1 + coef[1]);
-	return EC;
-}
-
-//	Calculate corrected positron energy from total energy
-double MCTotalCorrection(double E)
-{
-	const double coef[2] = {0.6812, -0.0872};
-	double EC;
-	
-	EC = (E - coef[0])/ (1 + coef[1]);
-	return EC;
-}
-
 /********************************************************************************************************************/
 /************************		Main analysis					*****************************/
 /********************************************************************************************************************/
 
 // Calculate parameters assuming positron-like event
-void CalculatePositron(ReadDigiDataUser *user)
+void CalculatePositron(void)
 {
 	int i, j, k, N;
 	float A;
@@ -441,11 +412,6 @@ void CalculatePositron(ReadDigiDataUser *user)
 	int xy;
 	int invalid;
 	float E;
-
-//	if (DanssEvent.SiPmCleanEnergy + DanssEvent.PmtCleanEnergy > 2 * MAXPOSITRONENERGY) {
-//		DanssEvent.PositronFlags |= PFLAG_MAXENERGY;
-//		return;
-//	}
 
 	DanssEvent.MinPositron2GammaZ = 1000;
 	DanssEvent.PositronX[0] = -1;
@@ -467,7 +433,8 @@ void CalculatePositron(ReadDigiDataUser *user)
 //		Find cluster
 	for (k=0; k<MAXCLUSTITER; k++) {
 		repeat = 0;
-		for (i=0; i<N; i++) if (HitFlag[i] >= 10) for (j=0; j<N; j++) if (HitFlag[j] >= 0 && HitFlag[j] < 10 && user->type(j) == bSiPm && IsNeighbor(i, j, user)) {
+		for (i=0; i<N; i++) if (HitFlag[i] >= 10) for (j=0; j<N; j++) 
+			if (HitFlag[j] >= 0 && HitFlag[j] < 10 && user->type(j) == bSiPm && IsNeighbor(i, j)) {
 			HitFlag[j] = 20;
 			repeat = 1;
 		}
@@ -502,7 +469,7 @@ void CalculatePositron(ReadDigiDataUser *user)
 	}
 //	Step 2: Count PMT
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bPmt) {
-		for (j=0; j<N; j++) if (IsInModule(j, i, user) && HitFlag[j] >= 10) break;
+		for (j=0; j<N; j++) if (IsInModule(j, i) && HitFlag[j] >= 10) break;
 		if (j >= N) continue;
 		HitFlag[i] = 5;
 		if (user->side(i) == 'X') {
@@ -513,7 +480,7 @@ void CalculatePositron(ReadDigiDataUser *user)
 	}
 //	Step 3: Subtract gammas in PMT
 	if (!(iFlags & FLG_NOPMTCORR)) for (i=0; i<N; i++) if (HitFlag[i] >= 0 && HitFlag[i] < 10 && user->type(i) == bSiPm) {
-		for (j=0; j<N; j++) if (IsInModule(i, j, user) && HitFlag[j] == 5) break;
+		for (j=0; j<N; j++) if (IsInModule(i, j) && HitFlag[j] == 5) break;
 		if (j >= N) continue;
 		if (user->side(i) == 'X') {
 			DanssEvent.PositronPmtEnergy -= acorr(user->e(i), DanssEvent.PositronX[1], 'X', bSiPm);
@@ -533,7 +500,7 @@ void CalculatePositron(ReadDigiDataUser *user)
 		}
 	}
 	DanssEvent.TotalEnergy /= 2;	// PMT + SiPM
-	if (FLG_POSECORRECTIONB & iFlags) DanssEvent.TotalEnergy = MCTotalCorrection(DanssEvent.TotalEnergy);
+//	if (FLG_POSECORRECTIONB & iFlags) DanssEvent.TotalEnergy = MCTotalCorrection(DanssEvent.TotalEnergy);
 //
 //		Count possible gammas
 	A = 0;
@@ -550,10 +517,10 @@ void CalculatePositron(ReadDigiDataUser *user)
 		break;
 	case bPmt:
 		// We will add Pmt hit only if there is no SiPm hit
-		for (j=0; j < N; j++) if (HitFlag[j] >= 0 && user->type(i) == bSiPm && IsInModule(j, i, user)) break;
+		for (j=0; j < N; j++) if (HitFlag[j] >= 0 && user->type(i) == bSiPm && IsInModule(j, i)) break;
 		if (j >= N) DanssEvent.AnnihilationGammas++;
 		// Add PMT energy
-		for (j=0; j < N; j++) if (HitFlag[j] >= 0 && HitFlag[j] < 5 && user->type(i) == bSiPm && IsInModule(j, i, user)) break;
+		for (j=0; j < N; j++) if (HitFlag[j] >= 0 && HitFlag[j] < 5 && user->type(i) == bSiPm && IsInModule(j, i)) break;
 		if (user->side(i) == 'X') {
 			E = acorr(user->e(i), DanssEvent.PositronX[1], 'X', bPmt);
 		} else {
@@ -561,7 +528,7 @@ void CalculatePositron(ReadDigiDataUser *user)
 		}
 		DanssEvent.AnnihilationEnergy += E;
 		// Subtruct SiPMs in cluster if any
-		for (j=0; j < N; j++) if (HitFlag[j] >= 10 && user->type(i) == bSiPm && IsInModule(j, i, user)) {
+		for (j=0; j < N; j++) if (HitFlag[j] >= 10 && user->type(i) == bSiPm && IsInModule(j, i)) {
 			if (user->side(j) == 'X') {
 				E = acorr(user->e(j), DanssEvent.PositronX[1], 'X', bSiPm);
 			} else {
@@ -573,9 +540,9 @@ void CalculatePositron(ReadDigiDataUser *user)
 	DanssEvent.AnnihilationMax = A;
 	DanssEvent.AnnihilationEnergy /= 2;	// (SiPm + Pmt) / 2
 	
-//		Do energy correction based on MC taking into account number of hits in the cluster
-	if (FLG_POSECORRECTIONA & iFlags) DanssEvent.PositronEnergy = HitNumberCorrection(DanssEvent.PositronEnergy, DanssEvent.PositronHits);
-	if (FLG_POSECORRECTIONB & iFlags) DanssEvent.PositronEnergy = MCAverageCorrection(DanssEvent.PositronEnergy);
+//		Do energy correction based on MC taking into account number of hits in the cluster - Deprecated
+//	if (FLG_POSECORRECTIONA & iFlags) DanssEvent.PositronEnergy = HitNumberCorrection(DanssEvent.PositronEnergy, DanssEvent.PositronHits);
+//	if (FLG_POSECORRECTIONB & iFlags) DanssEvent.PositronEnergy = MCAverageCorrection(DanssEvent.PositronEnergy);
 //		Find Z-distance to the closest gamma
 	A = 1000;
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && HitFlag[i] < 10 && user->type(i) == bSiPm && fabs(user->zCoord(i) * fStripHeight - DanssEvent.PositronX[2]) < A) 
@@ -583,7 +550,7 @@ void CalculatePositron(ReadDigiDataUser *user)
 	DanssEvent.MinPositron2GammaZ = A;
 }
 
-void CalculateNeutron(ReadDigiDataUser *user)
+void CalculateNeutron(void)
 {
 	float x, y, z, r;
 	int nx, ny;
@@ -631,7 +598,7 @@ void CalculateNeutron(ReadDigiDataUser *user)
 	}
 	DanssEvent.NeutronHits = DanssEvent.SiPmCleanHits;
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bPmt) {
-		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bSiPm && IsInModule(j, i, user)) break;
+		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bSiPm && IsInModule(j, i)) break;
 		if (j >= N) DanssEvent.NeutronHits++;	// count Pmt hit if it was not counted by SiPm
 	}
 }
@@ -642,7 +609,7 @@ void CalculateNeutron(ReadDigiDataUser *user)
 // - bad time
 // - from marked bad channels
 // - from dead channel list
-void CleanZeroes(ReadDigiDataUser *user)
+void CleanZeroes(void)
 {
 	int i, N;
 
@@ -654,74 +621,35 @@ void CleanZeroes(ReadDigiDataUser *user)
 	}
 }
 
-//	Clean small energy hits - not used in main analisys
-void CleanNoise(ReadDigiDataUser *user)
-{
-	int i, N;
-	
-	N = user->nhits();
-	for (i=0; i<N; i++) switch (user->type(i)) {
-	case bSiPm:
-		if (user->npix(i) < MINSIPMPIXELS) HitFlag[i] = -1;
-		DanssInfo.Cuts[1]++;
-		break;
-	case bPmt:
-		if (user->e(i) < MINPMTENERGY) HitFlag[i] = -1;
-		DanssInfo.Cuts[1]++;
-		break;
-	case bVeto:
-		if (user->e(i) < MINVETOENERGY) HitFlag[i] = -1;
-		DanssInfo.Cuts[1]++;
-		break;
-	}
-}
 
-//	Check SiPM to PMT confirmation and vice versa - not used in main analisys
-void CleanByConfirmation(ReadDigiDataUser *user)
-{
-	int i, j, N;
-	
-	N = user->nhits();
-	for (i=0; i<N; i++) if (HitFlag[i] >= 0) switch (user->type(i)) {
-	case bSiPm:
-		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
-		if (j == N) HitFlag[i] = -1;
-		DanssInfo.Cuts[2]++;
-		break;
-	case bPmt:
-		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bSiPm && IsInModule(j, i, user)) break;
-		if (j == N) HitFlag[i] = -1;
-		DanssInfo.Cuts[2]++;
-		break;
-	}
-}
+/*	Clean only SiPM by PMT confirmation		*
+*	Require PMT confirmation for ALL SiPM hits	*/
 
-/*	Clean only SiPM by PMT confirmation	*/
-void CleanByConfirmation2(ReadDigiDataUser *user)
+void CleanByConfirmation(void)
 {
 	int i, j, N;
 	
 	N = user->nhits();
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm) {
 //		commented out - search for confirmation for all SiPm hits
-		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
-		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
+//		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
+		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j)) break;
 		if (j < N) continue;
 		HitFlag[i] = -1;
 		DanssInfo.Cuts[3]++;
-		if (user->npix(i) < MINSIPMPIXELS2) DanssInfo.Cuts[4]++;
+//		if (user->npix(i) < MINSIPMPIXELS2) DanssInfo.Cuts[4]++;
 	}
 //		"early" hits
 	for (i=0; i<N; i++) if (HitFlag[i] == -100)
 	{
-		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
-		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j, user)) break;
+//		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
+		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j)) break;
 		if (j < N) continue;
 		HitFlag[i] = -1;
 	}
 }
 
-void CleanByTime(ReadDigiDataUser *user)
+void CleanByTime(void)
 {
 	int i, N;
 	float tearly;
@@ -813,7 +741,7 @@ void CreateDeadList(char *fname, int run)
 	printf("Run %d: %d channels masked out.\n", run, cnt);
 }
 
-void DebugFullPrint(ReadDigiDataUser *user)
+void DebugFullPrint(void)
 {
 	int i, N;
 	time_t tm;
@@ -852,12 +780,12 @@ void DebugFullPrint(ReadDigiDataUser *user)
 	}
 }
 
-void DumpEvent(ReadDigiDataUser *user)
+void DumpEvent(void)
 {
 	int i, N;
 	char str[1024];
 	
-	DebugFullPrint(user);
+	DebugFullPrint();
 
 	sprintf(str, "evt_%Ld.root", DanssEvent.globalTime);
 	TFile *f = new TFile(str, "RECREATE");
@@ -961,18 +889,18 @@ void DumpEvent(ReadDigiDataUser *user)
 	f->Close();
 }
 
-void FillTimeHists(ReadDigiDataUser *user) 
+void FillTimeHists(void) 
 {
 	int i, N;
 	N = user->nhits();
-	for (i=0; i<N; i++) if (!(user->type(i) == bSiPm && user->npix(i) < MINSIPMPIXELS2) && user->e(i) > MINENERGY4TIME && user->t_raw(i) > 0) {
+	for (i=0; i<N; i++) if (user->e(i) > MINENERGY4TIME && user->t_raw(i) > 0) {
 		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - DanssEvent.fineTime);
 //		time relative to PMT - we need some common calibration of delays
 		if (PmtFineTime > 0) hPMTTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - PmtFineTime);
 	}
 }
 
-void FindFineTime(ReadDigiDataUser *user)
+void FindFineTime(void)
 {
 	double tsum;
 	double asum;
@@ -1009,9 +937,7 @@ void FindFineTime(ReadDigiDataUser *user)
 		}
 	}
 	DanssEvent.fineTime = (asum > 0) ? tsum / asum : NOFINETIME;	// some large number if not usable hits found
-#ifndef DIGI_V2
-		if (DanssEvent.trigType == masterTrgRandom) DanssEvent.fineTime = 200;	// some fixed good time
-#endif
+	if (DanssEvent.trigType == masterTrgRandom) DanssEvent.fineTime = 200;	// some fixed good time
 	PmtFineTime = -1;
 	if (n >= 2 && PMTsumA > 2) PmtFineTime = PMTsumT / PMTsumA;
 }
@@ -1026,7 +952,7 @@ void MCSmear(void)
 	DanssEvent.NeutronEnergy = MCEnergySmear(DanssEvent.NeutronEnergy);
 }
 
-void StoreHits(ReadDigiDataUser *user)
+void StoreHits(void)
 {
 	int i, j, N;
 
@@ -1060,7 +986,7 @@ void StoreHits(ReadDigiDataUser *user)
 	DanssInfo.hits[1] += j;
 }
 
-void SumClean(ReadDigiDataUser *user)
+void SumClean(void)
 {
 	int i, N;
 	
@@ -1071,12 +997,10 @@ void SumClean(ReadDigiDataUser *user)
 		DanssEvent.SiPmCleanEnergy += user->e(i);
 		if (user->zCoord(i) < NBOTTOMLAYERS) DanssEvent.BottomLayersEnergy += user->e(i);
 		if (user->npe(i) > 3) hCrossTalk->Fill(user->npix(i) / user->npe(i));
-#ifndef DIGI_V2
 		if (IsMc && user->e_McTruth(i) > 0.3) {
 			hEtoEMC->Fill(user->e(i) / user->e_McTruth(i));
 			hNPEtoEMC->Fill(user->npe(i) / user->e_McTruth(i));
 		}
-#endif
 //		DanssEvent.SiPmCleanEnergy += (iFlags & FLG_EAMPLITUDE) ? user->siPmAmp(user->side(i), user->firstCoord(i), user->zCoord(i)) : user->e(i);
 //		Calculate asymmetry, clean hits 
 		if (user->side(i) == 'X') {
@@ -1110,7 +1034,7 @@ void SumClean(ReadDigiDataUser *user)
 	}
 }
 
-void SumEverything(ReadDigiDataUser *user)
+void SumEverything(void)
 {
 	int i, N;
 	
@@ -1224,18 +1148,19 @@ void Help(void)
 	printf("-deadlist filename.txt  --- file with explicit list of dead channels.\n");
 	printf("-dump gTime             --- dump an event with this gTime.\n");
 	printf("-ecorr EnergyCorrection --- 1.00 by default.\n");
+	printf("-ecorrsipm SiPMEnergyCorrection --- 1.08 by default - to correct for Ira's wrong dealing with SiPM waveforms.\n");
 	printf("-events number          --- stop after processing this number of events. Default - do not stop.\n");
 	printf("-file filename.txt      --- file with a list of files for processing. No default.\n");
 	printf("-flag FLAGS             --- analysis flag mask. Default - 0. Recognized flags:\n");
 	printf("\t       1 --- do debugging printout of events;\n");
 	printf("\t       2 --- create delta time histograms;\n");
-	printf("\t   0x100 --- do energy correction based on MC taking into account number of hits in the cluster;\n");
-	printf("\t   0x200 --- do energy correction based on MC not taking into account number of hits in the cluster;\n");
+//	printf("\t   0x100 --- do energy correction based on MC taking into account number of hits in the cluster;\n");
+//	printf("\t   0x200 --- do energy correction based on MC not taking into account number of hits in the cluster;\n");
 	printf("\t  0x1000 --- simulate \"neutron\" correction for MC events;\n");
-	printf("\t 0x10000 --- do not clean small energies;\n");
+//	printf("\t 0x10000 --- do not clean small energies;\n");
 	printf("\t 0x20000 --- do not do time cut;\n");
 	printf("\t 0x40000 --- do not require confirmation for all hits;\n");
-	printf("\t 0x80000 --- do not require confirmation for SiPM single pixel hits;\n");
+//	printf("\t 0x80000 --- do not require confirmation for SiPM single pixel hits;\n");
 	printf("\t0x100000 --- do not correct PMT cluster energy for out of cluster SiPM hits.\n");
 	printf("\t0x200000 --- Check PMT and VETO time.\n");
 	printf("\t0x400000 --- do not confirm all SiPM hits.\n");
@@ -1271,6 +1196,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	char *RawHitsFileName;
 	char *McRootFileName;
 	
+	user = this;
 	int RandomSeed = 17321;
 	MCsmear.st = 0.12;	// 12%/sqrt(E)
 	MCsmear.ct = 0.04;	// 4%
@@ -1286,6 +1212,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	MaxEvents = -1;
 	IsMc = 0;
 	EnergyCorrection = 1.00;
+	SiPMEnergyCorrection = 1.08;
 	MCEnergyCorrection = 1.00;
 	RawHitsFileName = NULL;
 	RawHitsTree = NULL;
@@ -1307,6 +1234,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		} else if (!strcmp(argv[i], "-ecorr")) {
 			i++;
 			EnergyCorrection = strtod(argv[i], NULL);
+		} else if (!strcmp(argv[i], "-ecorrsipm")) {
+			i++;
+			SiPMEnergyCorrection = strtod(argv[i], NULL);
 		} else if (!strcmp(argv[i], "-events")) {
 			i++;
 			MaxEvents = strtol(argv[i], NULL, 0);
@@ -1484,12 +1414,10 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		sprintf(strl, "PMT amplification: ADC integral units per MeV %2.2d", j);
 		hPMTAmpl[j] = new TH1D(strs, strl, 1000, 500, 1500);
 	}
-#ifndef DIGI_V2
 	if (IsMc) {
 		hEtoEMC = new TH1D("hEtoEMC", "Measured to MC truth energy ratio", 100, 0, 3);
 		hNPEtoEMC = new TH1D("hNPEtoEMC", "Photo electrons to MC truth energy ratio", 250, 0, 50);
 	}
-#endif
 }
 
 //------------------------------->
@@ -1529,11 +1457,7 @@ int ReadDigiDataUser::processUserEvent()
 	fileLastTime = globalTime();
 	DanssEvent.number     = nevt();
 	DanssEvent.unixTime   = absTime();
-#ifdef DIGI_V2
-	DanssEvent.trigType = -1;
-#else
 	DanssEvent.trigType = masterTriggerType();
-#endif
 	if (IsMc) {
 		mcTruth(DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
 		if (McEventTree) {
@@ -1552,34 +1476,30 @@ int ReadDigiDataUser::processUserEvent()
 //	printf("MCTruth: %f %f %f %f %f\n", DanssMc.Energy, DanssMc.X[0], DanssMc.X[1], DanssMc.X[2], DanssMc.DriftTime);
 
 	if (RawHitsArray) FindRawHits();
-	CleanZeroes(this);
-	SumEverything(this);
-	if (!(iFlags & FLG_NOCLEANNOISE)) CleanNoise(this);
-	FindFineTime(this);
-	if (!(iFlags & FLG_NOTIMECUT)) CleanByTime(this);
-	if (!(iFlags & FLG_NOCONFIRM)) CleanByConfirmation(this);
-	if (!(iFlags & FLG_NOCONFIRM2)) CleanByConfirmation2(this);
-	SumClean(this);
-	CalculateNeutron(this);
-	CalculatePositron(this);
-	StoreHits(this);
+	CleanZeroes();
+	SumEverything();
+	FindFineTime();
+	if (!(iFlags & FLG_NOTIMECUT)) CleanByTime();
+	CleanByConfirmation();
+	SumClean();
+	CalculateNeutron();
+	CalculatePositron();
+	StoreHits();
 	CorrectEnergy((IsMc) ? MCEnergyCorrection : EnergyCorrection);
 	if (IsMc && (iFlags & FLG_MCENERGYSMEAR)) MCSmear();
-	if (iFlags & FLG_PRINTALL) DebugFullPrint(this);
+	if (iFlags & FLG_PRINTALL) DebugFullPrint();
 	if (DanssEvent.globalTime == dumpgTime) {
-		DumpEvent(this);
+		DumpEvent();
 		return -1;
 	}
 
 	if ((iFlags & FLG_DTHIST) && !IsPickUp() &&
 		(DanssEvent.PmtCleanEnergy + DanssEvent.SiPmCleanEnergy + DanssEvent.VetoCleanEnergy > TIMEHISTMINENERGY) &&
 		(DanssEvent.PmtCleanHits + DanssEvent.SiPmCleanHits + DanssEvent.VetoCleanHits > TIMEHISTMINHITS))
-		FillTimeHists(this);
+		FillTimeHists();
 
 	if ((DanssEvent.SiPmCleanHits > 0 && DanssEvent.PmtCleanHits > 0) || DanssEvent.VetoCleanHits > 0
-#ifndef DIGI_V2
 		|| DanssEvent.trigType == masterTrgRandom
-#endif
   	) {	// remove pure pickup noise
 		iNevtTotal++;
 		DanssInfo.events++;
@@ -1623,12 +1543,10 @@ void ReadDigiDataUser::finishUserProc()
 	for (j=0; j<iNChannels_AdcBoard; j++) if (hPMTAmpl[j]->GetEntries() > 0) hPMTAmpl[j]->Write();
 	if (RawHitsTree) RawHitsTree->Write();
 	if (RawHitsArray) free(RawHitsArray);
-#ifndef DIGI_V2
 	if (IsMc) {
 		hEtoEMC->Write();
 		hNPEtoEMC->Write();
 	}
-#endif
 	if (OutputFile) OutputFile->Close();
 	if (McFile) McFile->Close();
   
@@ -1653,4 +1571,3 @@ int ReadDigiDataUser::userActionAtFileChange()
 	fileFirstTime = -1;
 	return 0;
 }
-

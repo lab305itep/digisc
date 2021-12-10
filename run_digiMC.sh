@@ -124,6 +124,16 @@ do_IBD()
 	do_IBDdir "${digi_ibd}FS/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d.digi" "${raw_ibd}Flat_spectrum/DANSS%d_%d.root" ${OUTDIR}/IBD/FS 10 16
 }
 
-do_muons
+do_test()
+{
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/Muons_v2
+	i=0
+	j=1
+	ser=`printf "%2.2d_%2.2d" $i $j`
+	${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_${ser}.digi.bz2 0x70000 \
+		${HOME}/test/ -mcfile ${MCRAW}/Muons_v2/OldTimeLine/DANSS${i}_${j}.root ${DEAD}
+}
+
+do_test
 
 exit 0
