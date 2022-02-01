@@ -7,7 +7,7 @@
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/tstat.err
 cd /home/itep/alekseev/igor/tcalib
 
-mpirun --mca btl ^tcp run_tstat_mpi 2210 102856 hDT
-mpirun --mca btl ^tcp run_tstat_mpi 2210 102856 hDTP
+mpirun --mca btl ^tcp run_tstat_mpi 100000 113968 hDT
+mpirun --mca btl ^tcp run_tstat_mpi 100000 113968 hDTP
 
 exit 0

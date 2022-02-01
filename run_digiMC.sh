@@ -9,7 +9,7 @@ cd /home/itep/alekseev/igor
 
 OVERWRITE=NO
 MCRAW=MC_RAW
-OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/
+OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/
 DIGI=digi_MC
 EXE=./evtbuilder5
 DEAD="-deadlist dch_002210_102856.list"
@@ -134,6 +134,30 @@ do_test()
 		${HOME}/test/ -mcfile ${MCRAW}/Muons_v2/OldTimeLine/DANSS${i}_${j}.root ${DEAD}
 }
 
-do_test
+do_no_tr_profile()
+{
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/no_transv_profile/DataTakingPeriod02
+	MCRAW=/home/clusters/rrcmpi/danss/MC_RAW/No_transv_profile
+	OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/no_transv_profile
+#		Muons
+	for ((i=0;$i<2;i=$i+1)) ; do
+		for ((j=1;$j<17;j=$j+1)) ; do
+			ser=`printf "%2.2d_%2.2d" $i $j`
+			FILEIN=${DIGIN}/Muons/mc_Muons_indLY_transcode_rawProc_pedSim_${ser}.digi
+			if [ -f $FILEIN ] ; then
+				${EXE} $FILEIN 0x70000 ${OUTDIR}/Muons -mcfile ${MCRAW}/Muons/DANSS${i}_${j}.root ${DEAD}
+			fi
+		done
+	done
+#		Sources
+	${EXE} ${DIGIN}/RadSources/mc_22Na_no_transv_profile_indLY_transcode_rawProc_pedSim.digi  0x70000 ${OUTDIR}/RadSources \
+		-mcfile ${MCRAW}/22Na/DANSS0_1.root ${DEAD}
+	${EXE} ${DIGIN}/RadSources/mc_248Cm_no_transv_profile_indLY_transcode_rawProc_pedSim.digi 0x70000 ${OUTDIR}/RadSources \
+		-mcfile ${MCRAW}/248Cm_neutron/DANSS0_1.root ${DEAD}
+	${EXE} ${DIGIN}/RadSources/mc_60Co_no_transv_profile_indLY_transcode_rawProc_pedSim.digi  0x70000 ${OUTDIR}/RadSources \
+		-mcfile ${MCRAW}/60Co/DANSS0_1.root ${DEAD}
+}
+
+do_no_tr_profile
 
 exit 0

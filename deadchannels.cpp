@@ -54,6 +54,9 @@ void ModTranslate(int Period, int hMod, int hChan, int &mod, int &chan)
 		case 4:
 			mod = 47;	// module 4 is the replacement of 47
 			break;
+		case 20:
+			mod = 25;	// later module 20 replaced 25
+			break;
 		case 24:
 			mod = (hChan < 16) ? 25 : 24;	// connector 0 of 25 was moved to 24
 			break;
@@ -83,20 +86,25 @@ void process(int run, const char *fmt, FILE *fOut)
     We have these variations of the board assigments so far:
     0 - initial variation, used in MC : runs 2210  - 59260
     1 - board 47 replaced by board 4  : runs 61541 - 69739
-    2 - board 13 repalced by board 51 : runs 69765 - XXXXXX
-        board 20 repalced by board 25
+    2 - board 13 replaced by board 51 : runs 69765 - XXXXXX
+        board 20 replaced by board 25
         and connector 25.0 moved to 24.0 
-        board 43 replaced by board 52
+        board 43 replaced by board 52 and then 43 was put back
+        later board 20 was installed and former connector 24.0 was put to it
     Boards appearence/disappearence:
     47 - 59260 - last run
     4  - 61541 - first run
     13 - 69739 - last run
     20 - 69739 - last run
+    20 - 110848 - the first run with it back on the new place
     51 - 69765 - first run
     25.1 --> 24.1 - 69765 - first run
     20 --> 25 - 69765 - first run
     43 - 89039 - last run
+    43 - 110848 - first run back
     52 - 89360 - first run
+    52 - 110801 - last run
+    
 */
 	const unsigned short ChanMask[MAXMODULE][4] = {
 //			Runs 2210 - 61540 - we translate everything to this module/channel numeration

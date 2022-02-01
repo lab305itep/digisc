@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include <TFile.h>
+#include <TTree.h>
 
 int checkdigi(int fnum)
 {
@@ -29,7 +30,12 @@ int checkroot(int fnum, const char *pattern)
 {
 	int irc;
 	char fname[1024];
+	const char *rnames[] = {"DanssEvent", "DanssInfo", "RawHits"};
+	const char *pnames[] = {"DanssPair", "DanssRandom", "DanssMuRandom", "SumInfo"};
+	const char *mnames[] = {"MuonPair", "MuonRandom", "SumInfo"};
 	TFile *f;
+	TTree *t;
+	int i;
 	
 	sprintf(fname, pattern, fnum/1000, fnum);
 	irc = access(fname, R_OK);
@@ -37,13 +43,51 @@ int checkroot(int fnum, const char *pattern)
 	f = new TFile(fname);
 	if (f->IsZombie()) return false;
 	if (!f->GetNkeys()) {
-		f->Close();
-		return false;
+		fprintf(stderr, "Run %d: No keys found!\n", fnum);
+		goto ret_err;
 	}
 	if (f->TestBit(TFile::kRecovered)) {
-		f->Close();
-		return false;
+		fprintf(stderr, "Run %d: Was not closed propely!\n", fnum);
+		goto ret_err;
 	}
+	t = (TTree *) f->Get(rnames[0]);
+	if (t) {
+		for (i = 1; i < sizeof(rnames) / sizeof(rnames[0]); i++) {
+			t = (TTree *) f->Get(rnames[i]);
+			if (!t) {
+				fprintf(stderr, "Run %d: No tree %s!\n", fnum, rnames[i]);
+				goto ret_err;
+			}
+		}
+		goto ret_OK;
+	}
+	t = (TTree *) f->Get(pnames[0]);
+	if (t) {
+		for (i = 1; i < sizeof(pnames) / sizeof(pnames[0]); i++) {
+			t = (TTree *) f->Get(pnames[i]);
+			if (!t) {
+				fprintf(stderr, "Run %d: No tree %s!\n", fnum, pnames[i]);
+				goto ret_err;
+			}
+		}
+		goto ret_OK;
+	}
+	t = (TTree *) f->Get(mnames[0]);
+	if (t) {
+		for (i = 1; i < sizeof(mnames) / sizeof(mnames[0]); i++) {
+			t = (TTree *) f->Get(mnames[i]);
+			if (!t) {
+				fprintf(stderr, "Run %d: No tree %s!\n", fnum, mnames[i]);
+				goto ret_err;
+			}
+		}
+		goto ret_OK;
+	}
+	
+ret_err:
+	f->Close();
+	return false;
+ret_OK:
 	f->Close();
 	return true;
 }

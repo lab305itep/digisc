@@ -89,10 +89,10 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB,
 	TCut cSel = cxyz && cVeto && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel && cZ && cn);
-	sprintf(str, "(SiPmCleanEnergy*1.08+PmtCleanEnergy)*%5.3f/2.0", eScale);	// UGLY !
+	sprintf(str, "(SiPmCleanEnergy+PmtCleanEnergy)*%5.3f/2.0", eScale);
 	tExpA->Project("hExpA", str, cSel && cZ && cXY && cn);
 	tExpB->Project("hExpB", str, cSel && cZ && cXY && cn);
-	sprintf(str, "(SiPmCleanEnergy*1.08)*%5.3f", eScale);				// UGLY !
+	sprintf(str, "(SiPmCleanEnergy)*%5.3f", eScale);
 	tExpA->Project("hExpSiPMA", str, cSel && cZ && cXY && cn);
 	tExpB->Project("hExpSiPMB", str, cSel && cZ && cXY && cn);
 	sprintf(str, "PmtCleanEnergy*%5.3f", eScale);
@@ -217,9 +217,9 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, TCut cXY, TCut cZ
 	TCut cn("SiPmCleanHits > 2");
 	TCut cSel = cxyz && cVeto;
 	
-	sprintf(str, "MyRandom::GausAdd(%5.3f*(SiPmCleanEnergy*1.08+PmtCleanEnergy)/2.0, %6.4f, %6.4f)", scale, RndmSqe, RndmC);	// UGLY !
+	sprintf(str, "MyRandom::GausAdd(%5.3f*(SiPmCleanEnergy+PmtCleanEnergy)/2.0, %6.4f, %6.4f)", scale, RndmSqe, RndmC);
 	tMc->Project("hMc", str, cSel && cZ && cXY && cn);
-	sprintf(str, "MyRandom::GausAdd(%5.3f*SiPmCleanEnergy*1.08, %6.4f, %6.4f)", scale, SiPMRndmSqe, SiPMRndmC);			// UGLY !
+	sprintf(str, "MyRandom::GausAdd(%5.3f*SiPmCleanEnergy, %6.4f, %6.4f)", scale, SiPMRndmSqe, SiPMRndmC);
 	tMc->Project("hMcSiPM", str, cSel && cZ && cXY && cn);
 	sprintf(str, "MyRandom::GausAdd(%5.3f*PmtCleanEnergy, %6.4f, %6.4f)", scale, PMTRndmSqe, PMTRndmC);
 	tMc->Project("hMcPMT", str, cSel && cZ && cXY && cn);
@@ -276,7 +276,7 @@ void Add2Chain(TChain *ch, int from, int to, const char *rootdir, int max_files 
 	}
 }
 
-void draw_Sources4(int iser, const char *rootdir = "root8n1", double Rndm_or_scale = 1.0, int max_files = 0)
+void draw_Sources4(int iser, const char *rootdir = "root8n2", double Rndm_or_scale = 1.0, int max_files = 0)
 {
 	const char *name = "";
 	char fname[1024];
@@ -399,7 +399,7 @@ void draw_Sources4(int iser, const char *rootdir = "root8n1", double Rndm_or_sca
 	case 1001:	// Na MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_22Na_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_22Na_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_center_%s_%5.3f", rootdir, Rndm_or_scale);
@@ -407,7 +407,7 @@ void draw_Sources4(int iser, const char *rootdir = "root8n1", double Rndm_or_sca
 	case 1002:	// Na MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_22Na_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_22Na_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_edge_%s_%5.3f", rootdir, Rndm_or_scale);
@@ -415,7 +415,7 @@ void draw_Sources4(int iser, const char *rootdir = "root8n1", double Rndm_or_sca
 	case 1101:	// Co MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_60Co_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_center_%s_%5.3f", rootdir, Rndm_or_scale);
@@ -423,7 +423,7 @@ void draw_Sources4(int iser, const char *rootdir = "root8n1", double Rndm_or_sca
 	case 1102:	// Co MC, edge
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 88) * (NeutronX[1] - 88) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_edge_%s_%5.3f", rootdir, Rndm_or_scale);
@@ -586,7 +586,7 @@ TH2D *src_scan(const char *src, const char *period, double cRndm)
 	h2d = new TH2D(strs, strl, Nscale, Rscale[0] - Dscale/2, Rscale[1] + Dscale/2, Nrndm, Rrndm[0] - Drndm/2, Rrndm[1] + Drndm/2);
 	for (i=0; i<Nscale; i++) {
 		kScale = Rscale[0] + Dscale * i;
-		sprintf(strl, "%s_%s_center_%5.3f_root8n1.root", src, period, kScale);
+		sprintf(strl, "%s_%s_center_%5.3f_root8n2.root", src, period, kScale);
 		f = new TFile(strl);
 		if (!f->IsOpen()) return NULL;
 		tmp = (TH1D*)f->Get("hExpC");
@@ -605,7 +605,7 @@ TH2D *src_scan(const char *src, const char *period, double cRndm)
 	for (j=0; j<Nrndm; j++) {
 		kScale = Rscale[0] + Dscale * i;
 		kRndm = Rrndm[0] + Drndm * j;
-		sprintf(strl, "%s_MC_center_rndm_%4.2f_%4.2f_root8n1.root", src, kRndm, cRndm);
+		sprintf(strl, "%s_MC_center_rndm_%4.2f_%4.2f_root8n2.root", src, kRndm, cRndm);
 		f = new TFile(strl);
 		if (!f->IsOpen()) return NULL;
 		tmp = (TH1D*)f->Get("hMc");

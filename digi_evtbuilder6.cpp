@@ -304,7 +304,7 @@ int IsPickUp(void)
 double Energy(int i)
 {
 	double E;
-	E = Energy(i);
+	E = user->e(i);
 	if (user->type(i) == bSiPm) E *= SiPMEnergyCorrection;
 	if (IsMc) {
 		E *= MCEnergyCorrection;
@@ -1210,9 +1210,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	char *DeadListName;
 	char *RawHitsFileName;
 	char *McRootFileName;
+	int RandomSeed = 17321;
 	
 	user = this;
-	int RandomSeed = 17321;
 	MCsmear.st = 0.12;	// 12%/sqrt(E)
 	MCsmear.ct = 0.04;	// 4%
 	progStartTime = time(NULL);
@@ -1452,7 +1452,7 @@ int ReadDigiDataUser::processUserEvent()
 	float fineTime;
 	int McNum;
 	long long gt;
-	
+
 	if( ttype() != 1 ) return 0;
 	
 	memset(HitFlag, 0, nhits() * sizeof(int));
@@ -1500,7 +1500,7 @@ int ReadDigiDataUser::processUserEvent()
 	CalculateNeutron();
 	CalculatePositron();
 	StoreHits();
-	CorrectEnergy((IsMc) ? MCEnergyCorrection : EnergyCorrection);
+//	CorrectEnergy((IsMc) ? MCEnergyCorrection : EnergyCorrection);
 	if (IsMc && (iFlags & FLG_MCENERGYSMEAR)) MCSmear();
 	if (iFlags & FLG_PRINTALL) DebugFullPrint();
 	if (DanssEvent.globalTime == dumpgTime) {
