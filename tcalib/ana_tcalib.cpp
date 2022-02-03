@@ -49,6 +49,7 @@ using namespace std;
 TChain	*InputTree;
 TH1D	*hDT[MAXCHAN];
 float	tShift[MAXCHAN];
+TH1D	*hDelta;
 
 struct MuonEventStruct {
 	long long number;
@@ -101,10 +102,14 @@ void DrawHists(const char *name)
 			cv->cd(k+1);
 			hDT[chan]->Draw();
 			tShift[chan] += mean;
+			hDelta->Fill(mean);
 			n++;
 		}
 		if (n) cv->SaveAs(str);
 	}
+	cv->Clear();
+	hDelta->Draw();
+	cv->SaveAs(str);
 	cv->SaveAs((str + "]").Data());
 	delete cv;
 }
@@ -219,6 +224,7 @@ int main(int argc, const char **argv)
 	InputTree->SetBranchAddress("Z", HitArray.z);
 	InputTree->SetBranchAddress("XY", HitArray.xy);
 	InputTree->SetBranchAddress("T", HitArray.t);
+	hDelta = new TH1D("hDelta", "Run time shift corrections;ns", 100, -5, 5);
 	
 	memset(hDT, 0, sizeof(hDT));
 	memset(tShift, 0, sizeof(tShift));
@@ -234,6 +240,7 @@ int main(int argc, const char **argv)
 	TFile *fOut = new TFile(str, "RECREATE");
 	fOut->cd();
 	for (i=0; i<MAXCHAN; i++) if (hDT[i]) hDT[i]->Write();
+	hDelta->Write();
 	fOut->Close();
 
 	return 0;
