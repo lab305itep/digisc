@@ -12,3 +12,7 @@ run_tcalib_mpi: run_tcalib_mpi.c
 ana_tcalib: ana_tcalib.cpp
 	g++ -O3 -o $@ $^ ${ROOTINC} ${ROOTLIB}
 
+draw_tcalib: draw_tcalib.cpp
+	g++ -O3 -o $@ $^ ${ROOTINC} ${ROOTLIB}
+
+prn_tcalib: prn_tcalib.cpp

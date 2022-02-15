@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N digi_stat
 #PBS -q mpi
-#PBS -l nodes=112
+#PBS -l nodes=109
 #PBS -l walltime=120:00:00
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/stat.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/stat.err

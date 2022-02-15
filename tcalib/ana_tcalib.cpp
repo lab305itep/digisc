@@ -5,8 +5,6 @@
  * Package:       DANSS time calibration pass 2
  *
  * Description:   Gets a tree with muon events and produce histogramms and time calibration
- *                We select muons which have single hits only
- *                in each of top and bottom layers and 80-150 hits total
  *
  ***/
 #include <stdio.h>
@@ -71,6 +69,17 @@ struct HitStruct {
 	float	t[iMaxDataElements];
 }	HitArray;
 
+void DoDelta(void)
+{
+	int i;
+	double mean;
+	for (i=0; i<MAXCHAN; i++) if (hDT[i]) {
+		mean = hDT[i]->GetMean();
+		tShift[i] += mean;
+		hDelta->Fill(mean);
+	}
+}
+
 void DrawHists(const char *name)
 {
 	const double width = 15;	// ns
@@ -101,8 +110,6 @@ void DrawHists(const char *name)
 			hDT[chan]->GetXaxis()->SetRangeUser(umin, umax);
 			cv->cd(k+1);
 			hDT[chan]->Draw();
-			tShift[chan] += mean;
-			hDelta->Fill(mean);
 			n++;
 		}
 		if (n) cv->SaveAs(str);
@@ -167,7 +174,10 @@ void Help(void)
 	printf("\tDANSS time calibration pass 2. Version %s\n", MYVERSION);
 	printf("Process muon events and create histogramms.\n");
 	printf("\tUsage:\n");
-	printf("\t./ana_tcalib run_first run_last run_dir [tcalib.bin]\n");
+	printf("\t./ana_tcalib [-h|-p] run_first run_last run_dir [tcalib.bin]\n");
+	printf("Options:\n");
+	printf("\t-h - print this message.\n");
+	printf("\t-p - do not write pdf file.\n");
 }
 
 void ReadCalib(const char *name)
@@ -198,19 +208,34 @@ void WriteCalib(const char *name)
 
 int main(int argc, const char **argv)
 {
-	int i, irc;
+	int i, irc, iarg;
 	char str[1024];
 	int run_first, run_last;
 	const char *run_dir;
+	int NoPDF;
 	
-	if (argc < 4) {
+	NoPDF = 0;
+	// process options
+	for (iarg = 1; iarg < argc; iarg++) {
+		if (argv[iarg][0] != '-') break;
+		switch(argv[iarg][1]) {
+		case 'h':
+			Help();
+			return 0;
+		case 'p':
+			NoPDF = 1;
+			break;
+		}
+	}
+
+	if (argc - iarg < 3) {
 		Help();
 		return 100;
 	}
 	
-	run_first = strtol(argv[1], NULL, 10);
-	run_last = strtol(argv[2], NULL, 10);
-	run_dir = argv[3];
+	run_first = strtol(argv[iarg], NULL, 10);
+	run_last = strtol(argv[iarg+1], NULL, 10);
+	run_dir = argv[iarg+2];
 	
 	InputTree = new TChain("MuonEvent", "MuonEvent");
 	for (i = run_first; i <= run_last; i++) {
@@ -224,17 +249,21 @@ int main(int argc, const char **argv)
 	InputTree->SetBranchAddress("Z", HitArray.z);
 	InputTree->SetBranchAddress("XY", HitArray.xy);
 	InputTree->SetBranchAddress("T", HitArray.t);
-	hDelta = new TH1D("hDelta", "Run time shift corrections;ns", 100, -5, 5);
+	hDelta = new TH1D("hDelta", "Run time shift corrections;ns", 1000, -50, 50);
 	
 	memset(hDT, 0, sizeof(hDT));
 	memset(tShift, 0, sizeof(tShift));
-	if (argc > 4) ReadCalib(argv[4]);
+	if (argc - iarg > 3) ReadCalib(argv[iarg+3]);
 
 	FillHists();
-	sprintf(str, "%s/hist/hist_%6.6d_%6.6d.pdf", run_dir, run_first, run_last);
-	DrawHists(str);
+	DoDelta();
 	sprintf(str, "%s/hist/calib_%6.6d_%6.6d.bin", run_dir, run_first, run_last);
 	WriteCalib(str);
+	if (!NoPDF) {
+		sprintf(str, "%s/hist/hist_%6.6d_%6.6d.pdf", run_dir, run_first, run_last);
+		DrawHists(str);
+	}
+	printf("Runs %d-%d calibration change RMS = %6.3f ns.\n", run_first, run_last, hDelta->GetRMS());
 
 	sprintf(str, "%s/hist/hist_%6.6d_%6.6d.root", run_dir, run_first, run_last);
 	TFile *fOut = new TFile(str, "RECREATE");
@@ -245,4 +274,3 @@ int main(int argc, const char **argv)
 
 	return 0;
 }
-

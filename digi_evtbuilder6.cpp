@@ -942,7 +942,7 @@ void FindFineTime(void)
 			n++;
 			break;
 		case bVeto:
-			e = Energy(i);
+			e = 0;	// exclude veto from time averaging
 			break;
 		}
 		if (e > MINENERGY4TIME && user->t_raw(i) > MINAVRTIME) {
