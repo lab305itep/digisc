@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 	TCut cRXY("PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0");
 	TCut c20("gtDiff > 1");
 	TCut cGamma("AnnihilationEnergy < 1.2 && AnnihilationGammas < 12");
-//	TCut cPe("PositronEnergy > 0.75");
+	TCut cPe("PositronEnergy > 0.5");
 	TCut cPh("PositronHits < 8");
 	TCut cR2("Distance < 40 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
 	TCut cR3("Distance < 48 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 	TCut cNE("NeutronEnergy > 1.5 + 3 * exp(-0.13 * PositronEnergy*PositronEnergy)");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
-        TCut ct = c20 && cIso && cX && cY && cZ && cR && cPh && cGamma && cN && cSingle && cAux;
+        TCut ct = c20 && cIso && cX && cY && cZ && cR && cPh && cPe && cGamma && cN && cSingle && cAux;
         
         shift = (argc > 4) ? argv[4] : "0.0";
 	

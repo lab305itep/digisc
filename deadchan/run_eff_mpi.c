@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	
 	setenv("DANSSRAWREC_HOME", "../lib_v3.2", 1);
 //			Run digi
-	sprintf(str, "../digi_evtbuilder6_v3 -no_hit_tables -file %s -output %s/var_%d_fuel.root -flag 0x870000 -ecorr 1.0 -mcdata -deadlist %s/%d.list", 
+	sprintf(str, "../digi_evtbuilder6_v3 -no_hit_tables -file %s -output %s/var_%d_fuel.root -flag 0x860000 -mcdata -deadlist %s/%d.list", 
 		fuellist, rootdir, serial, vardir, serial);
 	irc = system(str);
 	if (irc) {

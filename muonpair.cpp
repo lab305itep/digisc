@@ -85,7 +85,7 @@ int IsVeto(struct DanssEventStruct7 *DanssEvent)
 	float E;
 	int rc;
 	
-	E = (DanssEvent->SiPmCleanEnergy*1.08 + DanssEvent->PmtCleanEnergy) / 2;			// UGLY !
+	E = (DanssEvent->SiPmCleanEnergy + DanssEvent->PmtCleanEnergy) / 2;
 	rc = (E >= 20) || (DanssEvent->VetoCleanEnergy >= 4) || (DanssEvent->VetoCleanHits >= 2);
 	
 	return rc;
@@ -96,7 +96,7 @@ int IsMuon(struct DanssEventStruct7 *DanssEvent, struct HitStruct *Hits, int *NP
 	float E;
 	int i, j, rc;
 	
-	E = (DanssEvent->SiPmCleanEnergy*1.08 + DanssEvent->PmtCleanEnergy) / 2;			// UGLY !
+	E = (DanssEvent->SiPmCleanEnergy + DanssEvent->PmtCleanEnergy) / 2;
 	if (E < Criteria.MuonEnergy && DanssEvent->VetoCleanEnergy < Criteria.VetoEnergy) return 0;
 	if (DanssEvent->PmtCleanEnergy < Criteria.ProtonEnergy) return 0;
 	if (!Criteria.CheckHits) return 1;
@@ -108,7 +108,7 @@ int IsMuon(struct DanssEventStruct7 *DanssEvent, struct HitStruct *Hits, int *NP
 			if (Hits->type[j].z == Hits->type[i].z && abs(Hits->type[j].xy - Hits->type[i].xy) == 1) rc++;
 			if (abs(Hits->type[j].z - Hits->type[i].z) == 2 && abs(Hits->type[j].xy - Hits->type[i].xy) <= 1) rc++;
 		}
-		if (!rc && Hits->E[i]*1.08 >= Criteria.ProtonEnergy) {					// UGLY !
+		if (!rc && Hits->E[i] >= Criteria.ProtonEnergy) {
 			if (*NPHits < MAXPHITS) {
 				PHits[*NPHits].xy = Hits->type[i].xy;
 				PHits[*NPHits].z  = Hits->type[i].z;
@@ -135,8 +135,8 @@ int PatternCheck(int N0, struct HitStruct *Hits, int N1, struct PHits *PHits)
 int IsDelayed(struct DanssEventStruct7 *DanssEvent, struct HitStruct *HitArray, int NPHits, struct PHits *PHits)
 {
 	if (IsVeto(DanssEvent)) return 0;
-	if (DanssEvent->PositronEnergy*1.04 < Criteria.ClusterEnergy) return 0;				// UGLY !
-	if (DanssEvent->AnnihilationEnergy*1.08 > Criteria.ExtraEnergy) return 0;			// UGLY !
+	if (DanssEvent->PositronEnergy < Criteria.ClusterEnergy) return 0;
+	if (DanssEvent->AnnihilationEnergy > Criteria.ExtraEnergy) return 0;
 	if (Criteria.CheckHits && !PatternCheck(DanssEvent->NHits, HitArray, NPHits, PHits)) return 0;
 	return 1;
 }
@@ -158,28 +158,28 @@ void MakePair(
 	DanssPair->unixTime = PromptEvent->unixTime;
 	
 	DanssPair->SiPmHits[0] = PromptEvent->SiPmCleanHits;
-	DanssPair->SiPmEnergy[0] = PromptEvent->SiPmCleanEnergy * 1.08;					// UGLY !
+	DanssPair->SiPmEnergy[0] = PromptEvent->SiPmCleanEnergy;
 	DanssPair->PmtHits[0] = PromptEvent->PmtCleanHits;
 	DanssPair->PmtEnergy[0] = PromptEvent->PmtCleanEnergy;
 	DanssPair->VetoHits[0] = PromptEvent->VetoCleanHits;
 	DanssPair->VetoEnergy[0] = PromptEvent->VetoCleanEnergy;
 	DanssPair->SiPmHits[1] = DelayedEvent->SiPmCleanHits;
-	DanssPair->SiPmEnergy[1] = DelayedEvent->SiPmCleanEnergy * 1.08;				// UGLY !
+	DanssPair->SiPmEnergy[1] = DelayedEvent->SiPmCleanEnergy;
 	DanssPair->PmtHits[1] = DelayedEvent->PmtCleanHits;
 	DanssPair->PmtEnergy[1] = DelayedEvent->PmtCleanEnergy;
 	DanssPair->VetoHits[1] = DelayedEvent->VetoCleanHits;
 	DanssPair->VetoEnergy[1] = DelayedEvent->VetoCleanEnergy;
 
-	DanssPair->TotalEnergy = DelayedEvent->TotalEnergy * 1.04;					// UGLY !
+	DanssPair->TotalEnergy = DelayedEvent->TotalEnergy;
 	DanssPair->ClusterHits = DelayedEvent->PositronHits;
-	DanssPair->ClusterEnergy = DelayedEvent->PositronEnergy * 1.04;					// UGLY !
+	DanssPair->ClusterEnergy = DelayedEvent->PositronEnergy;
 	memcpy(DanssPair->ClusterX, DelayedEvent->PositronX, sizeof(DelayedEvent->PositronX));
-	DanssPair->ClusterSiPmEnergy = DelayedEvent->PositronSiPmEnergy * 1.08;				// UGLY !
+	DanssPair->ClusterSiPmEnergy = DelayedEvent->PositronSiPmEnergy;
 	DanssPair->ClusterPmtEnergy = DelayedEvent->PositronPmtEnergy;
 	DanssPair->OffClusterHits = DelayedEvent->AnnihilationGammas;
-	DanssPair->OffClusterEnergy = DelayedEvent->AnnihilationEnergy *1.08;				// UGLY !
+	DanssPair->OffClusterEnergy = DelayedEvent->AnnihilationEnergy;
 	
-	DanssPair->MuonEnergy = (PromptEvent->SiPmCleanEnergy*1.08 + PromptEvent->PmtCleanEnergy) / 2;	// UGLY !
+	DanssPair->MuonEnergy = (PromptEvent->SiPmCleanEnergy + PromptEvent->PmtCleanEnergy) / 2;
 	
 	DanssPair->gtDiff = (DelayedEvent->globalTime - PromptEvent->globalTime) / GFREQ2US;
 

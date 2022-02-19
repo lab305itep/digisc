@@ -9,22 +9,22 @@ if [ "x$1" == "x" ] ; then
 	exit 0
 fi
 
-if [ $1 == 25 ] ; then
-	echo "Bad MC_RAW" 
-	exit 0
-fi
-if [ $1 == 37 ] ; then
-	echo "Bad MC_RAW" 
-	exit 0
-fi
-if [ $1 == 70 ] ; then
-	echo "Bad digi" 
-	exit 0
-fi
-if [ $1 == 118 ] ; then
-	echo "Bad digi" 
-	exit 0
-fi
+#if [ $1 == 25 ] ; then
+#	echo "Bad MC_RAW" 
+#	exit 0
+#fi
+#if [ $1 == 37 ] ; then
+#	echo "Bad MC_RAW" 
+#	exit 0
+#fi
+#if [ $1 == 70 ] ; then
+#	echo "Bad digi" 
+#	exit 0
+#fi
+#if [ $1 == 118 ] ; then
+#	echo "Bad digi" 
+#	exit 0
+#fi
 
 k=$(($1/16))
 i=$(($1%16))
@@ -38,7 +38,7 @@ INAME=`printf "${PAIRDIR}/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d_i
 DLIST=${RNAME/.root/.list}
 if [ -f $FNAME ] && [ -f $MCNAME ] ; then
 	echo "$FNAME" > $DLIST
-	./digi_evtbuilder6_v3 -file $DLIST -output $RNAME -flag 0x870000 -mcdata -mcfile $MCNAME $FLAT_DEAD $FLAT_OPT
+	./digi_evtbuilder6_v3 -file $DLIST -output $RNAME -flag 0x860000 -mcdata -mcfile $MCNAME $FLAT_DEAD $FLAT_OPT
 	./pairbuilder8 $RNAME $PNAME 
 	./getMCinfo $PNAME $MCNAME $INAME
 	rm -f $DLIST

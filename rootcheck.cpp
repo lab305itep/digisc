@@ -9,8 +9,8 @@ int checkdigi(int fnum)
 {
 	const char pathpattern[][256] = {
 		"digi_v3.0/%3.3dxxx/danss_data_%6.6d_phys.digi",
-		"digi_rad/%3.3dxxx/danss_data_%6.6d_phys.digi",
-		"digi_led/%3.3dxxx/danss_data_%6.6d_phys.digi"
+		"digi_rad/%3.3dxxx/danss_data_%6.6d_phys.digi"
+//		"digi_led/%3.3dxxx/danss_data_%6.6d_phys.digi"
 	};
 	int i, irc;
 	char fname[1024];

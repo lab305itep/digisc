@@ -1,15 +1,15 @@
 #!/bin/bash
-#PBS -N MonoNu6
+#PBS -N MonoNu7
 #PBS -q mpi
 #PBS -l nodes=160
 #PBS -l walltime=5:00:00
 #PBS -l pmem=3Gb
-#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu6.out
-#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu6.err
+#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu7.out
+#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/MonoNu7.err
 cd /home/itep/alekseev/igor/MonoNu
 
-export ROOTVER=8n1
-export PAIRVER=8n1
+export ROOTVER=8n2
+export PAIRVER=8n2
 #export MONO_ARG="0.12 0.04 1.00"
 #export MONO_ARG="0.12 0.04 0.98"
 #export MONO_ARG="0.12 0.04 1.02"
