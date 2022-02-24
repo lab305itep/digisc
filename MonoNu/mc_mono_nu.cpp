@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <TChain.h>
 #include <TCut.h>
 #include <TFile.h>

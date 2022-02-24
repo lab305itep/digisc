@@ -27,7 +27,7 @@ fi
 #fi
 
 k=$(($1/16))
-i=$(($1%16))
+i=$(($1%16 + 1))
 
 cd ${HOME}/igor
 FNAME=`printf "${FLAT_DIGI}/mc_IBD_indLY_transcode_rawProc_pedSim_FS_%2.2d_%2.2d.digi" $k $i`

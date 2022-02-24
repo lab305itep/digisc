@@ -91,6 +91,7 @@ int ReadStat(const char *name, struct StatAllStruct *Stat)
 	char *token[MAXTOKEN];
 	int irc;
 	int type;
+	double d;
 	
 	fStat = fopen(name, "rt");
 	if (!fStat) {
@@ -114,7 +115,8 @@ int ReadStat(const char *name, struct StatAllStruct *Stat)
 		}
 		Stat[irc].type = type;
 		Stat[irc].start = ConvertTime(token[TOK_DAY], token[TOK_TIM]);
-		Stat[irc].no_veto = strtod(token[TOK_NVT], NULL) / strtod(token[TOK_20M], NULL);
+		d = strtod(token[TOK_20M], NULL);
+		Stat[irc].no_veto = (d > 0) ? strtod(token[TOK_NVT], NULL) / d : 0;
 		Stat[irc].time_total = strtod(token[TOK_TOT], NULL);
 		Stat[irc].time_dead = strtod(token[TOK_DED], NULL);
 		Stat[irc].eff = strtod(token[TOK_EFF], NULL);
