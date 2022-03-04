@@ -68,7 +68,7 @@ void makeExp_12B(int from, int to)
 	TChain *chR = create_chain("MuonRandom", from, to);
 	if (!chA || !chR) return;
 	
-	TFile *fOut = new TFile("Danss_12B_v8.1.root", "RECREATE");
+	TFile *fOut = new TFile("Danss_12B_v8.2.root", "RECREATE");
 
 	TH1D *hExp = new TH1D("hExp12B", "Experiment with ^{12}B cuts, SiPM+PMT;MeV", 80, 0, 20);
 	TH1D *hExpSiPM = new TH1D("hExp12BSiPM", "Experiment with ^{12}B cuts, SiPM;MeV", 80, 0, 20);

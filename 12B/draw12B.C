@@ -55,7 +55,7 @@ TChain *create_chain(const char *name, int from, int to)
 	ch = new TChain(name, name);
 	for (i=from; i<=to; i++) {
 		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon8n1/%3.3dxxx/muon_%6.6d.root", i/1000, i);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/muon8n2/%3.3dxxx/muon_%6.6d.root", i/1000, i);
 		num = access(str, R_OK);	// R_OK = 4 - test read access
 		if (num) continue;
 		ch->AddFile(str, 0);
@@ -79,7 +79,7 @@ void draw12B(int from, int to)
 	const double PMTScale = 1.0;
 	const double PMTRndmC = 0.06;
 //	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root6n8/MC/DataTakingPeriod01/12B/mc_12B_glbLY_transcode_rawProc_pedSim.root";
-	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n1/MC/RadSources/mc_12B_indLY_transcode_rawProc_pedSim.root";
+	const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_12B_indLY_transcode_rawProc_pedSim.root";
 	char str[1024];
 	char mccut[1024];
 
@@ -174,7 +174,7 @@ void draw12B(int from, int to)
 	hMCPMT->SetLineColor(kBlue);
 	
 	TCanvas *cv = new TCanvas("CV", "12B", 1400, 800);
-	sprintf(str, "12B_81_rndm_%5.3f_%5.3f_scale_%5.3f_%d", RndmSqe, RndmC, Scale, to - from + 1);
+	sprintf(str, "12B_82_rndm_%5.3f_%5.3f_scale_%5.3f_%d", RndmSqe, RndmC, Scale, to - from + 1);
 	TString oname(str);
 	cv->SaveAs((oname+".pdf[").Data());
 

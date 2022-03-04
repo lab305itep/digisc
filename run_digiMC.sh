@@ -4,7 +4,7 @@
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
 #PBS -l nodes=1
-#PBS -l walltime=48:00:00
+#PBS -l walltime=99:00:00
 cd /home/itep/alekseev/igor
 
 OVERWRITE=NO
@@ -158,6 +158,6 @@ do_no_tr_profile()
 		-mcfile ${MCRAW}/60Co/DANSS0_1.root ${DEAD}
 }
 
-do_no_tr_profile
+do_IBD
 
 exit 0

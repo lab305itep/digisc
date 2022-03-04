@@ -26,10 +26,10 @@ class MyRandom {
 };
 
 
-void makeMC_12B(const char *mcname, double scale)
+void makeMC_12B(const char *mcname, double rsqe = 0.12, double rc = 0.04, double scale = 1.0)
 {
-	const double RndmSqe = 0.12;
-	const double RndmC = 0.04;
+	double RndmSqe = rsqe;
+	double RndmC = rc;
 	const double SiPMRndmSqe = 0.12;
 	const double SiPMRndmC = 0.125;
 	const double PMTRndmSqe = 0.12;
@@ -40,7 +40,7 @@ void makeMC_12B(const char *mcname, double scale)
 	if (!fMC->IsOpen()) return;
 	TTree *tMC = (TTree *) fMC->Get("DanssEvent");
 	
-	sprintf(str, "MC_12B-DB_v8.1_%5.3f.root", scale);
+	sprintf(str, "MC_12B-v8.2_S%5.3f_R%5.3f_C%5.3f.root", scale, rsqe, rc);
 	TFile *fOut = new TFile(str, "RECREATE");
 	
 	TH1D *hMC = new TH1D("hMC12B", "MC of ^{12}B decay, SiPM+PMT;MeV", 80, 0, 20);
@@ -49,13 +49,13 @@ void makeMC_12B(const char *mcname, double scale)
 	TH1D *hMCT = new TH1D("hMC12BT", "Time from muon, MC;ms", 99, 1, 100);
 	
 //	TCut mccut("TimelineShift > 500000 && AnnihilationEnergy*1.08 < 0.25 && PositronEnergy*1.04 > 3.0");	// UGLY !
-	TCut mccut("AnnihilationEnergy*1.08 < 0.25 && PositronEnergy*1.04 > 3.0");	// UGLY !
+	TCut mccut("AnnihilationEnergy < 0.25 && PositronEnergy > 3.0");
 
-	sprintf(str, "MyRandom::GausAdd(PositronEnergy*1.04*%5.3f, %6.4f, %6.4f)", scale, RndmSqe, RndmC);		// UGLY !
+	sprintf(str, "MyRandom::GausAdd(PositronEnergy*%5.3f, %6.4f, %6.4f)", scale, RndmSqe, RndmC);
 	tMC->Project(hMC->GetName(), str, mccut);
-	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy*1.08*%5.3f, %6.4f, %6.4f)", scale, SiPMRndmSqe, SiPMRndmC);		// UGLY !
-	tMC->Project(hMCSiPM->GetName(), str, mccut);				// UGLY !
-	sprintf(str, "MyRandom::GausAdd(PositronPmtEnergy*%5.3f, %6.4f, %6.4f)", scale, PMTRndmSqe, PMTRndmC);		// UGLY !
+	sprintf(str, "MyRandom::GausAdd(PositronSiPmEnergy*%5.3f, %6.4f, %6.4f)", scale, SiPMRndmSqe, SiPMRndmC);
+	tMC->Project(hMCSiPM->GetName(), str, mccut);
+	sprintf(str, "MyRandom::GausAdd(PositronPmtEnergy*%5.3f, %6.4f, %6.4f)", scale, PMTRndmSqe, PMTRndmC);
 	tMC->Project(hMCPMT->GetName(), str, mccut);
 	tMC->Project(hMCT->GetName(), "TimelineShift / 1000000.0", mccut);
 

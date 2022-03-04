@@ -6,8 +6,8 @@
 #PBS -l nodes=1
 #PBS -l walltime=100:00:00
 cd /home/itep/alekseev/igor
-RVER="8n1"
-PVER="8n1"
+RVER="8n2"
+PVER="8n2"
 
 ROOTDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC
 PAIRDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC
