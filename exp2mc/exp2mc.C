@@ -1,5 +1,5 @@
 //	Compare MC to IBD spectrum
-#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair8n1/MC/IBD"
+#define BASEDIR "/home/clusters/rrcmpi/alekseev/igor/pair8n2/MC/IBD"
 
 void add_IBD2chain(TChain *ch, const char *what, int nser, int ninser)
 {
@@ -130,7 +130,7 @@ void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu
 	TCut cR3("Distance < 48 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
 	TCut cR = cR3 && (cRXY || cR2);
 	TCut cNH("NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
-	TCut cNE("NeutronEnergy > 1.5 + 3 * exp(-0.13 * PositronEnergy*PositronEnergy)");
+	TCut cNE("NeutronEnergy > 1.5 + 2.6 * exp(-0.15 * PositronEnergy*PositronEnergy)");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
 
@@ -138,7 +138,7 @@ void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu
 	if (cAux) cSel = cSel && TCut(cAux);
 	
 	gStyle->SetOptStat(0);
-	sprintf(strl, "ibd_v8.1_239Pu_%4.1f_%s_scale_%5.3f_%5.3f_%s", fPu239, name_exp, kScale, kShift, (sAux) ? sAux : "");
+	sprintf(strl, "ibd_v8.2_239Pu_%4.1f_%s_scale_%5.3f_%5.3f_%s", fPu239, name_exp, kScale, kShift, (sAux) ? sAux : "");
 	TString pdfName(strl);
 	
 //	printf("file: %s\n", file_exp);

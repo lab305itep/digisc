@@ -2,9 +2,9 @@
  *
  * Version:       2.0
  *
- * Package:       DANSS time calibration pass 3
+ * Package:       DANSS time calibration pass 4
  *
- * Description:   draw calibration as a function of run number.
+ * Description:  Make calibration file
  *
  ***/
 #include <stdio.h>

@@ -53,7 +53,7 @@ TChain *create_chain(const char *fname, const char *chname)
 	return ch;
 }
 
-void cm_capture_energy4(const char *fname, const char *mcname, double scale = 1.0, const char *outname = NULL)
+void cm_capture_energy4(const char *fname, const char *mcname, const char *pos, double scale, double RndmSqe, double RndmC)
 {
 	int i, j;
 	char str[2048];
@@ -63,12 +63,6 @@ void cm_capture_energy4(const char *fname, const char *mcname, double scale = 1.
 	
 	const int kEmin = 16;
 	const int kEmax = 95;
-	const double RndmSqe = 0.12;
-	const double RndmC = 0.04;
-	const double SiPMRndmSqe = 0.12;
-	const double SiPMRndmC = 0.125;
-	const double PMTRndmSqe = 0.12;
-	const double PMTRndmC = 0.06;
 	
 	gROOT->SetStyle("Plain");
 	gStyle->SetOptStat(0);
@@ -81,8 +75,8 @@ void cm_capture_energy4(const char *fname, const char *mcname, double scale = 1.
 	gStyle->SetLineWidth(2);
 //	gStyle->SetPalette(kRainBow, 0);
 
-	sprintf(str, "248Cm_v8.1_%5.3f.pdf", scale);
-	TString pdfName((outname) ? outname : str);
+	sprintf(str, "248Cm_%s_v8.2_S%5.3f_R%5.3f_C%5.3f.pdf", pos, scale, RndmSqe, RndmC);
+	TString pdfName(str);
 	TString rootName = pdfName;
 	rootName.ReplaceAll(".pdf", ".root");
 	TFile *fOut = new TFile(rootName.Data(), "RECREATE");
@@ -160,15 +154,15 @@ void cm_capture_energy4(const char *fname, const char *mcname, double scale = 1.
 	fOut->cd();
 	sprintf(str, "(SiPmCleanEnergy[1]+PmtCleanEnergy[1])/2");
 	irc = t->Project("HDC", str, "N>1 && gtDiff[1]/125<50 && gtDiff[1]/125>2");
-	sprintf(str, "MyRandom::GausAdd(%5.3f*(SiPmCleanEnergy*1.08+PmtCleanEnergy)/2, %6.4f, %6.4f)", scale, RndmSqe, RndmC);		// UGLY !
+	sprintf(str, "MyRandom::GausAdd(%5.3f*(SiPmCleanEnergy+PmtCleanEnergy)/2, %6.4f, %6.4f)", scale, RndmSqe, RndmC);
 	irc = tMc->Project("HMC", str, "(globalTime % 125000000) > 250");
 	sprintf(str, "SiPmCleanEnergy[1]");
 	irc = t->Project("HDCSi", str, "N>1 && gtDiff[1]/125<50 && gtDiff[1]/125>2");
-	sprintf(str, "MyRandom::GausAdd(%5.3f*SiPmCleanEnergy*1.08, %6.4f, %6.4f)", scale, SiPMRndmSqe, SiPMRndmC);			// UGLY !
+	sprintf(str, "MyRandom::GausAdd(%5.3f*SiPmCleanEnergy, %6.4f, %6.4f)", scale, RndmSqe, RndmC);
 	irc = tMc->Project("HMCSi", str, "(globalTime % 125000000) > 250");
 	sprintf(str, "PmtCleanEnergy[1]");
 	irc = t->Project("HDCPMT", str, "N>1 && gtDiff[1]/125<50 && gtDiff[1]/125>2");
-	sprintf(str, "MyRandom::GausAdd(%5.3f*PmtCleanEnergy, %6.4f, %6.4f)", scale, PMTRndmSqe, PMTRndmC);
+	sprintf(str, "MyRandom::GausAdd(%5.3f*PmtCleanEnergy, %6.4f, %6.4f)", scale, RndmSqe, RndmC);
 	irc = tMc->Project("HMCPMT", str, "(globalTime % 125000000) > 250");
 	irc = t->Project("HXY", "NeutronX[1][1]+2:NeutronX[1][0]+2", "N>1 && gtDiff[1]/125<50 && gtDiff[1]/125>2 && NeutronX[1][1]>=0 && NeutronX[1][0]>=0");
 	irc = tMc->Project("HMCXY", "NeutronX[1]+2:NeutronX[0]+2", "NeutronX[1]>=0 && NeutronX[0]>=0 && (globalTime % 125000000) > 250");

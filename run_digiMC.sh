@@ -59,10 +59,12 @@ do_test()
 
 do_stoppedmuons()
 {
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Stopped_muons_central_part_ind_coeff_v2
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/Muons_v2
 	for ((i=0;$i<2;i=$i+1)) ; do
-		${EXE} ${DIGI}/Muons/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_0${i}.digi.bz2 0x70000 \
-			${OUTDIR}/Stopped_muons_central_part_ind_coeff/ \
-			-mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff/DANSS_0${i}.root ${DEAD}
+		${EXE} ${DIGIN}/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_0${i}.digi.bz2 0x70000 \
+			${OUTDIR}/Muons/ \
+			-mcfile ${_mc_raw}/DANSS0_$(($i+1)).root ${DEAD}
 	done
 }
 
@@ -158,6 +160,6 @@ do_no_tr_profile()
 		-mcfile ${MCRAW}/60Co/DANSS0_1.root ${DEAD}
 }
 
-do_IBD
+do_stoppedmuons
 
 exit 0

@@ -64,7 +64,7 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 	TCut cR3("Distance < 48 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)");
 	TCut cR = cR3 && (cRXY || cR2);
 	TCut cNH("NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20");
-	TCut cNE("NeutronEnergy > 1.5 + 3 * exp(-0.13 * PositronEnergy*PositronEnergy)");
+	TCut cNE("NeutronEnergy > 1.5 + 2.6 * exp(-0.15 * PositronEnergy*PositronEnergy)");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
         TCut cNX10("NeutronX[0] > 8 && NeutronX[0] < 88");

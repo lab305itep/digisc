@@ -8,7 +8,7 @@
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/spectr.err
 cd /home/itep/alekseev/igor
 export STAT_ALL=stat_all.txt
-export SPECTR_BGSCALE=1.9
+export SPECTR_BGSCALE=1.6
 export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n2
 export SPECTR_WHAT="PositronEnergy"
 export SPECTR_MUCUT="gtFromVeto > 90"
@@ -22,12 +22,12 @@ export SPECTR_CUT06="AnnihilationEnergy < 1.2 && AnnihilationGammas < 12"
 export SPECTR_CUT07="PositronEnergy > 0.5"
 export SPECTR_CUT08="(PositronX[0] >= 0 && PositronX[1] >= 0 && NeutronX[0] >= 0 && NeutronX[1] >= 0) || (Distance < 40 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy))"
 export SPECTR_CUT09="Distance < 48 - 17 * exp(-0.13 * PositronEnergy*PositronEnergy)"
-export SPECTR_CUT10="NeutronEnergy > 1.5 + 3 * exp(-0.13 * PositronEnergy*PositronEnergy)"
+export SPECTR_CUT10="NeutronEnergy > 1.5 + 2.6 * exp(-0.15 * PositronEnergy*PositronEnergy)"
 export SPECTR_CUT11="NeutronEnergy < 9.5 && NeutronHits >= 3 && NeutronHits < 20"
 export SPECTR_CUT12="!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))"
 export SPECTR_CUT13="PositronHits < 8"
 
-export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_nov21/base.data
+export OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/apr16_nov21/basen.data
 
 date
 mkdir -p $OUT_DIR
