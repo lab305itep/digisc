@@ -14,5 +14,5 @@ const char periods[][30] = {
 	"May 18 - January 19", 
 	"March 19 - July 20",
 	"August 20 - January 21",
-	"March 21 - March 21"
+	"March 21 - March 22"
 };
