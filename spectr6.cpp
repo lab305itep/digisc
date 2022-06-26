@@ -16,6 +16,10 @@ const char *NeutronCorrC = "2.143-0.09811*x";		// neutron correction for cosmic 
 const char *LowMuonCorr = "10.7*exp(-1.00*x)";		// low energy reactor off correction
 const double mHz2day = 86.4;				// conversion constant
 
+const double bgCorrUp = 0.958;			// Up background correction from the reator off
+const double bgCorrMid = 0.988;			// Mid background correction from the reator off
+const double bgCorrDown = 1.058;		// Down background correction from the reator off
+
 //const char *NeutronCorrN = "0.003244-0.000134*x";
 //const char *NeutronCorrC = "0.01087-0.000424*x";
 //const char *NeutronCorrN = "0.003475-0.000152*x";
@@ -111,7 +115,7 @@ int main(int argc, char **argv)
 	const int mask = 0x803E;
 	int i;
 	int N;
-	
+	double bgnd;
 
 	if (argc < 2) {
 		printf("Usage: %s period_number (from 1)\n", argv[0]);
@@ -123,7 +127,13 @@ int main(int argc, char **argv)
 		printf("Illegal period number %d (max = %d)\n", i, N);
 		return 110;
 	}
-	
-	spectr(positions[i-1].name, mask, positions[i-1].first, positions[i-1].last, positions[i-1].bgnd);
+	bgnd = positions[i-1].bgnd;
+	switch (positions[i-1].name[0]) {		// do background position correction
+		case 'u' : bgnd *= bgCorrUp; break;
+		case 'm' : bgnd *= bgCorrMid; break;
+		case 'd' : bgnd *= bgCorrDown; break;
+	}
+
+	spectr(positions[i-1].name, mask, positions[i-1].first, positions[i-1].last, bgnd);
 	return 0;
 }

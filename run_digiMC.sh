@@ -12,7 +12,7 @@ MCRAW=MC_RAW
 OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/
 DIGI=digi_MC
 EXE=./evtbuilder5
-DEAD="-deadlist dch_002210_102856.list"
+DEAD="-deadlist deadchan_v8.2.list"
 ##EXE=echo
 
 do_sources()
@@ -83,10 +83,12 @@ do_muons()
 do_mudecay()
 {
 	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/Muons_v2
-#	${EXE} ${DIGIN}/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
-#		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/Stopped_muons_central_part_ind_coeff_v2/DANSS0_2.root ${DEAD}
-	${EXE} ${DIGIN}/mc_MuonsMuMinus_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
-		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/muminus/DANSS0_1.root ${DEAD}
+#	${EXE} ${DIGIN}/mc_MuonsMuMinus_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
+#		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/muminus/DANSS0_1.root ${DEAD}
+#	${EXE} ${DIGIN}/mc_MuonsMuPlus_indLY_transcode_rawProc_pedSim_01.digi.bz2 0x70000 \
+#		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/muplus/DANSS0_1.root ${DEAD}
+	${EXE} ${DIGIN}/mc_MuonsMuPlus_indLY_transcode_rawProc_pedSim_02.digi.bz2 0x70000 \
+		${OUTDIR}/MuonsStopped/ -mcfile ${MCRAW}/muplus/DANSS0_2.root ${DEAD}
 }
 
 # Usage: do_IBDdir templatein templateraw outdir nser ninser
@@ -160,6 +162,6 @@ do_no_tr_profile()
 		-mcfile ${MCRAW}/60Co/DANSS0_1.root ${DEAD}
 }
 
-do_stoppedmuons
+do_mudecay
 
 exit 0

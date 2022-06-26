@@ -28,9 +28,9 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 {
 	char strs[128];
 	char strl[1024];
-	TH1D *h[3][NHISTS];
-	TH1D *hSiPM[3][NHISTS];
-	TH1D *hPMT[3][NHISTS];
+	TH1D *h[4][NHISTS];
+	TH1D *hSiPM[4][NHISTS];
+	TH1D *hPMT[4][NHISTS];
 	int i, j;
 	double scale, RndmSqe, RndmC;
 //		Main cuts
@@ -63,9 +63,12 @@ void background_MC(TChain *chain, const char *fname, TCut cAux = (TCut) "")
 		h[2][i] = mc_hist(chain, "", "NeutronEnergy", ct, 1.0, 0.12, RndmC);
 		hSiPM[2][i] = mc_hist(chain, "SiPM", "SiPmCleanEnergy[1]", ct, 1.0, 0.12, RndmC);
 		hPMT[2][i] = mc_hist(chain, "PMT", "PmtCleanEnergy[1]", ct, 1.0, 0.12, RndmC);
+		h[3][i] = mc_hist(chain, "", "NeutronEnergy", ct, scale, 0.0, 0.0);
+		hSiPM[3][i] = mc_hist(chain, "SiPM", "SiPmCleanEnergy[1]", ct, scale, 0.0, 0.0);
+		hPMT[3][i] = mc_hist(chain, "PMT", "PmtCleanEnergy[1]", ct, scale, 0.0, 0.0);
 	}
 	fRoot->cd();
-	for (j=0; j<3; j++) for (i=0; i<NHISTS; i++) {
+	for (j=0; j<4; j++) for (i=0; i<NHISTS; i++) {
 		h[j][i]->Write();
 		hSiPM[j][i]->Write();
 		hPMT[j][i]->Write();
