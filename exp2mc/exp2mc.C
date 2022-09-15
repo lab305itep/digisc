@@ -36,6 +36,8 @@ TChain *make_MCchain(int isotope)
 	return ch;
 }
 
+// average fPu239 for Oct16-Mar22 = 31.8%
+
 void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu239 = 34.0, 
 	double kScale = 1.00, double kShift = 0, const char *cAux = NULL, const char *sAux = NULL)
 {
