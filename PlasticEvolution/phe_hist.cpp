@@ -202,6 +202,7 @@ int main(int argc, char **argv)
 	TChain *ch = new TChain("Hit", "Hit");
 	TH1D *hMedian = new TH1D("hMedian", "Median p.h.e. plot;run;p.h.e.", (run_end - run_begin + 1) / run_step, run_begin, run_end);
 	TGraphErrors *gMedian = new TGraphErrors();
+	gMedian->SetName("gMedian");
 	mcnt = 0;
 	for (i = run_begin; i <= run_end; i += run_step) {
 		ch->Reset();

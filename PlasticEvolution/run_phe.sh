@@ -8,7 +8,7 @@
 
 cd /home/itep/alekseev/igor/PlasticEvolution
 date
-./phe_hist phe_2000_121999.root 2000 121999 200
+./phe_hist phe_2000_121999.root 2000 121999 100
 for adc in 9 10 11 18 19 29 30 31 32 ; do
 	./phe_hist phe_2000_121999_${adc}.root 2000 121999 200 $adc
 done
