@@ -40,6 +40,8 @@ class MyDead {
 MyDead::MyDead(const char *file_list)
 {
 	int chan, adc, irc;
+	const int DeadADC[] = {4, 13, 20, 24, 25, 43, 47, 51, 52};	// too complex history to analyze hete
+	
 	memset(DeadList, 0, sizeof(DeadList));
 
 	FILE *f = fopen(file_list, "rt");
@@ -51,6 +53,9 @@ MyDead::MyDead(const char *file_list)
 		}
 	}
 	fclose(f);
+	
+	for(adc=0; adc < sizeof(DeadADC)/sizeof(int); adc++) for (chan=0; chan<MAXCHAN; chan++) 
+		DeadList[DeadADC[adc]][chan] = 1;
 }
 
 class MyRunList {
