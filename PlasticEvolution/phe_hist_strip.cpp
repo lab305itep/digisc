@@ -13,21 +13,23 @@
 
 #define VDIR "/home/clusters/rrcmpi/alekseev/igor/dvert"
 #define MAXRUN 150000
+#define MAXADC 60
+#define MAXCHAN 64
 
 double Median(TH1 *h, double *err = NULL);
 
 class MyDead {
 	private:
-		int DeadList[60][64];
+		int DeadList[MAXADC][MAXCHAN];
 	public:
 		MyDead(const char *file_list);
 		inline ~MyDead(void) {;};
 		inline int IsDead(int adc, int chan) {
-			if (adc < 0 || adc >= 60) {
+			if (adc < 0 || adc >= MAXADC) {
 				printf("Bad adc=%d\n", adc);
 				return 1;
 			}
-			if (chan < 0 || chan >= 64) {
+			if (chan < 0 || chan >= MAXCHAN) {
 				printf("Bad chan=%d\n", chan);
 				return 1;
 			}
@@ -140,7 +142,7 @@ class MyStrip {
 		TH1D *hPhe;
 	public:
 		MyStrip(int a, int c, int run_begin, int run_end, int run_step);
-		~Mystrip(void);
+		~MyStrip(void);
 		void StepBegin(int r);
 		void StepEnd(double year);
 		void AddHit(double phe);
@@ -168,7 +170,7 @@ MyStrip::MyStrip(int a, int c, int run_begin, int run_end, int run_step)
 MyStrip::~MyStrip(void)
 {
 	hMedian->Write();
-	gMegian->Write();
+	gMedian->Write();
 	delete hMedian;
 	delete gMedian;
 }
@@ -189,13 +191,15 @@ void MyStrip::StepEnd(double year)
 	double median, error;
 	int j;
 	
-	median = Median(h, &error);
-	j = hMedian->FindBin(tun);
-	hMedian->SetBinContent(j, median);
-	hMedian->SetBinError(j, error);
-	gMedian->AddPoint(year, median);
-	gMedian->SetPointError(gcnt, 0, error);
-	gcnt++;
+	if (hPhe->GetEntries() > 1000) {
+		median = Median(hPhe, &error);
+		j = hMedian->FindBin(run);
+		hMedian->SetBinContent(j, median);
+		hMedian->SetBinError(j, error);
+		gMedian->AddPoint(year, median);
+		gMedian->SetPointError(gcnt, 0, error);
+		gcnt++;
+	}
 	hPhe->Write();
 	delete hPhe;
 }
@@ -204,7 +208,7 @@ void MyStrip::AddHit(double phe)
 {
 	hPhe->Fill(phe);
 }
-???????????
+
 /*
  * Caculate histogram median in the range [firstbin, lastbin]
  * The default includes underflow and overflow
@@ -212,7 +216,7 @@ void MyStrip::AddHit(double phe)
  * Histogram could be scaled
  * Unit weights (just events) assumed during the fill
  */
-double Median(TH1 *h, double *err = NULL)
+double Median(TH1 *h, double *err)
 {
 	int firstbin, lastbin;
 	double half;
@@ -239,13 +243,10 @@ double Median(TH1 *h, double *err = NULL)
 	return x;
 }
 
-
-
 int main(int argc, char **argv)
 {
 	int run_begin, run_end, run_step;
-	int i, j, irc, mcnt;
-	int adcnum = -1;
+	int i, j, k, irc;
 	long cnt, Num;
 	char strs[128], strl[1024];
 	TH1D *h;
@@ -260,13 +261,13 @@ int main(int argc, char **argv)
 		int chan;
 		int ovf;
 	} MyHit;
+	MyStrip *Strip[MAXADC][MAXCHAN];
 	
+	memset(Strip, 0, sizeof(Strip));
 	if (argc < 5) {
-		printf("Usage: %s fname run_begin run_end run_step [adcnum]\n", argv[0]);
+		printf("Usage: %s fname run_begin run_end run_step\n", argv[0]);
 		return 10;
 	}
-	
-	if (argc > 5) adcnum = strtol(argv[5], NULL, 10);
 	
 	MyDead Dead("all_dead_list.txt");
 	MyRunList Runs("../stat_all.txt");
@@ -278,10 +279,6 @@ int main(int argc, char **argv)
 	if (!fOut->IsOpen()) return 20;
 
 	TChain *ch = new TChain("Hit", "Hit");
-	TH1D *hMedian = new TH1D("hMedian", "Median p.h.e. plot;run;p.h.e.", (run_end - run_begin + 1) / run_step, run_begin, run_end);
-	TGraphErrors *gMedian = new TGraphErrors();
-	gMedian->SetName("gMedian");
-	mcnt = 0;
 	for (i = run_begin; i <= run_end; i += run_step) {
 		ch->Reset();
 		ch->SetBranchAddress("Data", &MyHit);
@@ -297,33 +294,21 @@ int main(int argc, char **argv)
 				year = Runs.GetRunYear(i+j);
 			}
 		}
-//		printf("Runs = %d-%d\n", i, i+run_step-1);
-//		irc = ch->Project(h->GetName(), "phe", ct);
-		irc = 0;
 		Num = ch->GetEntries();
+		for (j=0; j<MAXADC; j++) for (k=0; k<MAXCHAN; k++) if (Strip[j][k]) Strip[j][k]->StepBegin(i);
 		for (cnt = 0; cnt < Num; cnt++) {
 			ch->GetEntry(cnt);
 			if (Dead.IsDead(MyHit.adc, MyHit.chan)) continue;
-			if (adcnum >= 0 && MyHit.adc != adcnum) continue;
-//			printf("%2d.%2.2d: %f\n", MyHit.phe);
-			h->Fill(MyHit.phe);
-			irc++;
+			if (!Strip[MyHit.adc][MyHit.chan]) {
+				Strip[MyHit.adc][MyHit.chan] = new MyStrip(MyHit.adc, MyHit.chan, run_begin, run_end, run_step);
+				Strip[MyHit.adc][MyHit.chan]->StepBegin(i);
+			}
+			Strip[MyHit.adc][MyHit.chan]->AddHit(MyHit.phe);
 		}
-		if (irc > 100) {
-			median = Median(h, &error);
-			j = hMedian->FindBin(i);
-			hMedian->SetBinContent(j, median);
-			hMedian->SetBinError(j, error);
-			gMedian->AddPoint(year, median);
-			gMedian->SetPointError(mcnt, 0, error);
-			mcnt++;
-		}
-		h->Write();
-		delete h;
+		for (j=0; j<MAXADC; j++) for (k=0; k<MAXCHAN; k++) if (Strip[j][k]) Strip[j][k]->StepEnd(year);
 	}
 
-	gMedian->Write();
-	hMedian->Write();
+	for (j=0; j<MAXADC; j++) for (k=0; k<MAXCHAN; k++) if (Strip[j][k]) delete Strip[j][k];
 	fOut->Close();
 	
 	return 0;

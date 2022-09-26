@@ -1,4 +1,4 @@
-all: vert_muon digi_vert_sipm run_vert_mpi phe_hist
+all: vert_muon digi_vert_sipm run_vert_mpi phe_hist phe_hist_strip
 
 vert_muon: vert_muon.cpp
 	g++ $^ -o $@ $(shell root-config --cflags --libs)
