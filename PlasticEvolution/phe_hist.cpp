@@ -185,6 +185,7 @@ int main(int argc, char **argv)
 		float phe;
 		float pix;
 		float signal;
+		float dist;
 		int adc;
 		int chan;
 		int ovf;

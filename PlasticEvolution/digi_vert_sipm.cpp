@@ -50,6 +50,10 @@ using namespace std;
 #define MINE	0.5
 #define MAXR2	400
 #define MAXDIST	6.0
+#define MINEK	0.6
+#define MAXEK	3.0
+#define MAXADC	52
+#define MAXCHAN	64
 
 // Types
 
@@ -58,6 +62,7 @@ struct HitOutStruct {
 	float phe;
 	float pix;
 	float signal;
+	float dist;
 	int adc;
 	int chan;
 	int ovf;
@@ -80,6 +85,7 @@ TTree *OutputHit;
 TTree *OutputEvent;
 TH2D  *hXZ;
 TH2D  *hYZ;
+TH1D  *hCoef[MAXADC][MAXCHAN];
 
 int EventCnt;
 int SelectedCnt;
@@ -155,12 +161,13 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	OutputFile = new TFile(chOutputFile, "RECREATE");
 	if (!OutputFile->IsOpen()) throw "Panic - can not open output file!";
 	OutputHit = new TTree("Hit", "Hit");
-	OutputHit->Branch("Data", &SelectedHit, "E/F:phe/F:pix/F:signal/F:adc/I:chan/I:ovf/I");
+	OutputHit->Branch("Data", &SelectedHit, "E/F:phe/F:pix/F:signal/F:dist/F:adc/I:chan/I:ovf/I");
 	OutputEvent = new TTree("Event", "Event");
 	OutputEvent->Branch("Data", &SelectedEvent, "MCNum/I:NHits/I:xUP/F:yUP/F:xDown/F:yDown/F:r2/F");
 	hXZ = new TH2D("hXZ", "XZ 2D plot;X;Z,N", 25, 0, 100, 50, 0, 100);
 	hYZ = new TH2D("hYZ", "YZ 2D plot;Y;Z,N", 25, 0, 100, 50, 0, 100);
-	
+	memset(hCoef, 0, sizeof(hCoef));
+
 	EventCnt = SelectedCnt = HitCnt = 0;
 }
 
@@ -185,12 +192,25 @@ int ReadDigiDataUser::processUserEvent()
 	double x, z;
 	double r2;
 	double Lcorr, Ccorr;
+	char strs[128];
+	char strl[1024];
 
 	if( ttype() != 1 ) return 0;
 	EventCnt++;
 	memset(XZ, 0, sizeof(XZ));
 	memset(YZ, 0, sizeof(YZ));
 	N = nhits();
+	
+	// Fill channel amplification histogram
+	for(i=0; i<N; i++) if (type(i) == bSiPm && e(i) > MINEK && e(i) < MAXEK && npe(i) > 0) {
+		if (!hCoef[adc(i)][adcChan(i)]) {
+			sprintf(strs, "hCoef_%d_%2.2d", adc(i), adcChan(i));
+			sprintf(strl, "signal/phe for channel %d.%2.2d;signal/phe;N", adc(i), adcChan(i));
+			hCoef[adc(i)][adcChan(i)] = new TH1D(strs, strl, 500, 40, 140);
+		}
+		hCoef[adc(i)][adcChan(i)]->Fill(signal(i) / npe(i));
+	}
+	
 	if (N < MINHITS || N > MAXHITS) return 0;
 
 	// Fill XZ and YZ with SiPM hit energy. Ignore hits with less than MINPIX pixels
@@ -254,7 +274,6 @@ int ReadDigiDataUser::processUserEvent()
 			if (k < 49 && XZ[k+1][j] < MINE) continue;
 			// Longitudinal correction
 			Lcorr = yDown + (yUp - yDown) * k / 46.0;
-			Ccorr = SiPMYAverageLightColl(Lcorr);
 			break;
 		case 'Y':
 			// cut for proper position
@@ -268,17 +287,18 @@ int ReadDigiDataUser::processUserEvent()
 			if (k < 49 && YZ[k+1][j] < MINE) continue;
 			// Longitudinal correction
 			Lcorr = xDown + (xUp - xDown) * (k - 1) / 46.0;
-			Ccorr = SiPMYAverageLightColl(Lcorr);
 			break;
 		}
+		Ccorr = SiPMYAverageLightColl(Lcorr);
 		// Good hit - fill
 		HitCnt++;
 		NHits++;
-		SelectedHit.E = e(i) * Ccorr;
-		SelectedHit.phe = npe(i) * Ccorr;
-		SelectedHit.pix = npix(i) * Ccorr;
+		SelectedHit.E = e(i) / Ccorr;
+		SelectedHit.phe = npe(i) / Ccorr;
+		SelectedHit.pix = npix(i) / Ccorr;
+		SelectedHit.dist = Lcorr;
 		SelectedHit.adc = adc(i);
-		SelectedHit.signal = signal(i) * Ccorr;
+		SelectedHit.signal = signal(i) / Ccorr;
 		SelectedHit.chan = adcChan(i);
 		SelectedHit.ovf = wasOvfl(i);
 		OutputHit->Fill();
@@ -317,6 +337,8 @@ int ReadDigiDataUser::processUserEvent()
 
 void ReadDigiDataUser::finishUserProc()
 {
+	int i, j;
+	for (i=0; i<MAXADC; i++) for (j=0; j<MAXCHAN; j++) if (hCoef[i][j]) hCoef[i][j]->Write();
 	OutputEvent->Write();
 	OutputHit->Write();
 	hXZ->Write();

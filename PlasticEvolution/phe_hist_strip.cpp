@@ -8,6 +8,7 @@
 #include <TChain.h>
 #include <TCut.h>
 #include <TFile.h>
+#include <TGraph.h>
 #include <TGraphErrors.h>
 #include <TH1D.h>
 
@@ -144,13 +145,16 @@ class MyStrip {
 		int gcnt;
 		TH1D *hMedian;
 		TGraphErrors *gMedian;
+		TGraph *gCoef;
 		TH1D *hPhe;
+		TH1D *hCoef;
 	public:
 		MyStrip(int a, int c, int run_begin, int run_end, int run_step);
 		~MyStrip(void);
 		void StepBegin(int r);
 		void StepEnd(double year);
 		void AddHit(double phe);
+		void AddHist(TH1D *h);
 };
 
 MyStrip::MyStrip(int a, int c, int run_begin, int run_end, int run_step)
@@ -169,15 +173,23 @@ MyStrip::MyStrip(int a, int c, int run_begin, int run_end, int run_step)
 	sprintf(strl, "Median p.h.e. graph for %d.%2.2d;year;p.h.e.", adc, chan);
 	gMedian->SetTitle(strl);
 	gcnt = 0;
+	gCoef = new TGraph();
+	sprintf(strs, "gCoef_%d_%2.2d", adc, chan);
+	gCoef->SetName(strs);
+	sprintf(strl, "Coefficient: integral/p.h.e. graph for %d.%2.2d;year;S/p.h.e.", adc, chan);
+	gCoef->SetTitle(strl);
 	hPhe = NULL;
+	hCoef = NULL;
 }
 
 MyStrip::~MyStrip(void)
 {
 	hMedian->Write();
 	gMedian->Write();
+	gCoef->Write();
 	delete hMedian;
 	delete gMedian;
+	delete gCoef;
 }
 
 void MyStrip::StepBegin(int r)
@@ -189,6 +201,9 @@ void MyStrip::StepBegin(int r)
 	sprintf(strs, "hPhe_%6.6d_%d_%2.2d", run, adc, chan);
 	sprintf(strl, "Runs atarting at %d, strip=%d.%2.2d;p.h.e.", run, adc, chan);
 	hPhe = new TH1D(strs, strl, 200, 0, 200);
+	sprintf(strs, "hCoef_%6.6d_%d_%2.2d", run, adc, chan);
+	sprintf(strl, "Coefficient: integral/p.h.e. hist for runs at %d for %d.%2.2d;year;S/p.h.e.", run, adc, chan);
+	hCoef = new TH1D(strs, strl, 500, 40, 140);
 }
 
 void MyStrip::StepEnd(double year)
@@ -196,16 +211,19 @@ void MyStrip::StepEnd(double year)
 	double median, error;
 	int j;
 	
-	if (hPhe->GetEntries() > 1000) {
+	if (hPhe->GetEntries() > 10) {
 		median = Median(hPhe, &error);
 		j = hMedian->FindBin(run);
 		hMedian->SetBinContent(j, median);
 		hMedian->SetBinError(j, error);
 		gMedian->AddPoint(year, median);
 		gMedian->SetPointError(gcnt, 0, error);
+		gCoef->AddPoint(year, hCoef->GetMean());
 		gcnt++;
 	}
 	hPhe->Write();
+	hCoef->Write();
+	delete hCoef;
 	delete hPhe;
 }
 
@@ -213,6 +231,12 @@ void MyStrip::AddHit(double phe)
 {
 	hPhe->Fill(phe);
 }
+
+void MyStrip::AddHist(TH1D *h)
+{
+	hCoef->Add(h);
+}
+
 
 /*
  * Caculate histogram median in the range [firstbin, lastbin]
@@ -251,10 +275,11 @@ double Median(TH1 *h, double *err)
 int main(int argc, char **argv)
 {
 	int run_begin, run_end, run_step;
-	int i, j, k, irc;
+	int i, j, k, m, irc;
 	long cnt, Num;
 	char strs[128], strl[1024];
 	TH1D *h;
+	TFile *f;
 	TCut ct;
 	double median, error, year;
 	struct HitOutStruct {
@@ -262,6 +287,7 @@ int main(int argc, char **argv)
 		float phe;
 		float pix;
 		float signal;
+		float dist;
 		int adc;
 		int chan;
 		int ovf;
@@ -285,22 +311,33 @@ int main(int argc, char **argv)
 
 	TChain *ch = new TChain("Hit", "Hit");
 	for (i = run_begin; i <= run_end; i += run_step) {
+		for (j=0; j<MAXADC; j++) for (k=0; k<MAXCHAN; k++) if (Strip[j][k]) Strip[j][k]->StepBegin(i);
 		ch->Reset();
 		ch->SetBranchAddress("Data", &MyHit);
-		sprintf(strs, "hPhe_%6.6d", i);
-		sprintf(strl, "Runs %d - %d;p.h.e.", i, i+run_step-1);
-		h = new TH1D(strs, strl, 200, 0, 200);
 		for (j=0; j<run_step; j++) {
 			if (Runs.GetRunYear(i+j) < -100) continue;
 			sprintf(strl, "%s/%3.3dxxx/vert_%6.6d.root", VDIR, (i+j) / 1000, i+j);
 			irc = access(strl, R_OK);
 			if (!irc) {
+				f = new TFile(strl);
+				for (m=0; m<MAXADC; m++) for (k=0; k<MAXCHAN; k++) {
+					if (Dead.IsDead(m, k)) continue;
+					sprintf(strs, "hCoef_%d_%2.2d", m, k);
+					h = (TH1D *) f->Get(strs);
+					if (!h) continue;
+					if (!Strip[m][k]) {
+						fOut->cd();
+						Strip[m][k] = new MyStrip(m, k, run_begin, run_end, run_step);
+						Strip[m][k]->StepBegin(i);
+					}
+					Strip[m][k]->AddHist(h);
+				}
+				delete f;
 				ch->AddFile(strl);
 				year = Runs.GetRunYear(i+j);
 			}
 		}
 		Num = ch->GetEntries();
-		for (j=0; j<MAXADC; j++) for (k=0; k<MAXCHAN; k++) if (Strip[j][k]) Strip[j][k]->StepBegin(i);
 		for (cnt = 0; cnt < Num; cnt++) {
 			ch->GetEntry(cnt);
 			if (Dead.IsDead(MyHit.adc, MyHit.chan)) continue;
@@ -310,6 +347,7 @@ int main(int argc, char **argv)
 			}
 			Strip[MyHit.adc][MyHit.chan]->AddHit(MyHit.phe);
 		}
+		fOut->cd();
 		for (j=0; j<MAXADC; j++) for (k=0; k<MAXCHAN; k++) if (Strip[j][k]) Strip[j][k]->StepEnd(year);
 	}
 
