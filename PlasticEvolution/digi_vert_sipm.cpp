@@ -52,7 +52,7 @@ using namespace std;
 #define MAXDIST	6.0
 #define MINEK	0.6
 #define MAXEK	3.0
-#define MAXADC	52
+#define MAXADC	55
 #define MAXCHAN	64
 
 // Types
@@ -254,7 +254,7 @@ int ReadDigiDataUser::processUserEvent()
 	yDown /= EyDown;
 	r2 = (xUp - xDown) * (xUp - xDown) + (yUp - yDown) * (yUp - yDown);
 	if (r2 > MAXR2) return 0;
-	
+
 	// Select and store hits
 	NHits = 0;
 	for(i=0; i<N; i++) if (type(i) == bSiPm && npix(i) >= MINPIX) {
@@ -316,10 +316,6 @@ int ReadDigiDataUser::processUserEvent()
 	SelectedEvent.r2 = r2;
 	OutputEvent->Fill();
 	
-	if ((EventCnt%1000) == 0) {
-		printf(".");
-		fflush(stdout);
-	}
 	return 0;
 }
 

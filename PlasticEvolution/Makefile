@@ -1,6 +1,9 @@
-all: vert_muon digi_vert_sipm run_vert_mpi phe_hist phe_hist_strip make_rel_coef
+all: vert_muon digi_vert_sipm run_vert_mpi phe_hist phe_hist_strip make_rel_coef join_rel_coef
 
 make_rel_coef: make_rel_coef.cpp
+	g++ $^ -o $@ $(shell root-config --cflags --libs)
+
+join_rel_coef: join_rel_coef.cpp
 	g++ $^ -o $@ $(shell root-config --cflags --libs)
 
 vert_muon: vert_muon.cpp
