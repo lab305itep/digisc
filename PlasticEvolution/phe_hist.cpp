@@ -168,8 +168,6 @@ double Median(TH1 *h, double *err = NULL)
 	return x;
 }
 
-
-
 int main(int argc, char **argv)
 {
 	int run_begin, run_end, run_step;
