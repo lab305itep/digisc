@@ -1,4 +1,4 @@
-all: vert_muon digi_vert_sipm run_vert_mpi phe_hist phe_hist_strip make_rel_coef join_rel_coef make_rel_coef_bin
+all: vert_muon digi_vert_sipm run_vert_mpi phe_hist phe_hist_strip make_rel_coef join_rel_coef make_rel_coef_bin run_bin_mpi
 
 make_rel_coef: make_rel_coef.cpp
 	g++ $^ -o $@ $(shell root-config --cflags --libs)
@@ -22,5 +22,8 @@ digi_vert_sipm: digi_vert_sipm.cpp
 	g++ $^ -o $@ $(shell root-config --cflags --libs) -I../lib_v3.2 -L../lib_v3.2 -lReadDigiData
 
 run_vert_mpi: run_vert_mpi.c
+	mpicc -o $@ $^
+
+run_bin_mpi: run_bin_mpi.c
 	mpicc -o $@ $^
 

@@ -8,7 +8,6 @@
 #include <TH1D.h>
 #include <TString.h>
 
-#define MAXADC	55
 #define MAXCHAN	64
 
 int main(int argc, char **argv)
@@ -19,16 +18,25 @@ int main(int argc, char **argv)
 	TH1D *hIn;
 	char strs[128];
 	double *coef;
+	struct HeadStruct {
+		int adc;
+		int chan;
+		int num;
+		int run_begin;
+		int run_step;
+		int run_end;
+	} head;
 
-	if (argc < 2) {
-		printf("Usage: %s fname run_begin run_end run_step\n", argv[0]);
+	if (argc < 6) {
+		printf("Usage: %s fname adc run_begin run_end run_step\n", argv[0]);
 		return 10;
 	}
 	TFile *fIn = new TFile(argv[1]);
 	if (!fIn->IsOpen()) return 20;
-	run_begin = strtol(argv[2], NULL, 10);
-	run_end = strtol(argv[3], NULL, 10);
-	run_step = strtol(argv[4], NULL, 10);
+	i = strtol(argv[2], NULL, 10);
+	run_begin = strtol(argv[3], NULL, 10);
+	run_end = strtol(argv[4], NULL, 10);
+	run_step = strtol(argv[5], NULL, 10);
 	N = (run_end - run_begin) / run_step + 1;
 	coef = (double *) malloc(N * sizeof(double));
 	if (!coef) {
@@ -37,15 +45,15 @@ int main(int argc, char **argv)
 	}
 	
 	TString fname(argv[1]);
-	fname.ReplaceAll(".root", "_relcoef.bin");
+	sprintf(strs, "_%d_relcoef.bin", i);
+	fname.ReplaceAll(".root", strs);
 	FILE *fOut = fopen(fname.Data(), "wb");
 	if (!fOut) {
 		printf("Can not open the output file %s\n", fname.Data());
 		return 30;
 	}
 
-	for (i=0; i<MAXADC; i++) for (j=0; j<MAXCHAN; j++) {
-		printf("Begin %d.%2.2d\n", i, j);
+	for (j=0; j<MAXCHAN; j++) {
 		sum = 0;
 		nsum = 0;
 		memset(coef, 0, N * sizeof(double));
@@ -54,6 +62,7 @@ int main(int argc, char **argv)
 			hIn = (TH1D *) fIn->Get(strs);
 			if (!hIn) continue;
 			val = hIn->GetMean();
+			delete hIn;
 			if (val < 10) continue;			// invalid
 			coef[k] = val;
 			sum += val;
@@ -68,8 +77,15 @@ int main(int argc, char **argv)
 				coef[k] = (coef[k] - sum) / sum;
 			}
 		}
+		head.adc = i;
+		head.chan = j;
+		head.num = N;
+		head.run_begin = run_begin;
+		head.run_end = run_end;
+		head.run_step = run_step;
+		fwrite(&head, sizeof(head), 1, fOut);
 		fwrite(coef, N * sizeof(double), 1, fOut);
-		printf("End %d.%2.2d\n", i, j);
+		printf("End %d.%2.2d: %d points\n", i, j, nsum);
 	}
 	fclose(fOut);
 	fIn->Close();
