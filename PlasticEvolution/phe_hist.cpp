@@ -5,8 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <TChain.h>
-#include <TCut.h>
+#include <TTree.h>
 #include <TFile.h>
 #include <TGraphErrors.h>
 #include <TH1D.h>
@@ -134,6 +133,78 @@ double MyRunList::date2year(int year, int month, int day)
 	return ((year - 2016.0) + (month - 1) / 12.0 + (day - 1) / 365.0);
 }
 
+class MyCoef {
+	private:
+		double *Coef;
+		int begin;
+		int end;
+		int step;
+	public:
+		MyCoef(int run_begin, int run_end, int run_step, double *data);
+		~MyCoef(void);
+		double GetCoef(int run);
+};
+
+MyCoef *CoefArray[MAXADC][MAXCHAN];
+
+MyCoef::MyCoef(int run_begin, int run_end, int run_step, double *data)
+{
+	int i, N;
+	begin = run_begin;
+	end = run_end;
+	step = run_step;
+	N = ((end - begin) / step + 1) * sizeof(double);
+	Coef = (double *)malloc(N);
+	if (!Coef) {
+		printf("No memory\n");
+		throw;
+	}
+	memcpy(Coef, data, N);
+}
+
+MyCoef::~MyCoef(void)
+{
+	free(Coef);
+}
+
+double MyCoef::GetCoef(int run)
+{
+	int n;
+	n = (run - begin) / step;
+	return Coef[n];
+}
+
+void InitCoef(const char *fname)
+{
+	FILE *fIn;
+	double *coef;
+	struct HeadStruct {
+		int adc;
+		int chan;
+		int num;
+		int run_begin;
+		int run_step;
+		int run_end;
+	} head;
+	int irc;
+	
+	memset(CoefArray, 0, sizeof(CoefArray));
+	fIn = fopen(fname, "rb");
+	if (!fIn) {
+		printf("Can not open file %s - %m\n", fname);
+		throw;
+	}
+	coef = (double *)malloc((MAXRUN / 50) * sizeof(double));
+	for(;!feof(fIn);) {
+		irc = fread(&head, sizeof(head), 1, fIn);
+		if (irc != 1) break;	// EOF ?
+		fread(coef, head.num * sizeof(double), 1, fIn);
+		CoefArray[head.adc][head.chan] = new MyCoef(head.run_begin, head.run_end, head.run_step, coef);
+	}
+	
+	fclose(fIn);
+}
+
 /*
  * Caculate histogram median in the range [firstbin, lastbin]
  * The default includes underflow and overflow
@@ -171,12 +242,15 @@ double Median(TH1 *h, double *err = NULL)
 int main(int argc, char **argv)
 {
 	int run_begin, run_end, run_step;
+	double alpha;
+	double r;
 	int i, j, irc, mcnt;
 	int adcnum = -1;
-	long cnt, Num;
+	long cnt, lcnt, Num;
 	char strs[128], strl[1024];
 	TH1D *h;
-	TCut ct;
+	TFile *fIn;
+	TTree *tHit;
 	double median, error, year;
 	struct HitOutStruct {
 		float E;
@@ -189,56 +263,60 @@ int main(int argc, char **argv)
 		int ovf;
 	} MyHit;
 	
-	if (argc < 5) {
-		printf("Usage: %s fname run_begin run_end run_step [adcnum]\n", argv[0]);
+	if (argc < 6) {
+		printf("Usage: %s fname run_begin run_end run_step alpha [adcnum]\n", argv[0]);
 		return 10;
 	}
 	
-	if (argc > 5) adcnum = strtol(argv[5], NULL, 10);
+	if (argc > 6) adcnum = strtol(argv[6], NULL, 10);
 	
 	MyDead Dead("all_dead_list.txt");
 	MyRunList Runs("../stat_all.txt");
+	InitCoef(VDIR "/phe/relcoef_2000_121999.bin");
 	run_begin = strtol(argv[2], NULL, 10);
 	run_end = strtol(argv[3], NULL, 10);
 	run_step = strtol(argv[4], NULL, 10);
+	alpha = strtod(argv[5], NULL);
 	
 	TFile *fOut = new TFile(argv[1], "RECREATE");
 	if (!fOut->IsOpen()) return 20;
 
-	TChain *ch = new TChain("Hit", "Hit");
 	TH1D *hMedian = new TH1D("hMedian", "Median p.h.e. plot;run;p.h.e.", (run_end - run_begin + 1) / run_step, run_begin, run_end);
 	TGraphErrors *gMedian = new TGraphErrors();
 	gMedian->SetName("gMedian");
 	gMedian->SetTitle("Median p.h.e. graph;year;p.h.e.");
 	mcnt = 0;
 	for (i = run_begin; i <= run_end; i += run_step) {
-		ch->Reset();
-		ch->SetBranchAddress("Data", &MyHit);
 		sprintf(strs, "hPhe_%6.6d", i);
 		sprintf(strl, "Runs %d - %d;p.h.e.", i, i+run_step-1);
 		h = new TH1D(strs, strl, 200, 0, 200);
+		lcnt = 0;
 		for (j=0; j<run_step; j++) {
 			if (Runs.GetRunYear(i+j) < -100) continue;
 			sprintf(strl, "%s/%3.3dxxx/vert_%6.6d.root", VDIR, (i+j) / 1000, i+j);
 			irc = access(strl, R_OK);
-			if (!irc) {
-				ch->AddFile(strl);
-				year = Runs.GetRunYear(i+j);
+			if (irc) continue;
+			fIn = new TFile(strl);
+			if (!fIn->IsOpen()) continue;
+			tHit = (TTree *) fIn->Get("Hit");
+			if (!tHit) continue;
+			tHit->SetBranchAddress("Data", &MyHit);
+			year = Runs.GetRunYear(i+j);
+			Num = tHit->GetEntries();
+//			printf("file %s: %d entries\n", strl, Num);
+			for (cnt = 0; cnt < Num; cnt++) {
+				tHit->GetEntry(cnt);
+				if (Dead.IsDead(MyHit.adc, MyHit.chan)) continue;
+				if (adcnum >= 0 && MyHit.adc != adcnum) continue;
+				if (!CoefArray[MyHit.adc][MyHit.chan]) continue;
+				r = CoefArray[MyHit.adc][MyHit.chan]->GetCoef(i+j);
+				if (r < -500) continue;
+				h->Fill(MyHit.phe*(1+alpha*r));
+				lcnt++;
 			}
+			delete fIn;
 		}
-//		printf("Runs = %d-%d\n", i, i+run_step-1);
-//		irc = ch->Project(h->GetName(), "phe", ct);
-		irc = 0;
-		Num = ch->GetEntries();
-		for (cnt = 0; cnt < Num; cnt++) {
-			ch->GetEntry(cnt);
-			if (Dead.IsDead(MyHit.adc, MyHit.chan)) continue;
-			if (adcnum >= 0 && MyHit.adc != adcnum) continue;
-//			printf("%2d.%2.2d: %f\n", MyHit.phe);
-			h->Fill(MyHit.phe);
-			irc++;
-		}
-		if (irc > 100) {
+		if (lcnt > 100) {
 			median = Median(h, &error);
 			j = hMedian->FindBin(i);
 			hMedian->SetBinContent(j, median);
@@ -247,6 +325,7 @@ int main(int argc, char **argv)
 			gMedian->SetPointError(mcnt, 0, error);
 			mcnt++;
 		}
+		fOut->cd();
 		h->Write();
 		delete h;
 	}
