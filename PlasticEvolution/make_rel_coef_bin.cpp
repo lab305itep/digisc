@@ -8,11 +8,28 @@
 #include <TH1D.h>
 #include <TString.h>
 
+#define PHEDIR "/home/clusters/rrcmpi/alekseev/igor/dvert/phe"
+#define MAXADC	50
 #define MAXCHAN	64
 
 int main(int argc, char **argv)
 {
-	int run_begin, run_end, run_step;
+	struct FileListStruct {
+		const char *name;
+		int begin;
+		int end;
+	} FileList[] = {
+		{"phe_2000_12999",      2000,  12999},
+		{"phe_13000_22999",    13000,  22999},
+		{"phe_23000_32999",    23000,  32999},
+		{"phe_33000_42999",    33000,  42999},
+		{"phe_43000_52999",    43000,  52999},
+		{"phe_53000_62999",    53000,  62999},
+		{"phe_63000_82999",    63000,  82999},
+		{"phe_83000_102999",   83000, 102999},
+		{"phe_103000_121999", 103000, 121999}
+	};
+
 	int i, j, k, N, nsum;
 	double sum, val;
 	TH1D *hIn;
@@ -27,10 +44,6 @@ int main(int argc, char **argv)
 		int run_end;
 	} head;
 
-	if (argc < 6) {
-		printf("Usage: %s fname adc run_begin run_end run_step\n", argv[0]);
-		return 10;
-	}
 	TFile *fIn = new TFile(argv[1]);
 	if (!fIn->IsOpen()) return 20;
 	i = strtol(argv[2], NULL, 10);

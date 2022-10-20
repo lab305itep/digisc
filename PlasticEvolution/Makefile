@@ -1,6 +1,9 @@
-all: vert_muon digi_vert_sipm run_vert_mpi phe_hist phe_hist_strip make_rel_coef join_rel_coef make_rel_coef_bin run_bin_mpi phe_hist_corr
+all: vert_muon digi_vert_sipm run_vert_mpi phe_hist phe_hist_strip make_rel_coef join_rel_coef run_bin_mpi phe_hist_corr
 
 make_rel_coef: make_rel_coef.cpp
+	g++ $^ -o $@ $(shell root-config --cflags --libs)
+
+bin_hists: bin_hists.cpp
 	g++ $^ -o $@ $(shell root-config --cflags --libs)
 
 make_rel_coef_bin: make_rel_coef_bin.cpp
@@ -28,5 +31,8 @@ run_vert_mpi: run_vert_mpi.c
 	mpicc -o $@ $^
 
 run_bin_mpi: run_bin_mpi.c
+	mpicc -o $@ $^
+
+run_rel_mpi: run_rel_mpi.c
 	mpicc -o $@ $^
 

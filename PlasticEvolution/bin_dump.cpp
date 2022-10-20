@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 		irc = fread(&head, sizeof(head), 1, f);
 		if (irc != 1) break;
 		printf("%2d.%2.2d: %d entries (begin: %d end: %d step: %d\n", 
-			head.adc, head.chan, head.num, head.run_begin, head.run_step, head.run_end);
+			head.adc, head.chan, head.num, head.run_begin, head.run_end, head.run_step);
 		irc = fseek(f, head.num * sizeof(double), SEEK_CUR);
 		if (irc) {
 			printf("Unexpected file read error %m\n");

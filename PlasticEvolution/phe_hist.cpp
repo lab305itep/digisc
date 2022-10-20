@@ -272,7 +272,7 @@ int main(int argc, char **argv)
 	
 	MyDead Dead("all_dead_list.txt");
 	MyRunList Runs("../stat_all.txt");
-	InitCoef(VDIR "/phe/relcoef_2000_121999.bin");
+	InitCoef(VDIR "/phe/relcoef_all.bin");
 	run_begin = strtol(argv[2], NULL, 10);
 	run_end = strtol(argv[3], NULL, 10);
 	run_step = strtol(argv[4], NULL, 10);

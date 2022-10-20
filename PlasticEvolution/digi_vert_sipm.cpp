@@ -65,6 +65,8 @@ struct HitOutStruct {
 	float dist;
 	int adc;
 	int chan;
+	int xy;
+	int z;
 	int ovf;
 } SelectedHit;
 
@@ -161,7 +163,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	OutputFile = new TFile(chOutputFile, "RECREATE");
 	if (!OutputFile->IsOpen()) throw "Panic - can not open output file!";
 	OutputHit = new TTree("Hit", "Hit");
-	OutputHit->Branch("Data", &SelectedHit, "E/F:phe/F:pix/F:signal/F:dist/F:adc/I:chan/I:ovf/I");
+	OutputHit->Branch("Data", &SelectedHit, "E/F:phe/F:pix/F:signal/F:dist/F:adc/I:chan/I:xy/I:z/I:ovf/I");
 	OutputEvent = new TTree("Event", "Event");
 	OutputEvent->Branch("Data", &SelectedEvent, "MCNum/I:NHits/I:xUP/F:yUP/F:xDown/F:yDown/F:r2/F");
 	hXZ = new TH2D("hXZ", "XZ 2D plot;X;Z,N", 25, 0, 100, 50, 0, 100);
@@ -300,6 +302,8 @@ int ReadDigiDataUser::processUserEvent()
 		SelectedHit.adc = adc(i);
 		SelectedHit.signal = signal(i) / Ccorr;
 		SelectedHit.chan = adcChan(i);
+		SelectedHit.xy = j;
+		SelectedHit.z = k;
 		SelectedHit.ovf = wasOvfl(i);
 		OutputHit->Fill();
 	}
@@ -339,8 +343,9 @@ void ReadDigiDataUser::finishUserProc()
 	OutputHit->Write();
 	hXZ->Write();
 	hYZ->Write();
+	printf("%s: %d events processed. %d muon tracks found. %d hits stored\n", 
+		OutputFile->GetName(),EventCnt, SelectedCnt, HitCnt);
 	OutputFile->Close();
-	printf("%d events processed. %d muon tracks found. %d hits stored\n", EventCnt, SelectedCnt, HitCnt);
 	return;
 }
 
