@@ -10,10 +10,27 @@
 #include <TGraphErrors.h>
 #include <TH1D.h>
 
+/****************************************************************/
+
 #define VDIR "/home/clusters/rrcmpi/alekseev/igor/dvert"
 #define MAXRUN 150000
 #define MAXADC 60
 #define MAXCHAN 64
+
+struct HitOutStruct {
+	float E;
+	float phe;
+	float pix;
+	float signal;
+	float dist;
+	int adc;
+	int chan;
+	int xy;
+	int z;
+	int ovf;
+};
+
+/****************************************************************/
 
 class MyDead {
 	private:
@@ -54,6 +71,8 @@ MyDead::MyDead(const char *file_list)
 		DeadList[DeadADC[adc]][chan] = 1;
 
 }
+
+/****************************************************************/
 
 class MyRunList {
 	private:
@@ -133,6 +152,8 @@ double MyRunList::date2year(int year, int month, int day)
 	return ((year - 2016.0) + (month - 1) / 12.0 + (day - 1) / 365.0);
 }
 
+/****************************************************************/
+
 class MyCoef {
 	private:
 		double *Coef;
@@ -205,6 +226,90 @@ void InitCoef(const char *fname)
 	fclose(fIn);
 }
 
+/****************************************************************/
+
+struct MyRange {
+	int min;
+	int max;
+};
+
+class MyCuts {
+	private:
+		struct MyRange adc;
+		struct MyRange chan;
+		struct MyRange xy;
+		struct MyRange z;
+		struct MyRange dist;
+	public:
+		MyCuts(char *strcut);
+		int Check(struct HitOutStruct *Hit);
+};
+
+MyCuts::MyCuts(char *strcut)
+{
+	const char *param[5] = {"adc=[", "chan=[", "xy=[", "z=[", "dist=["};
+	char *ptr;
+	int i, min, max;
+	
+	adc.min = 0;
+	adc.max = 100;
+	chan.min = 0;
+	chan.max = 63;
+	xy.min = 0;
+	xy.max = 24;
+	z.min = 0;
+	z.max = 49;
+	dist.min = 0;
+	dist.max = 100;
+	
+	for (i=0; i<5; i++) {
+		ptr = strstr(strcut, param[i]);
+		if (!ptr) continue;
+		ptr += strlen(param[i]);
+		min = strtol(ptr, &ptr, 10);
+		ptr++;
+		if (ptr >= strcut + strlen(strcut)) continue;
+		max = strtol(ptr, NULL, 10);
+		switch(i) {
+		case 0:
+			adc.min = min;
+			adc.max = max;
+			break;
+		case 1:
+			chan.min = min;
+			chan.max = max;
+			break;
+		case 2:
+			xy.min = min;
+			xy.max = max;
+			break;
+		case 3:
+			z.min = min;
+			z.max = max;
+			break;
+		case 4:
+			dist.min = min;
+			dist.max = max;
+			break;
+		}
+	}
+	printf("Cuts: adc=[%d:%d] chan=[%d:%d] xy=[%d:%d] z=[%d:%d] dist=[%d:%d]\n",
+		adc.min, adc.max, chan.min, chan.max, xy.min, xy.max, z.min, z.max, dist.min, dist.max);
+}
+
+int MyCuts::Check(struct HitOutStruct *Hit)
+{
+	if (Hit->adc  < adc.min  || Hit->adc  > adc.max)  return 0;
+	if (Hit->chan < chan.min || Hit->chan > chan.max) return 0;
+	if (Hit->xy   < xy.min   || Hit->xy   > xy.max)   return 0;
+	if (Hit->z    < z.min    || Hit->z    > z.max)    return 0;
+	if (Hit->dist < dist.min || Hit->dist > dist.max) return 0;
+//	printf("adc=%d chan=%d xy=%d z=%d dist=%f\n", 
+//		Hit->adc, Hit->chan, Hit->xy, Hit->z, Hit->dist);
+	return 1;
+}
+
+/****************************************************************/
 /*
  * Caculate histogram median in the range [firstbin, lastbin]
  * The default includes underflow and overflow
@@ -245,30 +350,21 @@ int main(int argc, char **argv)
 	double alpha;
 	double r;
 	int i, j, irc, mcnt;
-	int adcnum = -1;
 	long cnt, lcnt, Num;
 	char strs[128], strl[1024];
 	TH1D *h;
 	TFile *fIn;
 	TTree *tHit;
 	double median, error, year;
-	struct HitOutStruct {
-		float E;
-		float phe;
-		float pix;
-		float signal;
-		float dist;
-		int adc;
-		int chan;
-		int ovf;
-	} MyHit;
+	struct HitOutStruct MyHit;
 	
 	if (argc < 6) {
-		printf("Usage: %s fname run_begin run_end run_step alpha [adcnum]\n", argv[0]);
+		printf("Usage: %s fname run_begin run_end run_step alpha [\"cuts\"]\n", argv[0]);
+		printf("Cuts are given in the form parameter=[min:max] separated with comma.\n");
+		printf("The default is no cut on the parameter.\n");
+		printf("Possible parameters: adc, chan, xy, z, dist\n");
 		return 10;
 	}
-	
-	if (argc > 6) adcnum = strtol(argv[6], NULL, 10);
 	
 	MyDead Dead("all_dead_list.txt");
 	MyRunList Runs("../stat_all.txt");
@@ -277,7 +373,8 @@ int main(int argc, char **argv)
 	run_end = strtol(argv[3], NULL, 10);
 	run_step = strtol(argv[4], NULL, 10);
 	alpha = strtod(argv[5], NULL);
-	
+	MyCuts Cuts((argc > 6) ? argv[6] : NULL);
+
 	TFile *fOut = new TFile(argv[1], "RECREATE");
 	if (!fOut->IsOpen()) return 20;
 
@@ -307,7 +404,7 @@ int main(int argc, char **argv)
 			for (cnt = 0; cnt < Num; cnt++) {
 				tHit->GetEntry(cnt);
 				if (Dead.IsDead(MyHit.adc, MyHit.chan)) continue;
-				if (adcnum >= 0 && MyHit.adc != adcnum) continue;
+				if (!Cuts.Check(&MyHit)) continue;
 				if (!CoefArray[MyHit.adc][MyHit.chan]) continue;
 				r = CoefArray[MyHit.adc][MyHit.chan]->GetCoef(i+j);
 				if (r < -500) continue;
