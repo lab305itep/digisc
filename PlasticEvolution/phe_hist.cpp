@@ -240,6 +240,8 @@ class MyCuts {
 		struct MyRange xy;
 		struct MyRange z;
 		struct MyRange dist;
+		struct MyRange side;
+		int GetSide(int adc);
 	public:
 		MyCuts(char *strcut);
 		int Check(struct HitOutStruct *Hit);
@@ -247,7 +249,7 @@ class MyCuts {
 
 MyCuts::MyCuts(char *strcut)
 {
-	const char *param[5] = {"adc=[", "chan=[", "xy=[", "z=[", "dist=["};
+	const char *param[6] = {"adc=[", "chan=[", "xy=[", "z=[", "dist=[", "side=["};
 	char *ptr;
 	int i, min, max;
 	
@@ -261,8 +263,10 @@ MyCuts::MyCuts(char *strcut)
 	z.max = 49;
 	dist.min = 0;
 	dist.max = 100;
+	side.min = 0;
+	side.max = 1;
 	
-	for (i=0; i<5; i++) {
+	for (i=0; i<6; i++) {
 		ptr = strstr(strcut, param[i]);
 		if (!ptr) continue;
 		ptr += strlen(param[i]);
@@ -291,10 +295,30 @@ MyCuts::MyCuts(char *strcut)
 			dist.min = min;
 			dist.max = max;
 			break;
+		case 5:
+			side.min = min;
+			side.max = max;
+			break;
 		}
 	}
-	printf("Cuts: adc=[%d:%d] chan=[%d:%d] xy=[%d:%d] z=[%d:%d] dist=[%d:%d]\n",
-		adc.min, adc.max, chan.min, chan.max, xy.min, xy.max, z.min, z.max, dist.min, dist.max);
+	printf("Cuts: adc=[%d:%d] chan=[%d:%d] xy=[%d:%d] z=[%d:%d] dist=[%d:%d] side=[%d:%d]\n",
+		adc.min, adc.max, chan.min, chan.max, xy.min, xy.max, z.min, z.max, 
+		dist.min, dist.max, side.min, side.max);
+}
+
+int MyCuts::GetSide(int adc)
+{
+	const int Side[MAXADC] = {
+//		 0   1   2   3   4   5   6   7   8   9
+		-1, -1,  1, -1,  0,  1,  1,  1,  1,  1,		// 0X
+		 1,  1,  1,  1,  0,  0,  1,  1,  1,  1,		// 1X
+		 1,  1,  1,  1,  1,  1,  0,  0,  0,  0,		// 2X
+		 0,  0,  0,  0,  0,  1,  1,  0,  0,  0,		// 3X
+		 0,  0,  0,  0,  0,  0,  0,  0, -1, -1,		// 4X
+		-1,  1,  0, -1, -1, -1, -1, -1, -1, -1		// 5X
+	};
+	if (adc < 0 || adc >= MAXADC) return -1;
+	return Side[adc];
 }
 
 int MyCuts::Check(struct HitOutStruct *Hit)
@@ -304,6 +328,8 @@ int MyCuts::Check(struct HitOutStruct *Hit)
 	if (Hit->xy   < xy.min   || Hit->xy   > xy.max)   return 0;
 	if (Hit->z    < z.min    || Hit->z    > z.max)    return 0;
 	if (Hit->dist < dist.min || Hit->dist > dist.max) return 0;
+	int s = GetSide(Hit->adc);
+	if (s < side.min || s > side.max) return 0;
 //	printf("adc=%d chan=%d xy=%d z=%d dist=%f\n", 
 //		Hit->adc, Hit->chan, Hit->xy, Hit->z, Hit->dist);
 	return 1;
@@ -362,7 +388,8 @@ int main(int argc, char **argv)
 		printf("Usage: %s fname run_begin run_end run_step alpha [\"cuts\"]\n", argv[0]);
 		printf("Cuts are given in the form parameter=[min:max] separated with comma.\n");
 		printf("The default is no cut on the parameter.\n");
-		printf("Possible parameters: adc, chan, xy, z, dist\n");
+		printf("Possible parameters: adc, chan, xy, z, dist, side\n");
+		printf("side == 0: X, 1: Y\n");
 		return 10;
 	}
 	

@@ -88,6 +88,7 @@ TTree *OutputEvent;
 TH2D  *hXZ;
 TH2D  *hYZ;
 TH1D  *hCoef[MAXADC][MAXCHAN];
+TH1D  *hNhits;
 
 int EventCnt;
 int SelectedCnt;
@@ -168,6 +169,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	OutputEvent->Branch("Data", &SelectedEvent, "MCNum/I:NHits/I:xUP/F:yUP/F:xDown/F:yDown/F:r2/F");
 	hXZ = new TH2D("hXZ", "XZ 2D plot;X;Z,N", 25, 0, 100, 50, 0, 100);
 	hYZ = new TH2D("hYZ", "YZ 2D plot;Y;Z,N", 25, 0, 100, 50, 0, 100);
+	hNhits = new TH1D("hNhits", "Total number of hits for selected events;N_{hits};events", 300,0,300);
 	memset(hCoef, 0, sizeof(hCoef));
 
 	EventCnt = SelectedCnt = HitCnt = 0;
@@ -187,7 +189,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 
 int ReadDigiDataUser::processUserEvent()
 {
-	int i, j, k, N, NHits;
+	int i, j, k, N, NHits, NSiPMhits;
 	double XZ[50][25], YZ[50][25];
 	double xUp, yUp, xDown, yDown;
 	double ExUp, EyUp, ExDown, EyDown;
@@ -212,6 +214,10 @@ int ReadDigiDataUser::processUserEvent()
 		}
 		hCoef[adc(i)][adcChan(i)]->Fill(signal(i) / npe(i));
 	}
+	
+	// Count SiPMhits for histogram
+	NSiPMhits = 0;
+	for(i=0; i<N; i++) if (type(i) == bSiPm && npix(i) > 3) NSiPMhits++;
 	
 	if (N < MINHITS || N > MAXHITS) return 0;
 
@@ -260,6 +266,7 @@ int ReadDigiDataUser::processUserEvent()
 	// Select and store hits
 	NHits = 0;
 	for(i=0; i<N; i++) if (type(i) == bSiPm && npix(i) >= MINPIX) {
+		
 		j = firstCoord(i);
 		k = zCoord(i)/2;
 		z = k - 1.5;
@@ -319,7 +326,8 @@ int ReadDigiDataUser::processUserEvent()
 	SelectedEvent.yDown = yDown;
 	SelectedEvent.r2 = r2;
 	OutputEvent->Fill();
-	
+	hNhits->Fill(NSiPMhits);
+
 	return 0;
 }
 
@@ -343,6 +351,7 @@ void ReadDigiDataUser::finishUserProc()
 	OutputHit->Write();
 	hXZ->Write();
 	hYZ->Write();
+	hNhits->Write();
 	printf("%s: %d events processed. %d muon tracks found. %d hits stored\n", 
 		OutputFile->GetName(),EventCnt, SelectedCnt, HitCnt);
 	OutputFile->Close();

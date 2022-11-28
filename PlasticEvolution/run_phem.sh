@@ -24,9 +24,11 @@ makebatch()
 	qsub $fname
 }
 
-for alpha in 0.0 0.3 0.4 0.5 0.6 0.7 0.8 ; do
+for alpha in 0.56 ; do
 	for cuts in "none" "dist=[0:20]" "dist=[20:40]" "dist=[40:60]" "dist=[60:80]" "dist=[80:100]" \
-		"xy=[5:19]" "xy=[5:19],z=[0:9]" "xy=[5:19],z=[10:19]" "xy=[5:19],z=[20:29]" "xy=[5:19],z=[30:39]" "xy=[5:19],z=[40:49]" ; do
+		"xy=[5:19]" "xy=[5:19],z=[0:9]" "xy=[5:19],z=[10:19]" "xy=[5:19],z=[20:29]" \
+		"xy=[5:19],z=[30:39]" "xy=[5:19],z=[40:49]" "xy=[5:19],side=[0:0]"\
+		"xy=[5:19],side=[1:1]"; do
 		makebatch $alpha $cuts
 	done
 done

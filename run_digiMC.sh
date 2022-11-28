@@ -39,6 +39,13 @@ do_sources()
 	fi
 }
 
+do_248Cm_FR2()
+{
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/FR-2/DataTakingPeriod02/RadSources
+	${EXE} ${DIGIN}/mc_248Cm_indLY_transcode_rawProc_pedSim.digi 0x70000 ${OUTDIR}/FR2\
+		-mcfile ${MCRAW}/248Cm-FR-2/DANSS0_1.root ${DEAD}
+}
+
 do_neutrons()
 {
 	nbdir=${DIGI}/Neutron_background
@@ -67,6 +74,19 @@ do_stoppedmuons()
 			-mcfile ${_mc_raw}/DANSS0_$(($i+1)).root ${DEAD}
 	done
 }
+
+#05.11.2022
+do_cutmuons()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Hit_checker_ind_coeff_cutted/Ready/
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/Hit_checker_ind_coeff_cutted/Muons/
+	for ((i=1;$i<=16;i=$i+1)) ; do
+		j=`printf "%2.2d" $i`
+		${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_00_${j}.digi 0x70000 \
+			${OUTDIR}/MuonsCut/ -mcfile ${_mc_raw}/DANSS0_${i}.root ${DEAD}
+	done
+}
+
 
 do_muons()
 {
@@ -162,6 +182,6 @@ do_no_tr_profile()
 		-mcfile ${MCRAW}/60Co/DANSS0_1.root ${DEAD}
 }
 
-do_mudecay
+do_cutmuons
 
 exit 0
