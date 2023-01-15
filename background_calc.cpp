@@ -28,10 +28,10 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 		"Positron vertex X;cm;mHz/4cm", "Positron vertex Y;cm;mHz/4cm", "Positron vertex Z;cm;mHz/cm", 
 		"Neutron vertex X;cm;mHz/4cm", "Neutron vertex Y;cm;mHz/4cm", "Neutron vertex Z;cm;mHz/cm", 
 		"Neutron capture energy;MeV;mHz/100keV", 
-		"Neutron capture energy, > 10 cm from the edge;MeV;mHz/100keV", 
-		"Neutron capture energy, > 20 cm from the edge;MeV;mHz/100keV", 
-		"Neutron capture energy, > 30 cm from the edge;MeV;mHz/100keV", 
-		"Neutron capture energy, > 40 cm from the edge;MeV;mHz/100keV", 
+		"Neutron capture energy, > 4 cm from the edge;MeV;mHz/100keV", 
+		"Neutron capture energy, > 12 cm from the edge;MeV;mHz/100keV", 
+		"Neutron capture energy, > 24 cm from the edge;MeV;mHz/100keV", 
+		"Neutron capture energy, > 36 cm from the edge;MeV;mHz/100keV", 
 		"Neutron capture hits;hits;mHz/hit",
 		"Number of SiPM hits in positron cluster;Hits;mHz/hit", 
 		"Number of hits out of the cluster;Hits;mHz/hit", 
@@ -84,21 +84,21 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut cNE("NeutronEnergy > 1.5 + 2.6 * exp(-0.15 * PositronEnergy*PositronEnergy)");
 	TCut cN = cNH && cNE;
         TCut cSingle("!(PositronHits == 1 && (AnnihilationGammas < 1 || AnnihilationEnergy < 0.1))");
-        TCut cNX10("NeutronX[0] > 8 && NeutronX[0] < 88");
-        TCut cNY10("NeutronX[1] > 8 && NeutronX[1] < 88");
-        TCut cNZ10("NeutronX[2] > 9.5 && NeutronX[2] < 89.5");
+        TCut cNX10("PositronX[0] > 2 && PositronX[0] < 94");
+        TCut cNY10("PositronX[1] > 2 && PositronX[1] < 94");
+        TCut cNZ10("PositronX[2] > 3.5 && PositronX[2] < 95.5");
         TCut cN10 = cNX10 && cNY10 && cNZ10;
-        TCut cNX20("NeutronX[0] > 18 && NeutronX[0] < 78");
-        TCut cNY20("NeutronX[1] > 18 && NeutronX[1] < 78");
-        TCut cNZ20("NeutronX[2] > 19.5 && NeutronX[2] < 79.5");
+        TCut cNX20("PositronX[0] > 10 && PositronX[0] < 86");
+        TCut cNY20("PositronX[1] > 10 && PositronX[1] < 86");
+        TCut cNZ20("PositronX[2] > 11.5 && PositronX[2] < 87.5");
         TCut cN20 = cNX20 && cNY20 && cNZ20;
-        TCut cNX30("NeutronX[0] > 28 && NeutronX[0] < 68");
-        TCut cNY30("NeutronX[1] > 28 && NeutronX[1] < 68");
-        TCut cNZ30("NeutronX[2] > 29.5 && NeutronX[2] < 69.5");
+        TCut cNX30("PositronX[0] > 22 && PositronX[0] < 74");
+        TCut cNY30("PositronX[1] > 22 && PositronX[1] < 74");
+        TCut cNZ30("PositronX[2] > 23.5 && PositronX[2] < 75.5");
         TCut cN30 = cNX30 && cNY30 && cNZ30;
-        TCut cNX40("NeutronX[0] > 38 && NeutronX[0] < 58");
-        TCut cNY40("NeutronX[1] > 38 && NeutronX[1] < 58");
-        TCut cNZ40("NeutronX[2] > 39.5 && NeutronX[2] < 59.5");
+        TCut cNX40("PositronX[0] > 34 && PositronX[0] < 62");
+        TCut cNY40("PositronX[1] > 34 && PositronX[1] < 62");
+        TCut cNZ40("PositronX[2] > 35.5 && PositronX[2] < 63.5");
         TCut cN40 = cNX40 && cNY40 && cNZ40;
         TCut ct;
 	TCut cv[3];

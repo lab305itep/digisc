@@ -7,10 +7,10 @@
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/efficiency.err
 date
 cd /home/itep/alekseev/igor/deadchan
-export ROOT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Eff/
-export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n2/MC/Eff/
-export FUEL_LIST=/home/itep/alekseev/igor/deadchan/fuel_v8.list
-export VAR_DIR=var_fixed_v8.2a
+export ROOT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Eff_ind/
+export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n2/MC/Eff_ind/
+export FUEL_LIST=/home/itep/alekseev/igor/deadchan/fuel_ind_sel.list
+export VAR_DIR=var_fixed_ind_sel
 
 mpirun --mca btl ^tcp run_eff_mpi
 

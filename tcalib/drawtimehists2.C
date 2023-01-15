@@ -104,6 +104,17 @@ void MakeHists(const char *hist)
 	}
 }
 
+void SaveHists(int first, int last, const char *hist)
+{
+	char str[2048];
+	int i, j;
+	
+	sprintf(str, "time_hists_%s_%d-%d.root", hist, first, last);
+	TFile *fOut = new TFile(str, "RECREATE");
+	for (i=0; i<MAXBRD; i++) for (j=0; j<MAXCHAN; j++) hSum[i][j]->Write();
+	fOut->Close();
+}
+
 //	Sum hDTPUUcNN hists in the range and make .log and .pdf
 void drawtimehists2(int first, int last, const char *dirname, const char *hist)
 {
@@ -120,4 +131,5 @@ void drawtimehists2(int first, int last, const char *dirname, const char *hist)
 	MakeHists(hist);
 	for (i=first; i<=last; i++) AddFromFile(i, dirname, hist);
 	Print(first, last, dirname, hist);
+	SaveHists(first, last, hist);
 }
