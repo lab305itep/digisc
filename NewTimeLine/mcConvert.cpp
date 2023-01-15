@@ -146,6 +146,7 @@ int main(int argc, char **argv)
 	char SiPMArray[25][100];
 	long i;
 	int j;
+	char *IsEventNonZeroEnergy;
 /****************************************************************
  *			Files and arguments			*
  ****************************************************************/
@@ -252,6 +253,8 @@ int main(int argc, char **argv)
 		return 39;
 	}
 	if (iFirst + nMax > Nevents) nMax = Nevents - iFirst;
+	IsEventNonZeroEnergy = (char *) malloc(nMax);
+	memset(IsEventNonZeroEnergy, 0, nMax);
 /****************************************************************
  *		Outputfile trees				*
  ****************************************************************/
@@ -281,23 +284,6 @@ int main(int argc, char **argv)
 	}
 	TTree::SetMaxTreeSize(400000000000LL);
 /****************************************************************
- *		Process DANSSParticle and DANSSPrimary		*
- ****************************************************************/
-	NPrimary = tInPrimary->GetEntries();
-	for(i=0; i < NPrimary; i++) {
-		tInPrimary->GetEntry(i);
-		if (PrimaryData.EventID < iFirst + 1) continue;
-		if (PrimaryData.EventID > iFirst + nMax) break;
-		tOutPrimary->Fill();
-	}
-	NParticle = tInParticle->GetEntries();
-	for(i=0; i < NParticle; i++) {
-		tInParticle->GetEntry(i);
-		if (ParticleData.EventID < iFirst + 1) continue;
-		if (ParticleData.EventID > iFirst + nMax) break;
-		tOutParticle->Fill();
-	}
-/****************************************************************
  *		Process events					*
  ****************************************************************/
 	NSiPMHits = tInSiPMHit->GetEntries();
@@ -312,6 +298,8 @@ int main(int argc, char **argv)
 	for (EventID = iFirst + 1; EventID <= iFirst + nMax; EventID++) {
 //		Read Event data
 		tInEvent->GetEntry(EventID - 1);
+		if (EventDataOld.EnergyLoss == 0) continue;
+		IsEventNonZeroEnergy[EventID-iFirst-1] = 1;
 		tInSignal->GetEntry(EventID - 1);
 		tInVeto->GetEntry(EventID - 1);
 //		Read hits
@@ -412,6 +400,25 @@ int main(int argc, char **argv)
 			memcpy(SiPMTimelineBranch.SiPMTimeline, &SiPMTimeline[(i * 100 + j) * 25000], 25000 * sizeof(double));
 			tOutSiPMTimeline->Fill();
 		}
+	}
+/****************************************************************
+ *		Process DANSSParticle and DANSSPrimary		*
+ ****************************************************************/
+	NPrimary = tInPrimary->GetEntries();
+	for(i=0; i < NPrimary; i++) {
+		tInPrimary->GetEntry(i);
+		if (PrimaryData.EventID < iFirst + 1) continue;
+		if (!IsEventNonZeroEnergy[((int)PrimaryData.EventID)-iFirst-1]) continue;
+		if (PrimaryData.EventID > iFirst + nMax) break;
+		tOutPrimary->Fill();
+	}
+	NParticle = tInParticle->GetEntries();
+	for(i=0; i < NParticle; i++) {
+		tInParticle->GetEntry(i);
+		if (ParticleData.EventID < iFirst + 1) continue;
+		if (!IsEventNonZeroEnergy[((int)ParticleData.EventID)-iFirst-1]) continue;
+		if (ParticleData.EventID > iFirst + nMax) break;
+		tOutParticle->Fill();
 	}
 /****************************************************************
  *		Write and close					*
