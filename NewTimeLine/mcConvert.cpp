@@ -298,7 +298,7 @@ int main(int argc, char **argv)
 	for (EventID = iFirst + 1; EventID <= iFirst + nMax; EventID++) {
 //		Read Event data
 		tInEvent->GetEntry(EventID - 1);
-		if (EventDataOld.EnergyLoss == 0) continue;
+		if (EventDataNew.EnergyLoss == 0) continue;
 		IsEventNonZeroEnergy[EventID-iFirst-1] = 1;
 		tInSignal->GetEntry(EventID - 1);
 		tInVeto->GetEntry(EventID - 1);

@@ -1,0 +1,9 @@
+DANSS analysis main flow:
+1. Do time calibration as in tcalib/read.me
+2. Run digi_evtbuilder using mpi:
+danss_submit run_digi_mpi run_first run_last mpi 500 "OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/"
+3. Find dead channels as in deadchan/read.me (it actually includes point 2.)
+4. Run digi_evtbuilder again. 
+5. Check that all files are OK using check_root.sh. Rerun digi_evtbuilder on missed runs:
+danss_submit run_digi_mpi run_first run_last mpi 500 "OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/ DIGI_LIST=check_root.list"
+6. 
