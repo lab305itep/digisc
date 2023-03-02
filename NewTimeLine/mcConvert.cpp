@@ -298,10 +298,10 @@ int main(int argc, char **argv)
 	for (EventID = iFirst + 1; EventID <= iFirst + nMax; EventID++) {
 //		Read Event data
 		tInEvent->GetEntry(EventID - 1);
-		if (EventDataNew.EnergyLoss == 0) continue;
-		IsEventNonZeroEnergy[EventID-iFirst-1] = 1;
 		tInSignal->GetEntry(EventID - 1);
 		tInVeto->GetEntry(EventID - 1);
+		if (SiPMSignalData.SiPMSumSignal == 0 && PMTSignalData.PMTSumSignal == 0 && VetoSignalData.SumSignal == 0) continue;
+		IsEventNonZeroEnergy[EventID-iFirst-1] = 1;
 //		Read hits
 		KSiPMHits = KPMTHits = KVetoHits = 0;
 		for(;PtrSiPMHits < NSiPMHits; PtrSiPMHits++) {

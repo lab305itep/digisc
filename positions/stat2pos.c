@@ -46,7 +46,8 @@ int GlobalPeriod(int run, enum PowerType ptype)
 	if (run < 37000) return 3;		// August 2017 - March 2018: Campaign 5 till detector repair
 	if (run < 56000) return 4;		// May 2018 - January 2019: after detector repair till the end of  Campaign 5
 	if (run < 87500) return 5;		// Campaign 6
-	return 6;				// Campaign 7
+	if (run < 117700) return 6;		// Campaign 7
+	return 7;				// Campaign 8
 }
 
 void StrSplit(char *str, char **token)

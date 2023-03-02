@@ -61,8 +61,25 @@ do_neutrons()
 	done
 }
 
+do_Edik_n()
+{
+	RDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC/Edik_profile
+	PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Edik_profile
+	MDIR=/home/clusters/rrcmpi/danss/MC_RAW/Edik_profile/Ready/
+	mkdir -p ${PDIR}
+	for ((i=0; $i<10; i=$i+1)) ; do 
+		for ((j=1; $j<=16; j=$j+1)) ; do
+			rname=`printf "${RDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim0_%dp%d.root" $j $i`
+			pname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_pair0_%dp%d.root" $j $i`
+			iname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_info0_%dp%d.root" $j $i`
+			mname=`printf "${MDIR}/DANSS0_%dp%d.root" $j $i`
+#			./pairbuilder8 $rname $pname
+			./getMCinfo $pname $mname $iname
+		done
+	done
+}
 date
-do_IBD
+do_Edik_n
 date
 
 exit 0

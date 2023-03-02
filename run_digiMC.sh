@@ -182,6 +182,18 @@ do_no_tr_profile()
 		-mcfile ${MCRAW}/60Co/DANSS0_1.root ${DEAD}
 }
 
-do_cutmuons
+do_Edik_n()
+{
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/Edik_profile
+	for ((i=0; $i<10; i=$i+1)) ; do 
+		for ((j=1; $j<=16; j=$j+1)) ; do
+			NAMEIN=`printf "mc_NeutronBgr_indLY_transcode_rawProc_pedSim0_%dp%d.digi" $j $i`
+			MCIN=`printf "DANSS0_%dp%d.root" $j $i`
+			${EXE} ${DIGIN}/${NAMEIN} 0x70000 ${OUTDIR}/Edik_profile -mcfile ${MCRAW}/Edik_profile/Ready/${MCIN} ${DEAD}
+		done
+	done
+}
+
+do_Edik_n
 
 exit 0

@@ -2,8 +2,28 @@ DANSS analysis main flow:
 1. Do time calibration as in tcalib/read.me
 2. Run digi_evtbuilder using mpi:
 danss_submit run_digi_mpi run_first run_last mpi 500 "OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/"
-3. Find dead channels as in deadchan/read.me (it actually includes point 2.)
+3. Find dead channels and calculate efficiencies as in deadchan/read.me (it actually includes point 2.)
 4. Run digi_evtbuilder again. 
 5. Check that all files are OK using check_root.sh. Rerun digi_evtbuilder on missed runs:
 danss_submit run_digi_mpi run_first run_last mpi 500 "OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/ DIGI_LIST=check_root.list"
-6. 
+6. Correct file run_stat_mpi.sh and run it in the batch machine for the new data portion to make statisticas files which should be joined together.
+Strip text lines:
+    sed -e "/Run/d" input.txt > tmp.txt
+    sed -e "/Proc/d" tmp.txt > output.txt
+7. Correct file run_dead_mpi.sh and run it in the batch machine for the new data portion to calculate dead times to include into the
+statistics. Cat files into a single file and strip text lines:
+    sed -e "/Run/d" input.txt > output.txt
+8. Run deadtimes_v2/merge2stat to insert dead times inot stat file:
+    ./merge2stat input_stat.txt input_dead.txt output_stat.txt
+9. Add effeciency information using deadchan/eff2stat:
+    ./eff2stat eff.list input.txt output.txt
+Now stat file is ready for manual analysis and adding the reactor power information.
+10. Run pairbuilder:
+danss_submit run_pair_mpi run_first run_last mpi 500 "SRC_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2 TGT_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n2"
+11. Check that all files are OK using check_pair.sh. Rerun pairbuilder on missed runs.
+12. Copy stat file (step 9) to positions directory and run positions builder:
+    ./stat2pos stat_file.txt pos_file
+You will get two files: pos_file.txt and pos_file.h
+13. Edit symbolic links in this stat_all.txt and stat_pos.txt in this directory 
+to point to these files. Edit file positions.h to point to the h-file.
+14. Rebuild spectr6.

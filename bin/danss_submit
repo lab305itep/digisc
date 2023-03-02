@@ -55,7 +55,7 @@ for ((i=0; $i < $NB; i=$i+1 )) ; do
 	echo "#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/${name}.out"	>> $bfname
 	echo "#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/${name}.err"	>> $bfname
 	echo "#PBS -l nodes=$TOGO"						>> $bfname
-	echo "#PBS -l walltime=02:00:00"					>> $bfname
+	echo "#PBS -l walltime=03:00:00"					>> $bfname
 	echo "cd $WD"								>> $bfname
 	if [ x"$6" != "x" ] ; then
 		echo "export $6"						>> $bfname
