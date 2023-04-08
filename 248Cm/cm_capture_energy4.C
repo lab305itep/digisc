@@ -53,7 +53,7 @@ TChain *create_chain(const char *fname, const char *chname)
 	return ch;
 }
 
-void cm_capture_energy4(const char *fname, const char *mcname, const char *pos, double scale, double RndmSqe, double RndmC)
+void cm_capture_energy4(const char *fname, const char *mcname, const char *pos, double scale = 1.0, double RndmSqe = 0.0, double RndmC = 0.0)
 {
 	int i, j;
 	char str[2048];
@@ -75,7 +75,7 @@ void cm_capture_energy4(const char *fname, const char *mcname, const char *pos, 
 	gStyle->SetLineWidth(2);
 //	gStyle->SetPalette(kRainBow, 0);
 
-	sprintf(str, "248Cm_FR2_%s_v8.2_S%5.3f_R%5.3f_C%5.3f.pdf", pos, scale, RndmSqe, RndmC);
+	sprintf(str, "248Cm_%s_v8.2_S%5.3f_R%5.3f_C%5.3f.pdf", pos, scale, RndmSqe, RndmC);
 	TString pdfName(str);
 	TString rootName = pdfName;
 	rootName.ReplaceAll(".pdf", ".root");

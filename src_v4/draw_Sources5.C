@@ -31,12 +31,15 @@
 * 51036-51095	22Na	2018-11-21	edge		60
 * 51099-51161	22Na	2018-11-22	center		63
 * 51167-51267	none	2018-11-23
-* 127389-127460	22Na	2022-06-21	center		72
+* 127280-127379	none	2022-06-19
+* 127389-127456	22Na	2022-06-21	center		68
 * 127513-127580	24Na	2022-06-23	center, not seen, strong pickup (?)
 * 127658-127719	24Na	2022-06-25	center, not seen
 * 127720-127772	248Cm	2022-06-26	center		53
 * 127774-127837	60Co	2022-06-27	center		64
+* 127838-127900	none	2022-06-28
 * 127958-128016	22Na	2022-06-30	center, UP	59
+* 128020-128119	none	2022-07-01
 ***************************************************************************************/
 TRandom2 rnd;
 
@@ -345,6 +348,30 @@ void draw_Sources5(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		name = "22Na";
 		sprintf(fname, "22Na_nov18_edge_%s", rootdir);
 		break;
+	case 21:		// Na June 22, center DOWN
+		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
+		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
+		Add2Chain(tExpA, 127389, 127456, rootdir, max_files);
+		Add2Chain(tRawA, 127389, 127456, rootdir, max_files);
+		Add2Chain(tInfoA, 127389, 127456, rootdir, max_files);
+		Add2Chain(tExpB, 127280, 127379, rootdir, max_files);
+		Add2Chain(tRawB, 127280, 127379, rootdir, max_files);
+		Add2Chain(tInfoB, 127280, 127379, rootdir, max_files);
+		name = "22Na";
+		sprintf(fname, "22Na_jun22_center_%s", rootdir);
+		break;
+	case 31:		// Na June 22, center UP
+		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
+		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
+		Add2Chain(tExpA, 127958, 128016, rootdir, max_files);
+		Add2Chain(tRawA, 127958, 128016, rootdir, max_files);
+		Add2Chain(tInfoA, 127958, 128016, rootdir, max_files);
+		Add2Chain(tExpB, 128020, 128119, rootdir, max_files);
+		Add2Chain(tRawB, 128020, 128119, rootdir, max_files);
+		Add2Chain(tInfoB, 128020, 128119, rootdir, max_files);
+		name = "22Na";
+		sprintf(fname, "22Na_jun22_centerUP_%s", rootdir);
+		break;
 	case 101:		// Co Feb 17, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
 		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
@@ -393,6 +420,18 @@ void draw_Sources5(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		name = "60Co";
 		sprintf(fname, "60Co_nov18_edge_%s", rootdir);
 		break;
+	case 121:		// Co June 22, center
+		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
+		cZ = (TCut) "(NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 100";
+		Add2Chain(tExpA, 127774, 127837, rootdir, max_files);
+		Add2Chain(tRawA, 127774, 127837, rootdir, max_files);
+		Add2Chain(tInfoA, 127774, 127837, rootdir, max_files);
+		Add2Chain(tExpB, 127838, 127900, rootdir, max_files);
+		Add2Chain(tRawB, 127838, 127900, rootdir, max_files);
+		Add2Chain(tInfoB, 127838, 127900, rootdir, max_files);
+		name = "60Co";
+		sprintf(fname, "60Co_jun22_center_%s", rootdir);
+		break;
 		
 	case 1001:	// Na MC, center
 		cXY = (TCut) "(NeutronX[0] - 48) * (NeutronX[0] - 48) + (NeutronX[1] - 48) * (NeutronX[1] - 48) + (NeutronX[2] - 49.5) * (NeutronX[2] - 49.5) < 400";
@@ -436,6 +475,8 @@ void draw_Sources5(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("2  - February 17, edge\n");
 		printf("11  - November 18, center\n");
 		printf("12  - November 18, edge\n");
+		printf("21  - June 22, center\n");
+		printf("31  - June 22, center, UP\n");
 		printf("DD - for MC:\n");
 		printf("1  - center (50, 50, 50) position\n");
 		printf("2  - edge (50, 90, 50) position\n");
