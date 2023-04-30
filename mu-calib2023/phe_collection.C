@@ -10,15 +10,15 @@
 #include <TStyle.h>
 #include <TTree.h>
 /*
-	Compare muon energy deposit for MC and experiment
+	Make muon calibration
 */
 
 #define MAXWFD		60
 #define MAXCHAN		64
 #define MINEVENTS	500
 #define MAXCHI2		5000.0
-#define MINMEDIAN	13.0
-#define MINMDN		28.0
+#define MINMEDIAN	13.0		// consider channel as dead and produce no MC calibration for it
+#define MINMDN		28.0		// don't use for average median and cumulutive hit distribution
 #define UGLY_MC_SIPM_CORR	1.08
 
 /* MC nominal values */
@@ -35,6 +35,9 @@ const double PMTpheADC[64] = {
 	0,    0,    0,    0};
 const double PMTintcorr = 0.905; // integral to positive part integral ratio
 
+/************************************************************************************************************************
+ *			Useful functions										*
+ ************************************************************************************************************************/
 
 /*
  *  Calculate average and RMS
@@ -143,6 +146,100 @@ double Median(TH1 *h, double *err = NULL)
 }
 
 /*
+ *  DANSS geometry translation from Ira's cell index to WFD.chan and Sasha's row.column
+ */ 
+class DANSSGeom {
+private:
+	int wfd[2500];		// SiPM WFDs
+	int chan[2500];		// SiPM WFD channels
+	int pmtchan[50];	// PMT WFD channels
+	int GetKey(const char *str, const char *key);
+public:
+	DANSSGeom(void);
+	inline int SiPMWFD(int index)    { return wfd[index]; };
+	inline int SiPMchan(int index)   { return chan[index]; };
+	inline int PMTchan(int index)    { return pmtchan[index]; };
+	inline int SiPMrow(int index)    { return (index < 1250) ? (index / 25) * 2 : ((index-1250) / 25) * 2 + 1; };
+	inline int SiPMcolumn(int index) { return 24 - (index % 25); };
+	inline int PMTrow(int index)     { return (index % 5); };
+	inline int PMTcolumn(int index)  { return (index < 25) ? 4 - (index / 5) : 9 - (index / 5); };
+};
+
+/*
+ * Look for the integer value of a key in the string
+ */
+int DANSSGeom::GetKey(const char *str, const char *key)
+{
+	char *ptr = (char *)strstr(str, key);
+	if (!ptr) return -1;	// not found
+	return strtol(ptr + strlen(key), NULL, 10);
+}
+
+/*
+ * Initialize translation tables from Ira's config files.
+ */
+DANSSGeom::DANSSGeom(void)
+{
+	FILE *f;
+	int index, mod, chn;
+	int wfdtab[MAXWFD];
+	char str[1024];
+//	Clear all tables
+	memset(wfdtab, 0, sizeof(wfdtab));
+	memset(wfd, 0, sizeof(wfd));
+	memset(chan, 0, sizeof(chan));
+	memset(pmtchan, 0, sizeof(pmtchan));
+//	Read WFD translation table
+	f = fopen("geom/danssAdcBoardHwPars.txt", "rt");
+	if (!f) {
+		printf("!!! No WFD translation file geom/danssAdcBoardHwPars.txt\n");
+		return;
+	}
+	for(;;) {
+		if (!fgets(str, sizeof(str), f)) break;
+		index = GetKey(str, "Index=");
+		mod = GetKey(str, "Address=");
+		if (index < 0 || mod < 0) continue;
+		wfdtab[index] = mod;
+	}
+	fclose(f);
+//	Read PMT channels translation
+	f = fopen("geom/danssModuleHwPars.txt", "rt");
+	if (!f) {
+		printf("!!! No PMT translation file geom/danssModuleHwPars.txt\n");
+		return;
+	}
+	for(;;) {
+		if (!fgets(str, sizeof(str), f)) break;
+		index = GetKey(str, "Index=");
+		chn = GetKey(str, "AdcBoardCh=");
+		if (index < 0 || chn < 0) continue;
+		pmtchan[index] = chn;
+	}
+	fclose(f);
+//	Read SiPM channels translation
+	f = fopen("geom/danssCellHwPars.txt", "rt");
+	if (!f) {
+		printf("!!! No SiPM translation file geom/danssCellHwPars.txt\n");
+		return;
+	}
+	for(;;) {
+		if (!fgets(str, sizeof(str), f)) break;
+		index = GetKey(str, "Index=");
+		mod = GetKey(str, "AdcBoardNum=");
+		chn = GetKey(str, "AdcBoardCh=");
+		if (index < 0 || chn < 0 || mod < 0) continue;
+		chan[index] = chn;
+		wfd[index] = wfdtab[mod];
+	}
+	fclose(f);
+}
+
+
+/************************************************************************************************************************
+ *			Analysis											*
+ ************************************************************************************************************************/
+/*
 	Fill per channel experimental histogramms from Ira's files
 	fname - filename.root
 */
@@ -190,6 +287,7 @@ void make_ind_hists(const char *fname)
 				printf("Strange index = %d\n", index);
 				continue;
 			}
+			if (Signal.value > 49999) continue;		// ignore overflow
 			hE[adc][chan]->Fill(Signal.value * PMTintcorr / PMTpheADC[chan]);
 		} else if (adc != 3) {	// SiPM - we do nothing with veto and don't expect it here
 			hE[adc][chan]->Fill(Signal.value);
@@ -235,11 +333,11 @@ void make_median_file(const char *fname)
 	Draw distribution of median values from the given file
 	fname - filename.bin
 */
-
 void draw_median_distrib(const char *fname)
 {
 	int i, j;
 	float median;
+	TLine ln;
 	
 	gStyle->SetOptStat(1110);
 	TH1D *hSiPM = new TH1D("hSiPMmedian", "SiPM vertical muons median distribution;ph.c.;Channels", 50, 0, 50);
@@ -248,6 +346,10 @@ void draw_median_distrib(const char *fname)
 	hPMT->SetLineWidth(2);
 	
 	FILE *fIn = fopen(fname, "rb");
+	if (!fIn) {
+		printf("Can not open file %s\n", fname);
+		return;
+	}
 	for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) {
 		fread(&median, sizeof(float), 1, fIn);
 		if (median > 0) {
@@ -264,10 +366,225 @@ void draw_median_distrib(const char *fname)
 	cv->Divide(2, 1);
 	cv->cd(1);
 	hSiPM->Draw();
+	ln.SetLineWidth(2);
+	ln.SetLineColor(kGreen);
+	ln.DrawLine(MINMDN, 0, MINMDN, hSiPM->GetMaximum()/2);
+	ln.SetLineColor(kRed);
+	ln.DrawLine(MINMEDIAN, 0, MINMEDIAN, hSiPM->GetMaximum()/4);
 	cv->cd(2);
 	hPMT->Draw();
 	
 	TString pngname(fname);
 	pngname.ReplaceAll(".bin", "_median_distr.png");
 	cv->SaveAs(pngname.Data());
+}
+
+/*
+	Draw cumulutive distribution of experimental hit energy deposit values with calibration
+	fname - filename.bin
+*/
+void draw_exp_hist(const char *fname)
+{
+	int i, j, N;
+	int adc, chan, index;
+	char strl[1024];
+	float median[MAXWFD][MAXCHAN];
+	double avr_median_SiPM, avr_median_PMT;
+	double median_SiPM, median_PMT;
+	double emedian_SiPM, emedian_PMT;
+	int nSiPM, nPMT;
+	struct {
+		double index;
+		double value;
+	} Signal;
+	TLatex txt;
+	TLine ln;
+
+	// Read median file
+	FILE *fIn = fopen(fname, "rb");
+	if (!fIn) {
+		printf("Can not open median file %s\n", fname);
+		return;
+	}
+	i = fread(median, sizeof(median), 1, fIn);
+	if (i != 1) {
+		printf("Can not read median file %s\n", fname);
+		return;
+	}
+	fclose(fIn);
+	// Calculate average median - just average of all values above 
+	avr_median_SiPM = avr_median_PMT = 0;
+	nSiPM = nPMT = 0;
+	for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) if (median[i][j] > 0) {
+		if (i==1) {		// PMT
+			avr_median_PMT += median[i][j];
+			nPMT++;
+		} else if (median[i][j] > MINMDN) {	// SiPM
+			avr_median_SiPM += median[i][j];
+			nSiPM++;
+		}
+	}
+	avr_median_SiPM /= nSiPM;
+	avr_median_PMT /= nPMT;
+	printf("Get average medians: SiPM = %f    PMT = %f\n", avr_median_SiPM, avr_median_PMT);
+	// Create histogramms
+	TH1D *hESiPM = new TH1D("hESiPM", "SiPM hit energy distribution;ph.c.;Events", 150, 0, 150);	// different scale for PMT and SiPM
+	TH1D *hEPMT = new TH1D("hEPMT", "PMT hit energy distribution;ph.c.;Events", 150, 0, 600);	// different scale for PMT and SiPM
+	hESiPM->SetLineWidth(2);
+	hEPMT->SetLineWidth(2);
+	//	Make chain
+	TChain *tExp = new TChain("DANSSSignal", "ExpSignal");
+	for (i=53500; i<53650; i++) {
+		sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
+		tExp->AddFile(strl);
+	}
+	tExp->SetBranchAddress("DANSSSignalNpe", &Signal);
+	//	Fill experimental hists
+	N = tExp->GetEntries();
+	for (i=0; i < N; i++) {
+		tExp->GetEntry(i);
+		index = Signal.index;
+		adc = index / 100;
+		chan = index % 100;
+		if (adc >= MAXWFD || chan >= MAXCHAN) {
+			printf("Strange index = %d\n", index);
+			continue;
+		}
+		if (adc == 1) {	// PMT
+			if (PMTpheADC[chan] == 0 || median[adc][chan] == 0) {
+				printf("Strange index = %d\n", index);
+				continue;
+			}
+			if (Signal.value > 49999) continue;		// ignore overflow
+			hEPMT->Fill((Signal.value * PMTintcorr / PMTpheADC[chan]) * (avr_median_PMT / median[adc][chan]));
+		} else if (adc != 3 && median[adc][chan] > MINMDN) {	// SiPM - we do nothing with veto and don't expect it here
+			hESiPM->Fill(Signal.value * avr_median_SiPM / median[adc][chan]);
+		}
+	}
+	median_SiPM = Median(hESiPM, &emedian_SiPM);
+	median_PMT = Median(hEPMT, &emedian_PMT);
+	//	Draw
+	ln.SetLineWidth(2);
+	ln.SetLineColor(kBlack);
+	txt.SetTextSize(0.04);
+	TCanvas *cv = new TCanvas("CV", "CV", 1200, 800);
+	cv->Divide(2, 1);
+	cv->cd(1);
+	hESiPM->Draw();
+	ln.DrawLine(median_SiPM, 0, median_SiPM, hESiPM->GetMaximum() / 2);
+	sprintf(strl, "Median = %5.2f#pm%4.2f ph.c.", median_SiPM, emedian_SiPM);
+	txt.DrawLatexNDC(0.1, 0.03, strl);
+	cv->cd(2);
+	hEPMT->Draw();
+	ln.DrawLine(median_PMT, 0, median_PMT, hEPMT->GetMaximum() / 2);
+	sprintf(strl, "Median = %6.2f#pm%4.2f ph.c.", median_PMT, emedian_PMT);
+	txt.DrawLatexNDC(0.1, 0.03, strl);
+	
+	TString pngname(fname);
+	pngname.ReplaceAll(".bin", "_hit_distr.png");
+	cv->SaveAs(pngname.Data());
+}
+
+
+/*
+ * Calculate per channel calibration in ph.c./MeV in format sutable for MC
+ * fname - Calibration filename.bin
+ * pheSiPM0, phePMT - new values for MC ph.c./MeV
+ * 01.05.2023: 20.94 and 15.61
+ * Median valuse are calculated from the calibration file.
+ * The result is written in two files (for SiPM and PMT)
+ * Old constants: MC nominal values 
+ *	const double pheSiPM = 20.4 / UGLY_MC_SIPM_CORR;
+ *	const double phePMT = 15.2;
+ *	MedMCSiPM = 35.63  MedMCPMT = 282.0
+ *	MedSiPM = 35.58 and MedPMT = 281.73 - from the experiment analysis - see draw_exp_hist()
+ */
+void calib4sasha(const char *fname, double pheSiPM0, double phePMT)
+{
+	int i, j;
+	float median[MAXWFD][MAXCHAN];
+	double avr_median_SiPM, avr_median_PMT;
+	int nSiPM, nPMT;
+	struct {
+		double cellindex;
+		double row;
+		double column;
+		double energy;
+	} data;
+	int mod, chan, column, row;
+	TFile *fOut;
+	DANSSGeom geom;
+	double pheSiPM = pheSiPM0 / UGLY_MC_SIPM_CORR;
+
+	// Read median file
+	FILE *fIn = fopen(fname, "rb");
+	if (!fIn) {
+		printf("Can not open median file %s\n", fname);
+		return;
+	}
+	i = fread(median, sizeof(median), 1, fIn);
+	if (i != 1) {
+		printf("Can not read median file %s\n", fname);
+		return;
+	}
+	fclose(fIn);
+	// Calculate average median - just average of all values above 
+	avr_median_SiPM = avr_median_PMT = 0;
+	nSiPM = nPMT = 0;
+	for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) if (median[i][j] > 0) {
+		if (i==1) {		// PMT
+			avr_median_PMT += median[i][j];
+			nPMT++;
+		} else if (median[i][j] > MINMDN) {	// SiPM
+			avr_median_SiPM += median[i][j];
+			nSiPM++;
+		}
+	}
+	avr_median_SiPM /= nSiPM;
+	avr_median_PMT /= nPMT;
+	printf("Get average medians: SiPM = %f    PMT = %f\n", avr_median_SiPM, avr_median_PMT);
+//		Cycle over SiPM
+	fOut = new TFile("SiPM_response_data.root", "RECREATE");
+	TTree *tSiPM = new TTree("EnergyTree", "Tree with coefficients");
+	tSiPM->Branch("EnergyBranch", &data, "cellindex/D:row:column:energy");
+	
+	for (i=0; i<2500; i++) {
+		column = geom.SiPMcolumn(i);
+		row    = geom.SiPMrow(i);
+		mod    = geom.SiPMWFD(i);
+		chan   = geom.SiPMchan(i);
+		data.energy = (median[mod][chan] > MINMEDIAN) ? median[mod][chan] * pheSiPM / avr_median_SiPM : pheSiPM;	// nominal for dead channels
+		data.cellindex = i;
+		data.row = row;
+		data.column = column;
+		tSiPM->Fill();
+	}
+	tSiPM->Write();
+	fOut->Close();
+
+//		Cycle over PMT
+	fOut = new TFile("PMT_response_data.root", "RECREATE");
+	TTree *tPMTeven = new TTree("EnergyTreeEven", "Even tree with coefficients");
+	tPMTeven->Branch("EnergyBranchEven", &data, "modindex/D:row:column:energy");
+	TTree *tPMTodd = new TTree("EnergyTreeOdd", "Odd tree with coefficients");
+	tPMTodd->Branch("EnergyBranchOdd", &data, "modindex/D:row:column:energy");
+	
+	for (i=0; i<50; i++) {
+		column = geom.PMTcolumn(i);
+		row    = geom.PMTrow(i);
+		mod    = 1;
+		chan   = geom.PMTchan(i);
+		data.energy = median[mod][chan] * phePMT / avr_median_PMT;
+		data.cellindex = i;
+		data.row = row;
+		data.column = column;
+		if (i < 25) {
+			tPMTodd->Fill();
+		} else {
+			tPMTeven->Fill();
+		}
+	}
+	tPMTeven->Write();
+	tPMTodd->Write();
+	fOut->Close();
 }
