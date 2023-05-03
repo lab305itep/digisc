@@ -1,8 +1,8 @@
 #!/bin/bash
 #PBS -N efficiency
 #PBS -q mpi
-#PBS -l nodes=33
-#PBS -l walltime=100:00:00
+#PBS -l nodes=34
+#PBS -l walltime=150:00:00
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/efficiency.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/efficiency.err
 date
@@ -10,7 +10,7 @@ cd /home/itep/alekseev/igor/deadchan
 export ROOT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Eff_ind/
 export PAIR_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n2/MC/Eff_ind/
 export FUEL_LIST=/home/itep/alekseev/igor/deadchan/fuel_ind_sel.list
-export VAR_DIR=var_fixed_ind_sel
+export VAR_DIR=varlist_2210_142815
 
 mpirun --mca btl ^tcp run_eff_mpi
 

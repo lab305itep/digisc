@@ -10,13 +10,15 @@ void calc_eff(int NVAR, const char *outname, const char *vardir, int MCTotal = 2
 	int run, var;
 	char *tok;
 	
+	memset(eff, 0, sizeof(eff));
 	for (i=0; i<NVAR; i++) {
 		sprintf(str, "%s/var_%d_spfuel.root", vardir, i);
 		f = new TFile(str);
+		if (!f->IsOpen()) continue;
 		h = (TH1D *) f->Get("hMC");
 		if (!h) {
 			printf("hMC not found in %s\n", str);
-			return;
+			continue;
 		}
 		eff[i] = h->Integral(9, 64) / MCTotal;
 	}
