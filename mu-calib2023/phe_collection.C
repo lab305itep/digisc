@@ -243,7 +243,7 @@ DANSSGeom::DANSSGeom(void)
 	Fill per channel experimental histogramms from Ira's files
 	fname - filename.root
 */
-void make_ind_hists(const char *fname)
+void make_ind_hists(const char *fname, int run_first = 53500, int run_last = 53649)
 {
 	char strs[256], strl[1024];
 	int i, j;
@@ -266,8 +266,13 @@ void make_ind_hists(const char *fname)
 	}
 	//	Make chain
 	TChain *tExp = new TChain("DANSSSignal", "ExpSignal");
-	for (i=53500; i<53650; i++) {
-		sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
+	for (i = run_first; i <= run_last; i++) {
+		if ((i/1000) == 53) {
+			sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
+		} else {
+			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/Rdata_ovfl/%3.3dxxx/danss_data_%6.6d_Ttree.root",
+				i/1000, i);
+		}
 		tExp->AddFile(strl);
 	}
 	tExp->SetBranchAddress("DANSSSignalNpe", &Signal);
@@ -383,7 +388,7 @@ void draw_median_distrib(const char *fname)
 	Draw cumulutive distribution of experimental hit energy deposit values with calibration
 	fname - filename.bin
 */
-void draw_exp_hist(const char *fname)
+void draw_exp_hist(const char *fname, int run_first = 53500, int run_last = 53649)
 {
 	int i, j, N;
 	int adc, chan, index;
@@ -434,8 +439,13 @@ void draw_exp_hist(const char *fname)
 	hEPMT->SetLineWidth(2);
 	//	Make chain
 	TChain *tExp = new TChain("DANSSSignal", "ExpSignal");
-	for (i=53500; i<53650; i++) {
-		sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
+	for (i = run_first; i <= run_last; i++) {
+		if ((i/1000) == 53) {
+			sprintf(strl, "/home/clusters/rrcmpi/alekseev/igor/ROOT/Rdata_ovfl/danss_data_%6.6d_Ttree.root", i);
+		} else {
+			sprintf(strl, "/home/clusters/rrcmpi/danss/DANSS/ROOT/Rdata_ovfl/%3.3dxxx/danss_data_%6.6d_Ttree.root",
+				i/1000, i);
+		}
 		tExp->AddFile(strl);
 	}
 	tExp->SetBranchAddress("DANSSSignalNpe", &Signal);
@@ -483,8 +493,220 @@ void draw_exp_hist(const char *fname)
 	TString pngname(fname);
 	pngname.ReplaceAll(".bin", "_hit_distr.png");
 	cv->SaveAs(pngname.Data());
+	
+	TString rootname(fname);
+	rootname.ReplaceAll(".bin", "_hist.root");
+	TFile *fOut = new TFile(rootname, "RECREATE");
+	hESiPM->Write();
+	hEPMT->Write();
+	fOut->Close();
 }
 
+/*
+	Draw cumulutive distribution of MC hit energy deposit values with calibration
+	fname - filename.bin
+*/
+void draw_MC_hist(const char *fname, int ver = 0)
+{
+	int i, j, N;
+	int adc, chan, index;
+	char strs[256], strl[1024];
+	float median[MAXWFD][MAXCHAN];
+	double avr_median_SiPM, avr_median_PMT;
+	double median_SiPM, median_PMT;
+	double emedian_SiPM, emedian_PMT;
+	int nSiPM, nPMT;
+	struct {
+		double index;
+		double value;
+	} Signal;
+	TLatex txt;
+	TLine ln;
+
+	// Read median file
+	FILE *fIn = fopen(fname, "rb");
+	if (!fIn) {
+		printf("Can not open median file %s\n", fname);
+		return;
+	}
+	i = fread(median, sizeof(median), 1, fIn);
+	if (i != 1) {
+		printf("Can not read median file %s\n", fname);
+		return;
+	}
+	fclose(fIn);
+	// Calculate average median - just average of all values above 
+	avr_median_SiPM = avr_median_PMT = 0;
+	nSiPM = nPMT = 0;
+	for (i=0; i<MAXWFD; i++) for (j=0; j<MAXCHAN; j++) if (median[i][j] > 0) {
+		if (i==1) {		// PMT
+			avr_median_PMT += median[i][j];
+			nPMT++;
+		} else if (median[i][j] > MINMDN) {	// SiPM
+			avr_median_SiPM += median[i][j];
+			nSiPM++;
+		}
+	}
+	avr_median_SiPM /= nSiPM;
+	avr_median_PMT /= nPMT;
+	//	correct dead channels which present in MC
+	median[1][0] = median[1][50];
+	median[1][9] = median[1][51];
+	printf("Get average medians: SiPM = %f    PMT = %f\n", avr_median_SiPM, avr_median_PMT);
+	// Create histogramms
+	sprintf(strs, "hMCSiPMv%d", ver);
+	sprintf(strl, "MC v%d SiPM hit energy distribution;ph.c.;Events", ver);
+	TH1D *hMCSiPM = new TH1D(strs, strl, 150, 0, 150);	// different scale for PMT and SiPM
+	sprintf(strs, "hMCPMTv%d", ver);
+	sprintf(strl, "MC v%d PMT hit energy distribution;ph.c.;Events", ver);
+	TH1D *hMCPMT = new TH1D(strs, strl, 150, 0, 600);	// different scale for PMT and SiPM
+	hMCSiPM->SetLineWidth(2);
+	hMCPMT->SetLineWidth(2);
+	//	Make chain
+	TChain *tMC = new TChain("DANSSSignal", "MCSignal");
+	switch (ver) {
+	case 5:
+		for (i=0; i<32; i++) {
+			sprintf(strl, 
+"/home/clusters/rrcmpi/danss/DANSS/ROOT/MCMuons_testProfiles_v5/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d.root", 
+				i/16, (i%16) + 1);
+			tMC->AddFile(strl);
+		}
+		break;
+	default:
+		for (i=0; i<32; i++) {
+			sprintf(strl, 
+"/home/clusters/rrcmpi/danss/DANSS/ROOT/MC_WF_ovfl_period2_v2/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d.root", 
+				i/16, (i%16) + 1);
+			tMC->AddFile(strl);
+		}
+	}
+	tMC->SetBranchAddress("DANSSSignalNpe", &Signal);
+	//	Fill MC hists
+	N = tMC->GetEntries();
+	for (i=0; i < N; i++) {
+		tMC->GetEntry(i);
+		index = Signal.index;
+		adc = index / 100;
+		chan = index % 100;
+		if (adc >= MAXWFD || chan >= MAXCHAN) {
+			printf("Strange index = %d\n", index);
+			continue;
+		}
+		if (adc == 1) {	// PMT
+			if (PMTpheADC[chan] == 0 || median[adc][chan] == 0) {
+				printf("Strange index = %d\n", index);
+				continue;
+			}
+			if (Signal.value > 49999) continue;		// ignore overflow
+			hMCPMT->Fill(Signal.value * (avr_median_PMT / median[adc][chan]));
+		} else if (adc != 3 && median[adc][chan] > MINMDN) {	// SiPM - we do nothing with veto and don't expect it here
+			hMCSiPM->Fill(Signal.value * UGLY_MC_SIPM_CORR * avr_median_SiPM / median[adc][chan]);
+		}
+	}
+	median_SiPM = Median(hMCSiPM, &emedian_SiPM);
+	median_PMT = Median(hMCPMT, &emedian_PMT);
+	//	Draw
+	ln.SetLineWidth(2);
+	ln.SetLineColor(kBlack);
+	txt.SetTextSize(0.04);
+	TCanvas *cv = new TCanvas("CV", "CV", 1200, 800);
+	cv->Divide(2, 1);
+	cv->cd(1);
+	hMCSiPM->Draw();
+	ln.DrawLine(median_SiPM, 0, median_SiPM, hMCSiPM->GetMaximum() / 2);
+	sprintf(strl, "Median = %5.2f#pm%4.2f ph.c.", median_SiPM, emedian_SiPM);
+	txt.DrawLatexNDC(0.1, 0.03, strl);
+	cv->cd(2);
+	hMCPMT->Draw();
+	ln.DrawLine(median_PMT, 0, median_PMT, hMCPMT->GetMaximum() / 2);
+	sprintf(strl, "Median = %6.2f#pm%4.2f ph.c.", median_PMT, emedian_PMT);
+	txt.DrawLatexNDC(0.1, 0.03, strl);
+	
+	TString pngname(fname);
+	sprintf(strl, "_MC_v%d_distr.png", ver);
+	pngname.ReplaceAll(".bin", strl);
+	cv->SaveAs(pngname.Data());
+
+	TString rootname(fname);
+	rootname.ReplaceAll(".bin", "_hist.root");
+	TFile *fOut = new TFile(rootname, "UPDATE");
+	hMCSiPM->Write();
+	hMCPMT->Write();
+	fOut->Close();
+}
+
+/*
+	Compare MC and experimental cumulutive distributions
+	fname - filename_hist.root
+*/
+void draw_mc2exp(const char *fname)
+{
+	double median_MCSiPM, median_MCPMT;
+	double emedian_MCSiPM, emedian_MCPMT;
+	double median_ESiPM, median_EPMT;
+	double emedian_ESiPM, emedian_EPMT;
+	char str[256];
+
+	gStyle->SetOptFit(0);
+	gStyle->SetOptStat(0);
+	
+	TFile *fIn = new TFile(fname);
+	if (!fIn->IsOpen()) return;
+	TH1D *hESiPM = (TH1D *) fIn->Get("hESiPM");
+	TH1D *hEPMT = (TH1D *) fIn->Get("hEPMT");
+	TH1D *hMCSiPM = (TH1D *) fIn->Get("hMCSiPM");
+	TH1D *hMCPMT = (TH1D *) fIn->Get("hMCPMT");
+	if (!hESiPM || !hEPMT || !hMCSiPM || !hMCPMT) {
+		printf("File %s missing histograms\n", fname);
+		return;
+	}
+	
+	hESiPM->SetStats(0);
+	hEPMT->SetStats(0);
+	hMCSiPM->SetStats(0);
+	hMCPMT->SetStats(0);
+	hESiPM->SetMarkerStyle(kFullCircle);
+	hEPMT->SetMarkerStyle(kFullCircle);
+	hESiPM->SetMarkerSize(0.75);
+	hEPMT->SetMarkerSize(0.75);
+	hESiPM->SetMarkerColor(kRed);
+	hEPMT->SetMarkerColor(kRed);
+	hESiPM->SetLineColor(kRed);
+	hEPMT->SetLineColor(kRed);
+	hMCSiPM->SetLineWidth(2);
+	hMCPMT->SetLineWidth(2);
+	hMCSiPM->SetLineColor(kBlack);
+	hMCPMT->SetLineColor(kBlack);
+	hMCSiPM->Scale(hESiPM->GetBinContent(hESiPM->GetMaximumBin()) / hMCSiPM->GetBinContent(hMCSiPM->GetMaximumBin()));
+	hMCPMT->Scale(hEPMT->GetBinContent(hEPMT->GetMaximumBin()) / hMCPMT->GetBinContent(hMCPMT->GetMaximumBin()));
+
+	median_ESiPM = Median(hESiPM, &emedian_ESiPM);
+	median_EPMT = Median(hEPMT, &emedian_EPMT);
+	median_MCSiPM = Median(hMCSiPM, &emedian_MCSiPM);
+	median_MCPMT = Median(hMCPMT, &emedian_MCPMT);
+	
+	TCanvas *cv = new TCanvas("CV", "CV", 1200, 800);
+	cv->Divide(2, 1);
+	cv->cd(1);
+	hESiPM->Draw("ep");
+	hMCSiPM->Draw("hist,same");
+	TLegend *lgSiPM = new TLegend(0.5, 0.75, 0.89, 0.89);
+	sprintf(str, "Exp: %5.2f#pm%4.2f", median_ESiPM, emedian_ESiPM);
+	lgSiPM->AddEntry(hESiPM, str, "pe");
+	sprintf(str, "MC:  %5.2f#pm%4.2f", median_MCSiPM, emedian_MCSiPM);
+	lgSiPM->AddEntry(hMCSiPM, str, "l");
+	lgSiPM->Draw();
+	cv->cd(2);
+	hEPMT->Draw("e");
+	hMCPMT->Draw("hist,same");
+	TLegend *lgPMT = new TLegend(0.6, 0.75, 0.99, 0.89);
+	sprintf(str, "Exp: %5.2f#pm%4.2f", median_EPMT, emedian_EPMT);
+	lgPMT->AddEntry(hEPMT, str, "pe");
+	sprintf(str, "MC:  %5.2f#pm%4.2f", median_MCPMT, emedian_MCPMT);
+	lgPMT->AddEntry(hMCPMT, str, "l");
+	lgPMT->Draw();
+}
 
 /*
  * Calculate per channel calibration in ph.c./MeV in format sutable for MC

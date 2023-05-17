@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <TFile.h>
 #include <TTree.h>
 
@@ -125,6 +126,17 @@
 	} SiPMTimelineBranch;
 #pragma pack(pop)
 
+void Usage(const char *progname)
+{
+	printf("Usage %s [-options] new_format.root old_format.root --- convert MC new root files to old format\n", progname);
+	printf("Options:\n");
+	printf("\t-c --- limit DANSSParticle to the first two paritcles in event;\n");
+	printf("\t-f F --- First entry to copy.\n");
+	printf("\t-h --- print this help;\n");
+	printf("\t-n N --- copy N entries only;\n");
+	printf("\t-p --- do not copy DANSSPrimary\n");
+}
+
 int main(int argc, char **argv)
 {
 /****************************************************************
@@ -147,27 +159,50 @@ int main(int argc, char **argv)
 	long i;
 	int j;
 	char *IsEventNonZeroEnergy;
+	int bNoPrimary = 0;
+	int bCutParticle = 0;
+	int c;
 /****************************************************************
  *			Files and arguments			*
  ****************************************************************/
-	if (argc < 3) {
-		printf("Usage %s new_format.root old_format.root [Nentries [FirstEntry]]--- convert MC new root files to old format\n", argv[0]);
-		printf("Nentries - copy Nentries only.  FirstEntry - first entry to copy.\n");
+	nMax = TTree::kMaxEntries;
+	iFirst = 0;
+	while ((c = getopt (argc, argv, "cf:hn:p")) != -1) {
+		switch (c) {
+		case 'c':
+			bCutParticle = 1;
+			break;
+		case 'f':
+			iFirst = strtol(optarg, NULL, 10);
+			break;
+		case 'h':
+			Usage(argv[0]);
+			return 0;
+		case 'n':
+			nMax = strtol(optarg, NULL, 10);
+			break;
+		case 'p':
+			bNoPrimary = 1;
+			break;
+		default:
+			Usage(argv[0]);
+			return 5;
+		}
+	}
+	if (argc - optind != 2) {
+		Usage(argv[0]);
 		return 10;
 	}
 	
-	nMax = TTree::kMaxEntries;
-	iFirst = 0;
-//	TFile *fIn = new TFile(argv[1]);
-	TFile *fOut = new TFile(argv[2], "RECREATE");
-	if (argc > 3) nMax = strtol(argv[3], NULL, 10);
-	if (argc > 4) iFirst = strtol(argv[4], NULL, 10);
+	printf("%s%s%Ld entries @ %Ld\n", (bCutParticle) ? "CutParticle " : "", (bNoPrimary) ? "NoPrimary " : "", nMax, iFirst);
+	
+	TFile *fOut = new TFile(argv[optind+1], "RECREATE");
 	if (!fOut->IsOpen()) return 20;
 /****************************************************************
  *		Input file trees				*
  ****************************************************************/
-//		DANSSParticle - exact copy
-	TFile *fInParticle = new TFile(argv[1]);
+//		DANSSParticle - exact copy. Entries only 0 and 1 with bCutparticle option
+	TFile *fInParticle = new TFile(argv[optind]);
 	TTree *tInParticle = (TTree *) fInParticle->Get("DANSSParticle");
 	if (!tInParticle) {
 		printf("Tree DANSSParticle not found.\n");
@@ -178,24 +213,28 @@ int main(int argc, char **argv)
 	tInParticle->SetBranchAddress("ParticleMaterialName", ParticleMaterialName);
 	tInParticle->SetBranchAddress("ParticleCreatorProcessName", ParticleCreatorProcessName);
 //		DANSSPrimary - exact copy
-	TFile *fInPrimary = new TFile(argv[1]);
-	TTree *tInPrimary = (TTree *) fInPrimary->Get("DANSSPrimary");
-	if (!tInPrimary) {
-		printf("Tree DANSSPrimary not found.\n");
-		return 31;
+	TFile *fInPrimary;
+	TTree *tInPrimary;
+	if (!bNoPrimary) {
+		fInPrimary = new TFile(argv[optind]);
+		tInPrimary = (TTree *) fInPrimary->Get("DANSSPrimary");
+		if (!tInPrimary) {
+			printf("Tree DANSSPrimary not found.\n");
+			return 31;
+		}
+		tInPrimary->SetBranchAddress("PrimaryData", &PrimaryData);
+		tInPrimary->SetBranchAddress("PrimaryName", PrimaryName);
+		tInPrimary->SetBranchAddress("PrimaryMaterialName", PrimaryMaterialName);
 	}
-	tInPrimary->SetBranchAddress("PrimaryData", &PrimaryData);
-	tInPrimary->SetBranchAddress("PrimaryName", PrimaryName);
-	tInPrimary->SetBranchAddress("PrimaryMaterialName", PrimaryMaterialName);
 //		DANSSRun - exact copy
-	TFile *fInRun = new TFile(argv[1]);
+	TFile *fInRun = new TFile(argv[optind]);
 	TTree *tInRun = (TTree *) fInRun->Get("DANSSRun");
 	if (!tInRun) {
 		printf("Tree DANSSRun not found.\n");
 		return 32;
 	}
 //		DANSSEvent - Open new
-	TFile *fInEvent = new TFile(argv[1]);
+	TFile *fInEvent = new TFile(argv[optind]);
 	TTree *tInEvent = (TTree *) fInEvent->Get("DANSSEvent");
 	if (!tInEvent) {
 		printf("Tree DANSSEvent not found.\n");
@@ -203,7 +242,7 @@ int main(int argc, char **argv)
 	}
 	tInEvent->SetBranchAddress("EventData", &EventDataNew);
 //		DANSSSignal - Open new
-	TFile *fInSignal = new TFile(argv[1]);
+	TFile *fInSignal = new TFile(argv[optind]);
 	TTree *tInSignal = (TTree *) fInSignal->Get("DANSSSignal");
 	if (!tInSignal) {
 		printf("Tree DANSSSignal not found.\n");
@@ -213,7 +252,7 @@ int main(int argc, char **argv)
 	tInSignal->SetBranchAddress("PMTSignalData", &PMTSignalData);
 	tInSignal->SetBranchAddress("RealSignalData",&RealSignalDataNew);
 //		DANSSVeto - Open new
-	TFile *fInVeto = new TFile(argv[1]);
+	TFile *fInVeto = new TFile(argv[optind]);
 	TTree *tInVeto = (TTree *) fInVeto->Get("DANSSVeto");
 	if (!tInVeto) {
 		printf("Tree DANSSVeto not found.\n");
@@ -221,7 +260,7 @@ int main(int argc, char **argv)
 	}
 	tInVeto->SetBranchAddress("VetoSignalData", &VetoSignalData);
 //		DANSS*Hit - new only
-	TFile *fInSiPMHit = new TFile(argv[1]);
+	TFile *fInSiPMHit = new TFile(argv[optind]);
 	TTree *tInSiPMHit = (TTree *) fInSiPMHit->Get("DANSSSiPMHit");
 	if (!tInSiPMHit) {
 		printf("Tree DANSSSiPMHit not found.\n");
@@ -229,7 +268,7 @@ int main(int argc, char **argv)
 	}
 	tInSiPMHit->SetBranchAddress("SiPMHitBranch", &SiPMHitBranch);
 	
-	TFile *fInPMTHit = new TFile(argv[1]);
+	TFile *fInPMTHit = new TFile(argv[optind]);
 	TTree *tInPMTHit = (TTree *) fInPMTHit->Get("DANSSPMTHit");
 	if (!tInPMTHit) {
 		printf("Tree DANSSPMTHit not found.\n");
@@ -237,7 +276,7 @@ int main(int argc, char **argv)
 	}
 	tInPMTHit->SetBranchAddress("PMTHitBranch", &PMTHitBranch);
 	
-	TFile *fInVetoHit = new TFile(argv[1]);
+	TFile *fInVetoHit = new TFile(argv[optind]);
 	TTree *tInVetoHit = (TTree *) fInVetoHit->Get("DANSSVetoHit");
 	if (!tInVetoHit) {
 		printf("Tree DANSSVetoHit not found.\n");
@@ -254,6 +293,10 @@ int main(int argc, char **argv)
 	}
 	if (iFirst + nMax > Nevents) nMax = Nevents - iFirst;
 	IsEventNonZeroEnergy = (char *) malloc(nMax);
+	if (!IsEventNonZeroEnergy) {
+		printf("Memory of %Ld bytes allocation failure: %m\n", nMax);
+		return 444;
+	}
 	memset(IsEventNonZeroEnergy, 0, nMax);
 /****************************************************************
  *		Outputfile trees				*
@@ -261,7 +304,8 @@ int main(int argc, char **argv)
 	fOut->cd();
 	TTree *tOutRun = tInRun->CloneTree(-1, "fast");		// always just a copy
 	TTree *tOutParticle = tInParticle->CloneTree(0);	// create tree only
-	TTree *tOutPrimary = tInPrimary->CloneTree(0);		// create tree only
+	TTree *tOutPrimary;
+	if (!bNoPrimary) tOutPrimary = tInPrimary->CloneTree(0);		// create tree only
 	TTree *tOutEvent = new TTree("DANSSEvent", "DANSS event tree");
 	tOutEvent->Branch("EventData", &EventDataOld, 
 		"EventID/D:ParticleEnergy:EnergyLoss:DetectorEnergyLoss:CopperEnergyLoss:GdCoverEnergyLoss:X:Y:Z:DirX:DirY:DirZ:TimelineShift:FluxFlag/B");
@@ -404,13 +448,15 @@ int main(int argc, char **argv)
 /****************************************************************
  *		Process DANSSParticle and DANSSPrimary		*
  ****************************************************************/
-	NPrimary = tInPrimary->GetEntries();
-	for(i=0; i < NPrimary; i++) {
-		tInPrimary->GetEntry(i);
-		if (PrimaryData.EventID < iFirst + 1) continue;
-		if (!IsEventNonZeroEnergy[((int)PrimaryData.EventID)-iFirst-1]) continue;
-		if (PrimaryData.EventID > iFirst + nMax) break;
-		tOutPrimary->Fill();
+	if (!bNoPrimary) {
+		NPrimary = tInPrimary->GetEntries();
+		for(i=0; i < NPrimary; i++) {
+			tInPrimary->GetEntry(i);
+			if (PrimaryData.EventID < iFirst + 1) continue;
+			if (!IsEventNonZeroEnergy[((int)PrimaryData.EventID)-iFirst-1]) continue;
+			if (PrimaryData.EventID > iFirst + nMax) break;
+			tOutPrimary->Fill();
+		}
 	}
 	NParticle = tInParticle->GetEntries();
 	for(i=0; i < NParticle; i++) {
@@ -418,6 +464,7 @@ int main(int argc, char **argv)
 		if (ParticleData.EventID < iFirst + 1) continue;
 		if (!IsEventNonZeroEnergy[((int)ParticleData.EventID)-iFirst-1]) continue;
 		if (ParticleData.EventID > iFirst + nMax) break;
+		if (bCutParticle && ParticleData.ID > 2.001) continue;
 		tOutParticle->Fill();
 	}
 /****************************************************************
@@ -425,7 +472,7 @@ int main(int argc, char **argv)
  ****************************************************************/
 	fOut->cd();
 	tOutParticle->Write();
-	tOutPrimary->Write();
+	if (!bNoPrimary) tOutPrimary->Write();
 	tOutRun->Write();
 	tOutEvent->Write();
 	tOutSignal->Write();
@@ -433,7 +480,7 @@ int main(int argc, char **argv)
 	tOutSiPMTimeline->Write();
 	fOut->Close();
 	fInParticle->Close();
-	fInPrimary->Close();
+	if (!bNoPrimary) fInPrimary->Close();
 	fInEvent->Close();
 	fInRun->Close();
 	fInSignal->Close();
