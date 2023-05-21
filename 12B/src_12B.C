@@ -1,0 +1,543 @@
+/*
+    A collection of functions for 12B calibration
+*/
+
+/*
+	Calculate chi2 of two histograms difference
+*/
+double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
+{
+	double sum;
+	int i;
+	for (i = binMin; i <= binMax; i++) sum += 
+		(hA->GetBinContent(i) - hB->GetBinContent(i)) * (hA->GetBinContent(i) - hB->GetBinContent(i)) /
+		(hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i));
+	return sum;
+}
+
+/*
+	Create tree chain. file "stat_all.txt" is used for the valid raun selection.
+	name - name of the chain to be created
+	from - the first run
+	to - the last run
+	format - pattern for muon pair file names
+*/
+TChain *create_chain(const char *name, int from, int to, const char *format = "/home/clusters/rrcmpi/alekseev/igor/muon8n2/%3.3dxxx/muon_%6.6d.root")
+{
+	TChain *ch;
+	char str[1024];
+	int i;
+	FILE *f_stat;
+	int *rc_stat;
+	char *ptr;
+	int num;
+	
+	f_stat = fopen("stat_all.txt", "rt");
+	if (!f_stat) {
+		printf("Can not open stat file!\n");
+		return NULL;
+	}
+	
+	rc_stat = (int *) malloc((to - from + 1) * sizeof(int));
+	if (!rc_stat) {
+		printf("No memory !\n");
+		return NULL;
+	}
+	memset(rc_stat, 0, (to - from + 1) * sizeof(int));
+	for (;;) {
+		ptr = fgets(str, sizeof(str), f_stat);
+		if (!ptr) break;
+		ptr = strtok(str, " \t");
+		if (!ptr) continue;
+		if (!isdigit(ptr[0])) continue;
+		num = strtol(ptr, NULL, 10);
+		if (num < from || num > to) continue;
+		ptr = strtok(NULL, " \t");
+		if (!ptr) continue;
+		if (!isdigit(ptr[0])) continue;
+		rc_stat[num - from] = strtol(ptr, NULL, 10);
+	}
+	fclose(f_stat);
+	
+	ch = new TChain(name, name);
+	for (i=from; i<=to; i++) {
+		if (rc_stat[i - from] != 2 && rc_stat[i - from] != 3 && rc_stat[i - from] != 4 && rc_stat[i - from] != 5 && rc_stat[i - from] != 16) continue;
+		sprintf(str, format, i/1000, i);
+		num = access(str, R_OK);	// R_OK = 4 - test read access
+		if (num) continue;
+		ch->AddFile(str, 0);
+	}
+	printf("%Ld entries found.\n", ch->GetEntries());
+	
+	free(rc_stat);
+	
+	return ch;
+}
+
+/*
+	Make experimental histograms for 12B decay
+	from - the first run
+	to - the last run
+	format - pattern for muon pair file names
+*/
+void src_12B(int from, int to, const char *format = "/home/clusters/rrcmpi/alekseev/igor/muon8n2/%3.3dxxx/muon_%6.6d.root")
+{
+	char str[1024];
+
+	gStyle->SetOptStat(0);
+	gStyle->SetOptFit(1);
+
+	TChain *chA = create_chain("MuonPair", from, to, format);
+	TChain *chR = create_chain("MuonRandom", from, to, format);
+	if (!chA || !chR) return;
+
+	sprintf(str, "Experiment with ^{12}B cuts, %s;MeV;Events", "ClusterEnergy");
+	TH1D *hExp = new TH1D("hExp12B", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, %s;MeV;Events", "ClusterSiPMEnergy");
+	TH1D *hExpSiPM = new TH1D("hExp12BSiPM", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, %s;MeV;Events", "ClusterPMTEnergy");
+	TH1D *hExpPMT = new TH1D("hExp12BPMT", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV;Events", "ClusterEnergy");
+	TH1D *hRndm = new TH1D("hRndm12B", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV;Events", "ClusterSiPMEnergy");
+	TH1D *hRndmSiPM = new TH1D("hRndm12BSiPM", str, 80, 0, 20);
+	sprintf(str, "Experiment with ^{12}B cuts, random, %s;MeV;Events", "ClusterPMTEnergy");
+	TH1D *hRndmPMT = new TH1D("hRndm12BPMT", str, 80, 0, 20);
+	TH1D *hExpT = new TH1D("hExp12BT", "Time from muon, experiment;ms;Events", 99, 1, 100);
+	TH1D *hRndmT = new TH1D("hRndm12BT", "Time from muon, random;ms;Events", 99, 1, 100);
+
+	chA->Project(hExp->GetName(), "ClusterEnergy", "gtDiff > 500");
+	chR->Project(hRndm->GetName(), "ClusterEnergy", "gtDiff > 500");
+	chA->Project(hExpSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500");
+	chR->Project(hRndmSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500");
+	chA->Project(hExpPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500");
+	chR->Project(hRndmPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500");
+	chA->Project(hExpT->GetName(), "gtDiff / 1000.0", "ClusterEnergy> 4");
+	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0", "ClusterEnergy> 4");
+	
+	hExp->Sumw2();
+	hRndm->Sumw2();
+	hExpSiPM->Sumw2();
+	hRndmSiPM->Sumw2();
+	hExpPMT->Sumw2();
+	hRndmPMT->Sumw2();
+	hExpT->Sumw2();
+	hRndmT->Sumw2();
+	
+	hRndm->Scale(1.0/16);
+	hRndmSiPM->Scale(1.0/16);
+	hRndmPMT->Scale(1.0/16);
+	hRndmT->Scale(1.0/16);
+	
+	TH1D *hDiff = (TH1D *) hExp->Clone("hDiff12B");
+	TH1D *hDiffSiPM = (TH1D *) hExpSiPM->Clone("hDiff12BSiPM");
+	TH1D *hDiffPMT = (TH1D *) hExpPMT->Clone("hDiff12BPMT");
+	TH1D *hDiffT = (TH1D *) hExpT->Clone("hDiff12BT");
+	hDiff->SetTitle("Cluster energy for ^{12}B decay;MeV;Events");
+	hDiffSiPM->SetTitle("Cluster energy for ^{12}B decay, SiPM;MeV;Events");
+	hDiffPMT->SetTitle("Cluster energy for ^{12}B decay, PMT;MeV;Events");
+	hDiffT->SetTitle("Time from muon event;ms;Events");
+	
+	hDiff->Add(hRndm, -1.0);
+	hDiffSiPM->Add(hRndmSiPM, -1.0);
+	hDiffPMT->Add(hRndmPMT, -1.0);
+	hDiffT->Add(hRndmT, -1.0);
+	
+	hExp->SetMarkerStyle(kFullCircle);
+	hExp->SetMarkerColor(kRed);
+	hExp->SetLineColor(kRed);
+	hExpSiPM->SetMarkerStyle(kFullCircle);
+	hExpSiPM->SetMarkerColor(kRed);
+	hExpSiPM->SetLineColor(kRed);
+	hExpPMT->SetMarkerStyle(kFullCircle);
+	hExpPMT->SetMarkerColor(kRed);
+	hExpPMT->SetLineColor(kRed);
+	hExpT->SetMarkerStyle(kFullCircle);
+	hExpT->SetMarkerColor(kRed);
+	hExpT->SetLineColor(kRed);
+
+	hRndm->SetMarkerStyle(kOpenCircle);
+	hRndm->SetMarkerColor(kGreen);
+	hRndm->SetLineColor(kGreen);
+	hRndmSiPM->SetMarkerStyle(kOpenCircle);
+	hRndmSiPM->SetMarkerColor(kGreen);
+	hRndmSiPM->SetLineColor(kGreen);
+	hRndmPMT->SetMarkerStyle(kOpenCircle);
+	hRndmPMT->SetMarkerColor(kGreen);
+	hRndmPMT->SetLineColor(kGreen);
+	hRndmT->SetMarkerStyle(kOpenCircle);
+	hRndmT->SetMarkerColor(kGreen);
+	hRndmT->SetLineColor(kGreen);
+
+	hDiff->SetMarkerStyle(kFullSquare);
+	hDiff->SetMarkerColor(kBlue);
+	hDiff->SetLineColor(kBlue);
+	hDiffSiPM->SetMarkerStyle(kFullSquare);
+	hDiffSiPM->SetMarkerColor(kBlue);
+	hDiffSiPM->SetLineColor(kBlue);
+	hDiffPMT->SetMarkerStyle(kFullSquare);
+	hDiffPMT->SetMarkerColor(kBlue);
+	hDiffPMT->SetLineColor(kBlue);
+	hDiffT->SetMarkerStyle(kFullSquare);
+	hDiffT->SetMarkerColor(kBlue);
+	hDiffT->SetLineColor(kBlue);
+	
+	TCanvas *cv = new TCanvas("CV", "12B", 1400, 1000);
+	sprintf(str, "12B_exp82_%d_%d", from, to);
+	TString oname(str);
+
+	cv->Divide(2, 2);
+	cv->cd(1);
+	hExp->Draw();
+	hRndm->Draw("same");
+	hDiff->Draw("same");
+	TLegend *lg = new TLegend(0.6, 0.7, 0.85, 0.85);
+	lg->AddEntry(hExp, "All", "pe");
+	lg->AddEntry(hRndm, "Acc. bgnd.", "pe");
+	lg->AddEntry(hDiff, "Signal", "pe");
+	lg->Draw();
+	cv->cd(2);
+	hExpSiPM->Draw();
+	hRndmSiPM->Draw("same");
+	hDiffSiPM->Draw("same");
+	lg->Draw();
+	cv->cd(3);
+	hExpPMT->Draw();
+	hRndmPMT->Draw("same");
+	hDiffPMT->Draw("same");
+	lg->Draw();
+	cv->cd(4);
+	hExpT->SetMinimum(0);
+	hExpT->Draw();
+	hRndmT->Draw("same");
+	TF1 *fExpo = new TF1("fExpo", "[0]*exp(-x/[1])", 0, 100);
+	fExpo->SetParNames("Const.", "#tau");
+	fExpo->SetParameters(100, 20);
+	hDiffT->Fit(fExpo, "", "sames");
+	cv->SaveAs((oname+".pdf").Data());
+	
+	TFile *fOut = new TFile((oname+".root").Data(), "RECREATE");
+	fOut->cd();
+	hExp->Write();
+	hExpSiPM->Write();
+	hExpPMT->Write();
+	hExpT->Write();
+	hRndm->Write();
+	hRndmSiPM->Write();
+	hRndmPMT->Write();
+	hRndmT->Write();
+	hDiff->Write();
+	hDiffSiPM->Write();
+	hDiffPMT->Write();
+	hDiffT->Write();
+	fOut->Close();
+}
+
+/*
+	Make MC histograms for 12B decay. A matrix over scale and shift is createed.
+	scale [0.9; 1.0] with step 0.005
+	shift [-0.15; 0.15] with step 0.025 MeV
+	mcname - file with MC generated 12B decays
+*/
+
+
+void src_12BMC(const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_12B_indLY_transcode_rawProc_pedSim.root")
+{
+	char strs[256], strl[1024];
+	int i, j;
+	double scale, shift;
+
+	TFile *fMC = new TFile(mcname);
+	if (!fMC->IsOpen()) return;
+	TTree *tMC = (TTree *) fMC->Get("DanssEvent");
+	if (!tMC) {
+		printf("Bad file %s\n", mcname);
+		return;
+	}
+	
+	TFile *fOut = new TFile("12B_MC82.root", "RECREATE");
+	if (!fOut->IsOpen()) return;
+
+	TH1D *hMCT = new TH1D("hMC12BT", "Time from muon, MC;ms;Events", 99, 1, 100);
+	tMC->Project(hMCT->GetName(), "TimelineShift / 1000000.0", "AnnihilationEnergy < 0.25 && PositronEnergy > 4.0");
+	hMCT->Sumw2();
+	hMCT->Write();
+	
+	for (i=0; i<41; i++) for (j=0; j<13; j++) {
+		scale = 0.9 + 0.005*i;
+		shift = -0.15 + 0.025 * j;
+		
+		sprintf(strs, "hMC12B_%2.2d_%2.2d", i, j);
+		sprintf(strl, "MC of ^{12}B decay, E_{MC}=%5.3f*E+(%6.3f), SiPM+PMT;MeV;Events", scale, shift);
+		TH1D *hMC = new TH1D(strs, strl, 80, 0, 20);
+		sprintf(strs, "hMC12BSiPM_%2.2d_%2.2d", i, j);
+		sprintf(strl, "MC of ^{12}B decay, E_{MC}=%5.3f*E+(%6.3f), SiPM;MeV;Events", scale, shift);
+		TH1D *hMCSiPM = new TH1D(strs, strl, 80, 0, 20);
+		sprintf(strs, "hMC12BPMT_%2.2d_%2.2d", i, j);
+		sprintf(strl, "MC of ^{12}B decay, E_{MC}=%5.3f*E+(%6.3f), PMT;MeV;Events", scale, shift);
+		TH1D *hMCPMT = new TH1D(strs, strl, 80, 0, 20);
+		
+		sprintf(strs, "PositronEnergy*%5.3f + (%6.4f)", scale, shift);
+		tMC->Project(hMC->GetName(), strs, "AnnihilationEnergy < 0.25 && PositronEnergy > 3.0");
+		sprintf(strs, "PositronSiPmEnergy*%5.3f + (%6.4f)", scale, shift);
+		tMC->Project(hMCSiPM->GetName(), strs, "AnnihilationEnergy < 0.25 && PositronEnergy > 3.0");
+		sprintf(strs, "PositronPmtEnergy*%5.3f + (%6.4f)", scale, shift);
+		tMC->Project(hMCPMT->GetName(), strs, "AnnihilationEnergy < 0.25 && PositronEnergy > 3.0");
+
+		hMC->Sumw2();
+		hMCSiPM->Sumw2();
+		hMCPMT->Sumw2();
+	
+		hMC->Write();
+		hMCSiPM->Write();
+		hMCPMT->Write();
+	}
+	fOut->Close();
+}
+
+/*
+	Draw a comparison of the experimental and MC histgrams.
+	expname - file with experimental histograms
+	mcname - file with MC histograms
+	iScale - scale = 0.9 + 0.005 * iScale
+	iShift - shift = -0.15 + 0.025 * iShift
+*/
+void draw_12B(const char *expname, const char *mcname, int iScale = 20, int iShift = 6)
+{
+	char str[256];
+	double scale = 0.9 + 0.005 * iScale;
+	double shift = -0.15 + 0.025 * iShift;
+	
+	TFile *fExp = new TFile(expname);
+	TFile *fMC  = new TFile(mcname);
+	if (!fExp->IsOpen() || !fMC->IsOpen()) return;
+	
+	TH1D *hExp = (TH1D *) fExp->Get("hDiff12B");
+	TH1D *hExpSiPM = (TH1D *) fExp->Get("hDiff12BSiPM");
+	TH1D *hExpPMT = (TH1D *) fExp->Get("hDiff12BPMT");
+	TH1D *hExpT = (TH1D *) fExp->Get("hDiff12BT");
+	sprintf(str, "hMC12B_%2.2d_%2.2d", iScale, iShift);
+	TH1D *hMC = (TH1D *) fMC->Get(str);
+	sprintf(str, "hMC12BSiPM_%2.2d_%2.2d", iScale, iShift);
+	TH1D *hMCSiPM = (TH1D *) fMC->Get(str);
+	sprintf(str, "hMC12BPMT_%2.2d_%2.2d", iScale, iShift);
+	TH1D *hMCPMT = (TH1D *) fMC->Get(str);
+	TH1D *hMCT = (TH1D *) fMC->Get("hMC12BT");
+	if (!hExp || !hMC || !hExpSiPM || !hMCSiPM || !hExpPMT || !hMCPMT || !hExpT || !hMCT) {
+		printf("Not all histograms found in %s and %s.\n", expname, mcname);
+		return;
+	}
+
+	sprintf(str, "^{12}B decay, ClusterEnergy E_{MC}=%5.3f*E+(%6.3f), SiPM+PMT", scale, shift);
+	hExp->SetTitle(str);
+	sprintf(str, "^{12}B decay, ClusterEnergy E_{MC}=%5.3f*E+(%6.3f), SiPM", scale, shift);
+	hExpSiPM->SetTitle(str);
+	sprintf(str, "^{12}B decay, ClusterEnergy E_{MC}=%5.3f*E+(%6.3f), PMT", scale, shift);
+	hExpPMT->SetTitle(str);
+	hExpT->SetTitle("^{12}B decay time");
+
+	hExp->SetLineWidth(2);
+	hExp->SetMarkerStyle(kFullCircle);
+	hExp->SetLineColor(kRed);
+	hExp->SetMarkerColor(kRed);
+	hExpSiPM->SetLineWidth(2);
+	hExpSiPM->SetMarkerStyle(kFullCircle);
+	hExpSiPM->SetLineColor(kRed);
+	hExpSiPM->SetMarkerColor(kRed);
+	hExpPMT->SetLineWidth(2);
+	hExpPMT->SetMarkerStyle(kFullCircle);
+	hExpPMT->SetLineColor(kRed);
+	hExpPMT->SetMarkerColor(kRed);
+	hExpT->SetLineWidth(2);
+	hExpT->SetMarkerStyle(kFullCircle);
+	hExpT->SetLineColor(kRed);
+	hExpT->SetMarkerColor(kRed);
+	hMC->SetLineWidth(2);
+	hMC->SetLineColor(kBlue);
+	hMCSiPM->SetLineWidth(2);
+	hMCSiPM->SetLineColor(kBlue);
+	hMCPMT->SetLineWidth(2);
+	hMCPMT->SetLineColor(kBlue);
+	hMCT->SetLineWidth(2);
+	hMCT->SetLineColor(kBlue);
+
+	hMC->Scale(hExp->Integral(17, 48) / hMC->Integral(17, 48));
+	hMCSiPM->Scale(hExpSiPM->Integral(17, 48) / hMCSiPM->Integral(17, 48));
+	hMCPMT->Scale(hExpPMT->Integral(17, 48) / hMCPMT->Integral(17, 48));
+	hMCT->Scale(hExpT->Integral(2, 80) / hMCT->Integral(2, 80));
+
+	TF1 *fExpo = new TF1("fExpo", "[0]*exp(-x/[1])", 0, 100);
+	fExpo->SetParNames("Const.", "#tau");
+	fExpo->SetParameters(100, 20);
+	fExpo->SetLineColor(kBlack);
+	
+	gStyle->SetOptFit();
+	gStyle->SetOptStat(0);
+	
+	TCanvas *cv = (TCanvas *) gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1400, 1000);
+	cv->Clear();
+	cv->Divide(2, 2);
+	
+	cv->cd(1);
+	hExp->DrawCopy();
+	hMC->DrawCopy("hist,same");
+	TLegend *lg = new TLegend(0.65, 0.55, 0.89, 0.7);
+	lg->AddEntry(hExp, "Data", "pe");
+	lg->AddEntry(hMC, "MC", "l");
+	lg->Draw();
+	cv->cd(2);
+	hExpSiPM->DrawCopy();
+	hMCSiPM->DrawCopy("hist,same");
+	lg->Draw();
+	cv->cd(3);
+	hExpPMT->DrawCopy();
+	hMCPMT->DrawCopy("hist,same");
+	lg->Draw();
+	cv->cd(4);
+	hExpT->Fit(fExpo, "q");
+	hExpT->DrawCopy();
+	hMCT->DrawCopy("hist,same");
+	TLegend *lg1 = new TLegend(0.65, 0.55, 0.89, 0.75);
+	lg1->AddEntry(hExp, "Data", "pe");
+	lg1->AddEntry(hMC, "MC", "l");
+	lg1->AddEntry(fExpo, "Fit to Data", "l");
+	lg1->Draw();
+	
+	sprintf(str, "12B_82_exp2mc_scale_%5.3f_shift_%6.3f.png", scale, shift);
+	cv->SaveAs(str);
+	fExp->Close();
+	fMC->Close();
+}
+
+/*
+	Scan the difference between the experimental and MC histgrams.
+	expname - file with experimental histograms
+	mcname - file with MC histograms
+*/
+void scan_12B(const char *expname, const char *mcname)
+{
+	char str[256];
+	TH1D *hMC;
+	TH1D *hMCSiPM;
+	TH1D *hMCPMT;
+	int iMinX, iMinY, iMinXSiPM, iMinYSiPM, iMinXPMT, iMinYPMT, dummy;
+	int i, j;
+	double xmin;
+	TLatex txt;
+	
+	TH2D *hScan = new TH2D("hScan12B", "#chi^{2} difference between MC and data, ^{12}B, SiPM+PMT;Scale;Shift", 41, 0.9, 1.1, 13, -0.15, 0.15);
+	TH2D *hScanSiPM = new TH2D("hScan12BSiPM", "#chi^{2} difference between MC and data, ^{12}B, SiPM;Scale;Shift", 41, 0.9, 1.1, 13, -0.15, 0.15);
+	TH2D *hScanPMT = new TH2D("hScan12BPMT", "#chi^{2} difference between MC and data, ^{12}B, PMT;Scale;Shift", 41, 0.9, 1.1, 13, -0.15, 0.15);
+	
+	TFile *fExp = new TFile(expname);
+	TFile *fMC  = new TFile(mcname);
+	if (!fExp->IsOpen() || !fMC->IsOpen()) return;
+	
+	TH1D *hExp = (TH1D *) fExp->Get("hDiff12B");
+	TH1D *hExpSiPM = (TH1D *) fExp->Get("hDiff12BSiPM");
+	TH1D *hExpPMT = (TH1D *) fExp->Get("hDiff12BPMT");
+	TH1D *hExpT = (TH1D *) fExp->Get("hDiff12BT");
+	if (!hExp || !hExpSiPM || !hExpPMT) {
+		printf("Not all histograms found in %s.\n", expname);
+		return;
+	}
+	
+	for (i=0; i<41; i++) for (j=0; j<13; j++) {
+		sprintf(str, "hMC12B_%2.2d_%2.2d", i, j);
+		hMC = (TH1D *) fMC->Get(str);
+		sprintf(str, "hMC12BSiPM_%2.2d_%2.2d", i, j);
+		hMCSiPM = (TH1D *) fMC->Get(str);
+		sprintf(str, "hMC12BPMT_%2.2d_%2.2d", i, j);
+		hMCPMT = (TH1D *) fMC->Get(str);
+		if (!hMC || !hMCSiPM || !hMCPMT) {
+			printf("Not all histograms found in %s.\n", mcname);
+			return;
+		}
+		hMC->Scale(hExp->Integral(17, 48) / hMC->Integral(17, 48));
+		hMCSiPM->Scale(hExpSiPM->Integral(17, 48) / hMCSiPM->Integral(17, 48));
+		hMCPMT->Scale(hExpPMT->Integral(17, 48) / hMCPMT->Integral(17, 48));
+		hScan->SetBinContent(i+1, j+1, chi2Diff(hExp, hMC, 17, 48));
+		hScanSiPM->SetBinContent(i+1, j+1, chi2Diff(hExpSiPM, hMCSiPM, 17, 48));
+		hScanPMT->SetBinContent(i+1, j+1, chi2Diff(hExpPMT, hMCPMT, 17, 48));
+	}
+	
+	hScan->GetMinimumBin(iMinX, iMinY, dummy);
+	hScanSiPM->GetMinimumBin(iMinXSiPM, iMinYSiPM, dummy);
+	hScanPMT->GetMinimumBin(iMinXPMT, iMinYPMT, dummy);
+	
+	iMinX = iMinXSiPM = iMinXPMT = 21;
+	iMinY = iMinYSiPM = iMinYPMT = 7;
+	
+	TF1 *fpol2 = new TF1("fpol2", "pol2", -10, 10);
+	
+	gStyle->SetOptStat(0);
+	TCanvas *cv = (TCanvas *) gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1400, 1000);
+	cv->Clear();
+	cv->Divide(3, 3);
+	cv->cd(1);
+	hScan->DrawCopy("colorz");
+	cv->cd(2);
+	hScanSiPM->DrawCopy("colorz");
+	cv->cd(3);
+	hScanPMT->DrawCopy("colorz");
+	cv->cd(4);
+	TH1D *hScanX = hScan->ProjectionX("_px", iMinY, iMinY);
+	hScanX->SetTitle("Profile at Shift = 0");
+	hScanX->Fit(fpol2, "q");
+	hScanX->DrawCopy();
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Scale=%5.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	cv->cd(5);
+	TH1D *hScanSiPMX = hScanSiPM->ProjectionX("_px", iMinYSiPM, iMinYSiPM);
+	hScanSiPMX->SetTitle("Profile at Shift = 0");
+	hScanSiPMX->Fit(fpol2, "q");
+	hScanSiPMX->DrawCopy();
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Scale=%5.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	cv->cd(6);
+	TH1D *hScanPMTX = hScanPMT->ProjectionX("_px", iMinYPMT, iMinYPMT);
+	hScanPMTX->SetTitle("Profile at Shift = 0");
+	hScanPMTX->Fit(fpol2, "q");
+	hScanPMTX->DrawCopy();
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Scale=%5.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	cv->cd(7);
+	TH1D *hScanY = hScan->ProjectionY("_py", iMinX, iMinX);
+	hScanY->SetTitle("Profile at Scale = 1");
+	hScanY->Fit(fpol2, "q");
+	hScanY->DrawCopy();
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Shift=%6.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	cv->cd(8);
+	TH1D *hScanSiPMY = hScanSiPM->ProjectionY("_py", iMinXSiPM, iMinXSiPM);
+	hScanSiPMY->SetTitle("Profile at Scale = 1");
+	hScanSiPMY->Fit(fpol2, "q");
+	hScanSiPMY->DrawCopy();
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Shift=%6.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	cv->cd(9);
+	TH1D *hScanPMTY = hScanPMT->ProjectionY("_py", iMinXPMT, iMinXPMT);
+	hScanPMTY->SetTitle("Profile at Scale = 1");
+	hScanPMTY->Fit(fpol2, "q");
+	hScanPMTY->DrawCopy();
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Shift=%6.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	cv->SaveAs("12B_82_scan.png");
+	
+	TFile *fOut = new TFile("12B_82_scan.root", "RECREATE");
+	if (!fOut->IsOpen()) return;
+	hScan->Write();
+	hScanSiPM->Write();
+	hScanPMT->Write();
+	fOut->Close();
+	fExp->Close();
+	fMC->Close();
+}
