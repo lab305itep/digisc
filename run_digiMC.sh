@@ -4,7 +4,7 @@
 #PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
 #PBS -l nodes=1
-#PBS -l walltime=99:00:00
+#PBS -l walltime=199:00:00
 cd /home/itep/alekseev/igor
 
 OVERWRITE=NO
@@ -75,15 +75,16 @@ do_stoppedmuons()
 	done
 }
 
-#05.11.2022
 do_cutmuons()
 {
-	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Hit_checker_ind_coeff_cutted/Ready/
-	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/Hit_checker_ind_coeff_cutted/Muons/
-	for ((i=1;$i<=16;i=$i+1)) ; do
-		j=`printf "%2.2d" $i`
-		${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_00_${j}.digi 0x70000 \
-			${OUTDIR}/MuonsCut/ -mcfile ${_mc_raw}/DANSS0_${i}.root ${DEAD}
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Hit_checker_new_model_cutted
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/Muons_v6_newProfiles
+	for ((k=0;$k<5;k=$k+1)) ; do
+		for ((i=1;$i<=16;i=$i+1)) ; do
+			j=`printf "%2.2d" $i`
+			${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_0${k}_${j}.digi 0x70000 \
+				${OUTDIR}/Hit_checker_new_model_cutted -mcfile ${_mc_raw}/DANSS${k}_${i}.root ${DEAD}
+		done
 	done
 }
 
@@ -194,6 +195,6 @@ do_Edik_n()
 	done
 }
 
-do_Edik_n
+do_cutmuons
 
 exit 0

@@ -106,14 +106,14 @@ void src_12B(int from, int to, const char *format = "/home/clusters/rrcmpi/aleks
 	TH1D *hExpT = new TH1D("hExp12BT", "Time from muon, experiment;ms;Events", 99, 1, 100);
 	TH1D *hRndmT = new TH1D("hRndm12BT", "Time from muon, random;ms;Events", 99, 1, 100);
 
-	chA->Project(hExp->GetName(), "ClusterEnergy", "gtDiff > 500");
-	chR->Project(hRndm->GetName(), "ClusterEnergy", "gtDiff > 500");
-	chA->Project(hExpSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500");
-	chR->Project(hRndmSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500");
-	chA->Project(hExpPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500");
-	chR->Project(hRndmPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500");
-	chA->Project(hExpT->GetName(), "gtDiff / 1000.0", "ClusterEnergy> 4");
-	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0", "ClusterEnergy> 4");
+	chA->Project(hExp->GetName(), "ClusterEnergy", "gtDiff > 500 && OffClusterEnergy < 0.06");
+	chR->Project(hRndm->GetName(), "ClusterEnergy", "gtDiff > 500 && OffClusterEnergy < 0.06");
+	chA->Project(hExpSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500 && OffClusterEnergy < 0.06");
+	chR->Project(hRndmSiPM->GetName(), "ClusterSiPmEnergy", "gtDiff > 500 && OffClusterEnergy < 0.06");
+	chA->Project(hExpPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500 && OffClusterEnergy < 0.06");
+	chR->Project(hRndmPMT->GetName(), "ClusterPmtEnergy", "gtDiff > 500 && OffClusterEnergy < 0.06");
+	chA->Project(hExpT->GetName(), "gtDiff / 1000.0", "ClusterEnergy> 4 && OffClusterEnergy < 0.06");
+	chR->Project(hRndmT->GetName(), "gtDiff / 1000.0", "ClusterEnergy> 4 && OffClusterEnergy < 0.06");
 	
 	hExp->Sumw2();
 	hRndm->Sumw2();
@@ -239,8 +239,6 @@ void src_12B(int from, int to, const char *format = "/home/clusters/rrcmpi/aleks
 	shift [-0.15; 0.15] with step 0.025 MeV
 	mcname - file with MC generated 12B decays
 */
-
-
 void src_12BMC(const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_12B_indLY_transcode_rawProc_pedSim.root")
 {
 	char strs[256], strl[1024];
@@ -278,11 +276,11 @@ void src_12BMC(const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n2
 		TH1D *hMCPMT = new TH1D(strs, strl, 80, 0, 20);
 		
 		sprintf(strs, "PositronEnergy*%5.3f + (%6.4f)", scale, shift);
-		tMC->Project(hMC->GetName(), strs, "AnnihilationEnergy < 0.25 && PositronEnergy > 3.0");
+		tMC->Project(hMC->GetName(), strs, "AnnihilationEnergy < 0.06 && PositronEnergy > 3.0");
 		sprintf(strs, "PositronSiPmEnergy*%5.3f + (%6.4f)", scale, shift);
-		tMC->Project(hMCSiPM->GetName(), strs, "AnnihilationEnergy < 0.25 && PositronEnergy > 3.0");
+		tMC->Project(hMCSiPM->GetName(), strs, "AnnihilationEnergy < 0.06 && PositronEnergy > 3.0");
 		sprintf(strs, "PositronPmtEnergy*%5.3f + (%6.4f)", scale, shift);
-		tMC->Project(hMCPMT->GetName(), strs, "AnnihilationEnergy < 0.25 && PositronEnergy > 3.0");
+		tMC->Project(hMCPMT->GetName(), strs, "AnnihilationEnergy < 0.06 && PositronEnergy > 3.0");
 
 		hMC->Sumw2();
 		hMCSiPM->Sumw2();
@@ -426,9 +424,9 @@ void scan_12B(const char *expname, const char *mcname)
 	double xmin;
 	TLatex txt;
 	
-	TH2D *hScan = new TH2D("hScan12B", "#chi^{2} difference between MC and data, ^{12}B, SiPM+PMT;Scale;Shift", 41, 0.9, 1.1, 13, -0.15, 0.15);
-	TH2D *hScanSiPM = new TH2D("hScan12BSiPM", "#chi^{2} difference between MC and data, ^{12}B, SiPM;Scale;Shift", 41, 0.9, 1.1, 13, -0.15, 0.15);
-	TH2D *hScanPMT = new TH2D("hScan12BPMT", "#chi^{2} difference between MC and data, ^{12}B, PMT;Scale;Shift", 41, 0.9, 1.1, 13, -0.15, 0.15);
+	TH2D *hScan = new TH2D("hScan12B", "#chi^{2} difference between MC and data, ^{12}B, SiPM+PMT;Scale;Shift;#chi^{2}", 41, 0.9, 1.1, 13, -0.15, 0.15);
+	TH2D *hScanSiPM = new TH2D("hScan12BSiPM", "#chi^{2} difference between MC and data, ^{12}B, SiPM;Scale;Shift;#chi^{2}", 41, 0.9, 1.1, 13, -0.15, 0.15);
+	TH2D *hScanPMT = new TH2D("hScan12BPMT", "#chi^{2} difference between MC and data, ^{12}B, PMT;Scale;Shift;#chi^{2}", 41, 0.9, 1.1, 13, -0.15, 0.15);
 	
 	TFile *fExp = new TFile(expname);
 	TFile *fMC  = new TFile(mcname);
