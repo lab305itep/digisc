@@ -41,6 +41,9 @@
 * 127958-128016	22Na	2022-06-30	center, UP	59
 * 128020-128119	none	2022-07-01
 ***************************************************************************************
+* Center position (50, 50, 50)
+* Edge position   (50, 90, 50)
+***************************************************************************************
 * The channel for teflon tube to introduce sources is machined in left low part of 
 * strip X=12 Z=49. So strips X=11,12 Z=49 and Y=12 Z=48 could be afected by beta
 * reaching it through the capsule. We remove events with these strips hit
@@ -104,19 +107,20 @@ struct RawHitInfoStruct {
 /*
 	Fill histograms excluding events with beta-afected strips
 */
-void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hHits)
+void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hHits, double X, double Y, double Z)
 {
-	long long i, N, N1, N2, N3, N4, N5;
+	long long i, N, N1, N2, N3, N4, N5, N6;
 	int j, k;
 	struct DanssEventStruct7 DanssEvent;
 	struct HitTypeStruct HitType[2600];
 	struct RawHitInfoStruct RawHits;
+	double r2;
 
 	chain->SetBranchAddress("Data", &DanssEvent);
 	chain->SetBranchAddress("HitType", &HitType);
 	chain->SetBranchAddress("RawHits", &RawHits);
 	N = chain->GetEntries();
-	N1 = N2 = N3 = N4 = N5 = 0;
+	N1 = N2 = N3 = N4 = N5 = N6 = 0;
 	for (i=0; i<N; i++) {
 		chain->GetEntry(i);
 //	TCut cxyz("NeutronX[0] >= 0 && NeutronX[1] >= 0 && NeutronX[2] >= 0");
@@ -134,6 +138,12 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 //	TCut cNoise("((PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3) && VetoCleanHits == 0");
 		if (1.0*DanssEvent.PmtCleanHits/RawHits.PmtCnt <= 0.3 || 1.0*DanssEvent.SiPmHits/RawHits.SiPmCnt <= 0.3) continue;
 		N4++;
+//	Cut over r2
+		r2  = (DanssEvent.NeutronX[0] - X) * (DanssEvent.NeutronX[0] - X);
+		r2 += (DanssEvent.NeutronX[1] - Y) * (DanssEvent.NeutronX[1] - Y);
+		r2 += (DanssEvent.NeutronX[2] - Z) * (DanssEvent.NeutronX[2] - Z);
+		if (r2 > 900) continue;		// 30 cm
+		N5++;
 //	Remove event if beta-afected strip hit
 		k = 0;
 		for (j=0; j<DanssEvent.NHits; j++) {
@@ -142,17 +152,17 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 			if (HitType[j].z == 49 && (HitType[j].xy == 11 || HitType[j].xy == 12)) k++;
 		}
 		if (k != 0) continue;
-		N5++;
+		N6++;
 //	Fill
 		hSum->Fill((DanssEvent.SiPmCleanEnergy+DanssEvent.PmtCleanEnergy)/2.0);
 		hSiPM->Fill(DanssEvent.SiPmCleanEnergy);
 		hPMT->Fill(DanssEvent.PmtCleanEnergy);
 		hHits->Fill(DanssEvent.SiPmCleanHits);
 	}
-	printf("Cut rejection: %Ld %Ld %Ld %Ld %Ld %Ld\n", N, N1, N2, N3, N4, N5);
+	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips)\n", N, N1, N2, N3, N4, N5, N6);
 }
 
-void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, const char *name, const char *fname)
+void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, const char *name, const char *fname, double X, double Y, double Z)
 {
 	char str[256];
 	long long gtA, gtB;
@@ -192,8 +202,8 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	TCut cSel = cxyz && cVeto && cn && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
-	do_projections(tExpA, hExpA, hExpSiPMA, hExpPMTA, hHitsA);
-	do_projections(tExpB, hExpB, hExpSiPMB, hExpPMTB, hHitsB);
+	do_projections(tExpA, hExpA, hExpSiPMA, hExpPMTA, hHitsA, X, Y, Z);
+	do_projections(tExpB, hExpB, hExpSiPMB, hExpPMTB, hHitsB, X, Y, Z);
 	
 	gtA = gtB = 0;
 	for(i=0; i<tInfoA->GetEntries(); i++) {
@@ -216,10 +226,19 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	hHitsA->Sumw2();
 	hHitsB->Sumw2();
 	
-	hExpC->Add(hExpA, hExpB, 1.0/timeA, -1.0/timeB);
-	hExpSiPMC->Add(hExpSiPMA, hExpSiPMB, 1.0/timeA, -1.0/timeB);
-	hExpPMTC->Add(hExpPMTA, hExpPMTB, 1.0/timeA, -1.0/timeB);
-	hHitsC->Add(hHitsA, hHitsB, 1.0/timeA, -1.0/timeB);
+	hExpA->Scale(1.0/timeA);
+	hExpB->Scale(1.0/timeB);
+	hExpSiPMA->Scale(1.0/timeA);
+	hExpSiPMB->Scale(1.0/timeB);
+	hExpPMTA->Scale(1.0/timeA);
+	hExpPMTB->Scale(1.0/timeB);
+	hHitsA->Scale(1.0/timeA);
+	hHitsB->Scale(1.0/timeB);
+	
+	hExpC->Add(hExpA, hExpB, 1.0, -1.0);
+	hExpSiPMC->Add(hExpSiPMA, hExpSiPMB, 1.0, -1.0);
+	hExpPMTC->Add(hExpPMTA, hExpPMTB, 1.0, -1.0);
+	hHitsC->Add(hHitsA, hHitsB, 1.0, -1.0);
 
 	hXY->GetXaxis()->SetLabelSize(0.045);
 	hXY->GetYaxis()->SetLabelSize(0.045);
@@ -276,7 +295,7 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	}
 }
 
-void draw_MC(TChain *tMc, const char *name, const char *fname, double scale)
+void draw_MC(TChain *tMc, const char *name, const char *fname, double scale, double X, double Y, double Z)
 {
 	char str[1024];
 	double rAB;
@@ -304,15 +323,18 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, double scale)
 	TCut cVeto("VetoCleanHits < 2 && VetoCleanEnergy < 4");
 	TCut cn("SiPmCleanHits > 2 && PmtCleanHits > 0");
 	TCut cSel = cxyz && cVeto && cn;
+	sprintf(str, "(NeutronX[0]+2-%5.1f)*(NeutronX[0]+2-%5.1f) + (NeutronX[1]+2-%5.1f)*(NeutronX[1]+2-%5.1f) + "
+		"(NeutronX[2]+0.5-%5.1f)*(NeutronX[2]+0.5-%5.1f)", X, X, Y, Y, Z, Z);
+	TCut cR2(str);
 	
 	tMc->Project("hMcXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
 	sprintf(str, "%5.3f*(SiPmCleanEnergy+PmtCleanEnergy)/2.0", scale);
-	tMc->Project("hMc", str, cSel);
+	tMc->Project("hMc", str, cSel && cR2);
 	sprintf(str, "%5.3f*SiPmCleanEnergy", scale);
-	tMc->Project("hMcSiPM", str, cSel);
+	tMc->Project("hMcSiPM", str, cSel && cR2);
 	sprintf(str, "%5.3f*PmtCleanEnergy", scale);
-	tMc->Project("hMcPMT", str, cSel);
-	tMc->Project("hMcHits", "SiPmCleanHits", cSel);
+	tMc->Project("hMcPMT", str, cSel && cR2);
+	tMc->Project("hMcHits", "SiPmCleanHits", cSel && cR2);
 
 	hMc->Sumw2();
 	hMcSiPM->Sumw2();
@@ -376,6 +398,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 	TCut cZ;
 	int code;
 	int i;
+	double X, Y, Z;
 	
 	TChain *tMc = new TChain("DanssEvent");
 	TChain *tExpA = new TChain("DanssEvent");
@@ -387,6 +410,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 	tExpA->AddFriend(tRawA);
 	tExpB->AddFriend(tRawB);
 	
+	X = Z = 50;
 	code = iser / 1000;
 	switch (iser) {
 	case 1:		// Na Feb 17, center
@@ -398,6 +422,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 12411, 12547, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_feb17_center_%s", rootdir);
+		Y = 50;
 		break;
 	case 2:		// Na Feb 17, edge
 		Add2Chain(tExpA, 12364, 12373, rootdir, max_files);
@@ -408,6 +433,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 12411, 12547, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_feb17_edge_%s", rootdir);
+		Y = 90;
 		break;
 	case 11:		// Na Nov 18, center
 		Add2Chain(tExpA, 51099, 51161, rootdir, max_files);
@@ -418,6 +444,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_nov18_center_%s", rootdir);
+		Y = 50;
 		break;
 	case 12:		// Na Nov 18, edge
 		Add2Chain(tExpA, 51036, 51095, rootdir, max_files);
@@ -428,6 +455,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_nov18_edge_%s", rootdir);
+		Y = 90;
 		break;
 	case 21:		// Na June 22, center DOWN
 		Add2Chain(tExpA, 127389, 127456, rootdir, max_files);
@@ -438,6 +466,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 127280, 127379, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_jun22_center_%s", rootdir);
+		Y = 50;
 		break;
 	case 31:		// Na June 22, center UP
 		Add2Chain(tExpA, 127958, 128016, rootdir, max_files);
@@ -448,6 +477,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 128020, 128119, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_jun22_centerUP_%s", rootdir);
+		Y = 50;
 		break;
 	case 101:		// Co Feb 17, center
 		Add2Chain(tExpA, 12306, 12346, rootdir, max_files);
@@ -458,6 +488,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 12198, 12303, rootdir, max_files);
 		name = "60Co";
 		sprintf(fname, "60Co_feb17_center_%s", rootdir);
+		Y = 50;
 		break;
 	case 102:		// Co Feb 17, edge
 		Add2Chain(tExpA, 12348, 12361, rootdir, max_files);
@@ -468,6 +499,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 12198, 12303, rootdir, max_files);
 		name = "60Co";
 		sprintf(fname, "60Co_feb17_edge_%s", rootdir);
+		Y = 90;
 		break;
 	case 111:		// Co Nov 18, center
 		Add2Chain(tExpA, 50949, 50997, rootdir, max_files);
@@ -478,6 +510,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 50750, 50873, rootdir, max_files);
 		name = "60Co";
 		sprintf(fname, "60Co_nov18_center_%s", rootdir);
+		Y = 50;
 		break;
 	case 112:		// Co Nov 18, edge
 		Add2Chain(tExpA, 50999, 51034, rootdir, max_files);
@@ -488,6 +521,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 50750, 50873, rootdir, max_files);
 		name = "60Co";
 		sprintf(fname, "60Co_nov18_edge_%s", rootdir);
+		Y = 90;
 		break;
 	case 121:		// Co June 22, center
 		Add2Chain(tExpA, 127774, 127837, rootdir, max_files);
@@ -498,6 +532,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 127838, 127900, rootdir, max_files);
 		name = "60Co";
 		sprintf(fname, "60Co_jun22_center_%s", rootdir);
+		Y = 50;
 		break;
 		
 	case 1001:	// Na MC, center
@@ -505,24 +540,28 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_center_%s_S%5.3f", rootdir, scale);
+		Y = 50;
 		break;
 	case 1002:	// Na MC, edge
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_22Na_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_edge_%s_S%5.3f", rootdir, scale);
+		Y = 90;
 		break;
 	case 1101:	// Co MC, center
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_center_%s_S%5.3f", rootdir, scale);
+		Y = 50;
 		break;
 	case 1102:	// Co MC, edge
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_edge_%s_S%5.3f", rootdir, scale);
+		Y = 90;
 		break;
 	default:
 		printf("%d - unknown\n", iser);
@@ -546,10 +585,10 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 
 	switch (code) {
 	case 0:	// Experiment
-		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname);
+		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, X, Y, Z);
 		break;
 	case 1:	// MC
-		draw_MC(tMc, name, fname, scale);
+		draw_MC(tMc, name, fname, scale, X, Y, Z);
 		break;
 	default:
 		break;
@@ -564,6 +603,9 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 	delete tInfoB;
 }
 
+/*
+	make strip load histograms
+*/
 void make_pattern(int from, int to, TH2D **hXZ, TH2D **hYZ, const char *rootdir = "root8n2")
 {
 	long long gtA, gtB;
@@ -611,4 +653,194 @@ void make_pattern(int from, int to, TH2D **hXZ, TH2D **hYZ, const char *rootdir 
 	
 	tExpA->Project((*hXZ)->GetName(), "((HitType >> 8) & 0xFE):((HitType >> 16) & 0xFF)", cSel && cx);
 	tExpA->Project((*hYZ)->GetName(), "((HitType >> 8) & 0xFE):24 - ((HitType >> 16) & 0xFF)", cSel && cy); 
+}
+
+/*
+	Calculate chi2 of two histograms difference
+*/
+double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
+{
+	double sum;
+	int i;
+	for (i = binMin; i <= binMax; i++) sum += 
+		(hA->GetBinContent(i) - hB->GetBinContent(i)) * (hA->GetBinContent(i) - hB->GetBinContent(i)) /
+		(hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i));
+	return sum;
+}
+
+/*
+	Draw scale scan
+	what = "22Na" or "60Co"
+	when = "feb17", "nov18" or "jun22"
+	where = "center", "centerUP" or "edge"
+	version = "root8n2"
+*/
+void draw_scale_scan(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2")
+{
+	const char *exppattern = "%s_%s_%s_%s.root"; 		// what, when, where, version
+	const char *MCpattern = "%s_MC_%s_%s_S%5.3f.root";	// what, whereMC, version, scale
+	const int binMin = 11;
+	const int binMax = 26;
+	char expname[1024];
+	char MCname[1024];
+	char str[256];
+	int i;
+	double scale;
+	double sMin, sMinSiPM, sMinPMT;
+	TFile *fMC;
+	TH1D *hMC;
+	TH1D *hMCSiPM;
+	TH1D *hMCPMT;
+	
+	gStyle->SetOptStat(0);
+	gStyle->SetOptFit(0);
+	
+	sprintf(str, "Scan over scale for %s, %s, %s;Scale;#chi^{2}", what, when, where);
+	TH1D *hScan = new TH1D("hScan", str, 41, 0.8975, 1.0025);
+	sprintf(str, "Scan over scale for %s, %s, %s, SiPM;Scale;#chi^{2}", what, when, where);
+	TH1D *hScanSiPM = new TH1D("hScanSiPM", str, 41, 0.8975, 1.0025);
+	sprintf(str, "Scan over scale for %s, %s, %s, PMT;Scale;#chi^{2}", what, when, where);
+	TH1D *hScanPMT = new TH1D("hScanPMT", str, 41, 0.8975, 1.0025);
+	hScan->SetMarkerStyle(kFullCircle);
+	hScanSiPM->SetMarkerStyle(kFullCircle);
+	hScanPMT->SetMarkerStyle(kFullCircle);
+	hScan->SetMarkerSize(1.5);
+	hScanSiPM->SetMarkerSize(1.5);
+	hScanPMT->SetMarkerSize(1.5);
+
+	sprintf(expname, exppattern, what, when, where, version);
+	TFile *fExp = new TFile(expname);
+	if (!fExp->IsOpen()) return;
+	TH1D *hExp = (TH1D *) fExp->Get("hExpC");
+	TH1D *hExpSiPM = (TH1D *) fExp->Get("hExpSiPMC");
+	TH1D *hExpPMT = (TH1D *) fExp->Get("hExpPMTC");
+	if (!hExp || !hExpSiPM || !hExpPMT) {
+		printf("Not all histograms found in %s\n", expname);
+		return;
+	}
+
+	hExp->SetLineColor(kRed);
+	hExp->SetMarkerColor(kRed);
+	hExp->SetMarkerStyle(kFullCircle);
+	hExpSiPM->SetLineColor(kRed);
+	hExpSiPM->SetMarkerColor(kRed);
+	hExpSiPM->SetMarkerStyle(kFullCircle);
+	hExpPMT->SetLineColor(kRed);
+	hExpPMT->SetMarkerColor(kRed);
+	hExpPMT->SetMarkerStyle(kFullCircle);
+	
+	char *whereMC = strdup(where);
+	if (!whereMC) return;
+	if (strlen(whereMC) > strlen("center")) whereMC[strlen("center")] = '\0';
+	
+	for (i=0; i<41; i++) {
+		scale = 0.9 + 0.005*i;
+		sprintf(MCname, MCpattern, what, where, version, scale);
+		fMC = new TFile(MCname);
+		if (!fMC->IsOpen()) return;
+		hMC = (TH1D *) fMC->Get("hMc");
+		hMCSiPM = (TH1D *) fMC->Get("hMcSiPM");
+		hMCPMT = (TH1D *) fMC->Get("hMcPMT");
+		if (!hMC || !hMCSiPM || !hMCPMT) {
+			printf("Not all histograms found in %s\n", MCname);
+			return;
+		}
+		hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
+		hMCSiPM->Scale(hExpSiPM->Integral(binMin, binMax) / hMCSiPM->Integral(binMin, binMax));
+		hMCPMT->Scale(hExpPMT->Integral(binMin, binMax) / hMCPMT->Integral(binMin, binMax));
+		hScan->SetBinContent(i+1, chi2Diff(hExp, hMC, binMin, binMax));
+		hScanSiPM->SetBinContent(i+1, chi2Diff(hExpSiPM, hMCSiPM, binMin, binMax));
+		hScanPMT->SetBinContent(i+1, chi2Diff(hExpPMT, hMCPMT, binMin, binMax));
+		fMC->Close();
+	}
+	
+	TF1 *fPol2 = new TF1("fPol2", "pol2", 0.1, 10);
+	TLatex txt;
+	
+	TCanvas *cv = new TCanvas("CV", "CV", 1200, 900);
+	cv->Divide(3, 2);
+	
+	cv->cd(4);
+	hScan->Fit(fPol2);
+	sMin = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
+	sprintf(str, "scale = %5.3f", sMin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	
+	cv->cd(4);
+	hScan->Fit(fPol2, "q");
+	hScan->DrawCopy();
+	sMin = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
+	sprintf(str, "scale = %5.3f", sMin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+
+	cv->cd(5);
+	hScanSiPM->Fit(fPol2, "q");
+	hScanSiPM->DrawCopy();
+	sMinSiPM = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
+	sprintf(str, "scale = %5.3f", sMinSiPM);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+
+	cv->cd(6);
+	hScanPMT->Fit(fPol2, "q");
+	hScanPMT->DrawCopy();
+	sMinPMT = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
+	sprintf(str, "scale = %5.3f", sMinPMT);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	
+	i = (sMin - 0.8975) / 0.005;
+	if (i < 0) i = 0;
+	if (i > 41) i = 41;
+	scale = 0.9 + 0.005*i;
+	sprintf(MCname, MCpattern, what, where, version, scale);
+	fMC = new TFile(MCname);
+	if (!fMC->IsOpen()) return;
+	hMC = (TH1D *) fMC->Get("hMc");
+	hMCSiPM = (TH1D *) fMC->Get("hMcSiPM");
+	hMCPMT = (TH1D *) fMC->Get("hMcPMT");
+	if (!hMC || !hMCSiPM || !hMCPMT) {
+		printf("Not all histograms found in %s\n", MCname);
+		return;
+	}
+	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
+	hMCSiPM->Scale(hExpSiPM->Integral(binMin, binMax) / hMCSiPM->Integral(binMin, binMax));
+	hMCPMT->Scale(hExpPMT->Integral(binMin, binMax) / hMCPMT->Integral(binMin, binMax));
+
+	cv->cd(1);
+	hExp->DrawCopy();
+	hMC->DrawCopy("same,hist");
+	TLegend *lg = new TLegend(0.5, 0.6, 0.75, 0.75);
+	lg->AddEntry(hExp, "Data", "pe");
+	lg->AddEntry(hMC, "MC", "l");
+	lg->Draw();
+
+	cv->cd(2);
+	hExpSiPM->DrawCopy();
+	hMCSiPM->DrawCopy("same,hist");
+	lg->Draw();
+
+	cv->cd(3);
+	hExpPMT->DrawCopy();
+	hMCPMT->DrawCopy("same,hist");
+	lg->Draw();
+
+	sprintf(str, "%s_%s_%s_%s_scan.png", what, when, where, version);
+	cv->SaveAs(str);
+
+	sprintf(str, "%s_%s_%s_%s_scan.root", what, when, where, version);
+	TFile *fOut = new TFile(str, "RECREATE");
+	if (!fOut->IsOpen()) return;
+	hExp->Write();
+	hMC->Write();
+	hScan->Write();
+	hExpSiPM->Write();
+	hMCSiPM->Write();
+	hScanSiPM->Write();
+	hExpPMT->Write();
+	hMCPMT->Write();
+	hScanPMT->Write();
+	fOut->Close();
+	
+
+	fExp->Close();
+	fMC->Close();
 }
