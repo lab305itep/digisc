@@ -1,8 +1,8 @@
 #!/bin/bash
-#PBS -N run_digiMC
+#PBS -N run_digiMC127
 #PBS -q long
-#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
-#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
+#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC127.out
+#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC127.err
 #PBS -l nodes=1
 #PBS -l walltime=199:00:00
 cd /home/itep/alekseev/igor
@@ -12,7 +12,7 @@ MCRAW=MC_RAW
 OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/
 DIGI=digi_MC
 EXE=./evtbuilder5
-DEAD="-deadlist deadchan_v8.2.list"
+DEAD="-deadlist main_dead.list"
 ##EXE=echo
 
 do_sources()
@@ -78,7 +78,7 @@ do_stoppedmuons()
 do_cutmuons()
 {
 	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Hit_checker_new_model_cutted
-	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/Muons_v6_newProfiles
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Hit_checker_new_model_cutted
 	for ((k=0;$k<5;k=$k+1)) ; do
 		for ((i=1;$i<=16;i=$i+1)) ; do
 			j=`printf "%2.2d" $i`
@@ -88,6 +88,31 @@ do_cutmuons()
 	done
 }
 
+do_cutmuons_127()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Hit_checker_new_model_cutted_Birks_0.0127
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Hit_checker_new_model_cutted_Birks_0.0127
+	for ((k=0;$k<5;k=$k+1)) ; do
+		for ((i=1;$i<=16;i=$i+1)) ; do
+			j=`printf "%2.2d" $i`
+			${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_0${k}_${j}.digi 0x70000 \
+				${OUTDIR}/Hit_checker_new_model_cutted_Birks_0.0127 -mcfile ${_mc_raw}/DANSS${k}_${i}.root ${DEAD}
+		done
+	done
+}
+
+do_cutmuons_289()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Hit_checker_new_model_cutted_Birks_0.0289
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Hit_checker_new_model_cutted_Birks_0.0289
+	for ((k=0;$k<5;k=$k+1)) ; do
+		for ((i=1;$i<=16;i=$i+1)) ; do
+			j=`printf "%2.2d" $i`
+			${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_0${k}_${j}.digi 0x70000 \
+				${OUTDIR}/Hit_checker_new_model_cutted_Birks_0.0289 -mcfile ${_mc_raw}/DANSS${k}_${i}.root ${DEAD}
+		done
+	done
+}
 
 do_muons()
 {
@@ -195,6 +220,49 @@ do_Edik_n()
 	done
 }
 
-do_cutmuons
+do_DB_new()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/DB_spectrum_new_model
+	mkdir -p ${OUTDIR}/DB_spectrum_new_model
+	${EXE} ${DIGIN}/mc_12B-DB_indLY_transcode_rawProc_pedSim.digi 0x70000 \
+		${OUTDIR}/DB_spectrum_new_model -mcfile ${_mc_raw}/DANSS0_1.root ${DEAD}
+}
 
+do_Posi_new()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Positrons_from_muplus_decay_new_model
+	mkdir -p ${OUTDIR}/Positrons_from_muplus_decay_new_model
+	${EXE} ${DIGIN}/mc_MuonsMuPlus_indLY_transcode_rawProc_pedSim_01.digi 0x70000 \
+		${OUTDIR}/Positrons_from_muplus_decay_new_model -mcfile ${_mc_raw}/DANSS0_1.root ${DEAD}
+	${EXE} ${DIGIN}/mc_MuonsMuPlus_indLY_transcode_rawProc_pedSim_02.digi 0x70000 \
+		${OUTDIR}/Positrons_from_muplus_decay_new_model -mcfile ${_mc_raw}/DANSS0_2.root ${DEAD}
+}
+
+do_StMu_new()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Stopped_muons_new_model
+	mkdir -p ${OUTDIR}/Stopped_muons_new_model
+	${EXE} ${DIGIN}/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_01.digi 0x70000 \
+		${OUTDIR}/Stopped_muons_new_model -mcfile ${_mc_raw}/DANSS0_1.root ${DEAD}
+	${EXE} ${DIGIN}/mc_MuonsStopped_indLY_transcode_rawProc_pedSim_02.digi 0x70000 \
+		${OUTDIR}/Stopped_muons_new_model -mcfile ${_mc_raw}/DANSS0_2.root ${DEAD}
+}
+
+do_StMuCenter_new()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Stopped_muons_central_part_new_model
+	mkdir -p ${OUTDIR}/Stopped_muons_central_part_new_model
+	${EXE} ${DIGIN}/mc_MuonsStopped_central_part_indLY_transcode_rawProc_pedSim_01.digi 0x70000 \
+		${OUTDIR}/Stopped_muons_central_part_new_model -mcfile ${_mc_raw}/DANSS0_1.root ${DEAD}
+	${EXE} ${DIGIN}/mc_MuonsStopped_central_part_indLY_transcode_rawProc_pedSim_02.digi 0x70000 \
+		${OUTDIR}/Stopped_muons_central_part_new_model -mcfile ${_mc_raw}/DANSS0_2.root ${DEAD}
+}
+
+date
+do_cutmuons_127
+date
 exit 0
