@@ -107,7 +107,7 @@ struct RawHitInfoStruct {
 /*
 	Fill histograms excluding events with beta-afected strips
 */
-void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hHits, double X, double Y, double Z)
+void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hHits, double X, double Y, double Z, double RMAX)
 {
 	long long i, N, N1, N2, N3, N4, N5, N6;
 	int j, k;
@@ -142,7 +142,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		r2  = (DanssEvent.NeutronX[0] - X) * (DanssEvent.NeutronX[0] - X);
 		r2 += (DanssEvent.NeutronX[1] - Y) * (DanssEvent.NeutronX[1] - Y);
 		r2 += (DanssEvent.NeutronX[2] - Z) * (DanssEvent.NeutronX[2] - Z);
-		if (r2 > 900) continue;		// 30 cm
+		if (r2 > RMAX*RMAX) continue;		// 30 cm
 		N5++;
 //	Remove event if beta-afected strip hit
 		k = 0;
@@ -162,7 +162,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips)\n", N, N1, N2, N3, N4, N5, N6);
 }
 
-void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, const char *name, const char *fname, double X, double Y, double Z)
+void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, const char *name, const char *fname, double X, double Y, double Z, double RMAX)
 {
 	char str[256];
 	long long gtA, gtB;
@@ -202,8 +202,8 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	TCut cSel = cxyz && cVeto && cn && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
-	do_projections(tExpA, hExpA, hExpSiPMA, hExpPMTA, hHitsA, X, Y, Z);
-	do_projections(tExpB, hExpB, hExpSiPMB, hExpPMTB, hHitsB, X, Y, Z);
+	do_projections(tExpA, hExpA, hExpSiPMA, hExpPMTA, hHitsA, X, Y, Z, RMAX);
+	do_projections(tExpB, hExpB, hExpSiPMB, hExpPMTB, hHitsB, X, Y, Z, RMAX);
 	
 	gtA = gtB = 0;
 	for(i=0; i<tInfoA->GetEntries(); i++) {
@@ -295,7 +295,7 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	}
 }
 
-void draw_MC(TChain *tMc, const char *name, const char *fname, double scale, double X, double Y, double Z)
+void draw_MC(TChain *tMc, const char *name, const char *fname, double scale, double X, double Y, double Z, double RMAX)
 {
 	char str[1024];
 	double rAB;
@@ -324,7 +324,7 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, double scale, dou
 	TCut cn("SiPmCleanHits > 2 && PmtCleanHits > 0");
 	TCut cSel = cxyz && cVeto && cn;
 	sprintf(str, "(NeutronX[0]+2-%5.1f)*(NeutronX[0]+2-%5.1f) + (NeutronX[1]+2-%5.1f)*(NeutronX[1]+2-%5.1f) + "
-		"(NeutronX[2]+0.5-%5.1f)*(NeutronX[2]+0.5-%5.1f)", X, X, Y, Y, Z, Z);
+		"(NeutronX[2]+0.5-%5.1f)*(NeutronX[2]+0.5-%5.1f) < %5.1f*%5.1f", X, X, Y, Y, Z, Z, RMAX, RMAX);
 	TCut cR2(str);
 	
 	tMc->Project("hMcXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
@@ -389,7 +389,7 @@ void Add2Chain(TChain *ch, int from, int to, const char *rootdir, int max_files 
 	}
 }
 
-void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0, int max_files = 0)
+void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0, double RMAX = 30, int max_files = 0)
 {
 	const char *name = "";
 	char fname[1024];
@@ -421,7 +421,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 12411, 12547, rootdir, max_files);
 		Add2Chain(tInfoB, 12411, 12547, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_feb17_center_%s", rootdir);
+		sprintf(fname, "22Na_feb17_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 2:		// Na Feb 17, edge
@@ -432,7 +432,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 12411, 12547, rootdir, max_files);
 		Add2Chain(tInfoB, 12411, 12547, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_feb17_edge_%s", rootdir);
+		sprintf(fname, "22Na_feb17_edge_%s_R%4.1f", rootdir, RMAX);
 		Y = 90;
 		break;
 	case 11:		// Na Nov 18, center
@@ -443,7 +443,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 51167, 51267, rootdir, max_files);
 		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_nov18_center_%s", rootdir);
+		sprintf(fname, "22Na_nov18_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 12:		// Na Nov 18, edge
@@ -454,7 +454,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 51167, 51267, rootdir, max_files);
 		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_nov18_edge_%s", rootdir);
+		sprintf(fname, "22Na_nov18_edge_%s_R%4.1f", rootdir, RMAX);
 		Y = 90;
 		break;
 	case 21:		// Na June 22, center DOWN
@@ -465,7 +465,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 127280, 127379, rootdir, max_files);
 		Add2Chain(tInfoB, 127280, 127379, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_jun22_center_%s", rootdir);
+		sprintf(fname, "22Na_jun22_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 31:		// Na June 22, center UP
@@ -476,7 +476,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 128020, 128119, rootdir, max_files);
 		Add2Chain(tInfoB, 128020, 128119, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_jun22_centerUP_%s", rootdir);
+		sprintf(fname, "22Na_jun22_centerUP_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 101:		// Co Feb 17, center
@@ -487,7 +487,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 12198, 12303, rootdir, max_files);
 		Add2Chain(tInfoB, 12198, 12303, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_feb17_center_%s", rootdir);
+		sprintf(fname, "60Co_feb17_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 102:		// Co Feb 17, edge
@@ -498,7 +498,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 12198, 12303, rootdir, max_files);
 		Add2Chain(tInfoB, 12198, 12303, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_feb17_edge_%s", rootdir);
+		sprintf(fname, "60Co_feb17_edge_%s_R%4.1f", rootdir, RMAX);
 		Y = 90;
 		break;
 	case 111:		// Co Nov 18, center
@@ -509,7 +509,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 50750, 50873, rootdir, max_files);
 		Add2Chain(tInfoB, 50750, 50873, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_nov18_center_%s", rootdir);
+		sprintf(fname, "60Co_nov18_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 112:		// Co Nov 18, edge
@@ -520,7 +520,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 50750, 50873, rootdir, max_files);
 		Add2Chain(tInfoB, 50750, 50873, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_nov18_edge_%s", rootdir);
+		sprintf(fname, "60Co_nov18_edge_%s_R%4.1f", rootdir, RMAX);
 		Y = 90;
 		break;
 	case 121:		// Co June 22, center
@@ -531,7 +531,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 127838, 127900, rootdir, max_files);
 		Add2Chain(tInfoB, 127838, 127900, rootdir, max_files);
 		name = "60Co";
-		sprintf(fname, "60Co_jun22_center_%s", rootdir);
+		sprintf(fname, "60Co_jun22_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 		
@@ -539,28 +539,28 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_22Na_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_center_%s_S%5.3f", rootdir, scale);
+		sprintf(fname, "22Na_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1002:	// Na MC, edge
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_22Na_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_edge_%s_S%5.3f", rootdir, scale);
+		sprintf(fname, "22Na_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
 	case 1101:	// Co MC, center
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_center_%s_S%5.3f", rootdir, scale);
+		sprintf(fname, "60Co_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1102:	// Co MC, edge
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_edge_%s_S%5.3f", rootdir, scale);
+		sprintf(fname, "60Co_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
 	default:
@@ -585,10 +585,10 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 
 	switch (code) {
 	case 0:	// Experiment
-		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, X, Y, Z);
+		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, X, Y, Z, RMAX);
 		break;
 	case 1:	// MC
-		draw_MC(tMc, name, fname, scale, X, Y, Z);
+		draw_MC(tMc, name, fname, scale, X, Y, Z, RMAX);
 		break;
 	default:
 		break;
@@ -674,11 +674,12 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 	when = "feb17", "nov18" or "jun22"
 	where = "center", "centerUP" or "edge"
 	version = "root8n2"
+	RMAX - maximum distance from the source
 */
-void draw_scale_scan(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2")
+void draw_scale_scan(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2", double RMAX = 30)
 {
-	const char *exppattern = "%s_%s_%s_%s.root"; 		// what, when, where, version
-	const char *MCpattern = "%s_MC_%s_%s_S%5.3f.root";	// what, whereMC, version, scale
+	const char *exppattern = "%s_%s_%s_%s_R%4.1f.root"; 		// what, when, where, version, RMAX
+	const char *MCpattern = "%s_MC_%s_%s_S%5.3f_R%4.1f.root";	// what, whereMC, version, scale, RMAX
 	const int binMin = 11;
 	const int binMax = 26;
 	char expname[1024];
@@ -696,11 +697,11 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	gStyle->SetOptFit(0);
 	
 	sprintf(str, "Scan over scale for %s, %s, %s;Scale;#chi^{2}", what, when, where);
-	TH1D *hScan = new TH1D("hScan", str, 41, 0.8975, 1.0025);
+	TH1D *hScan = new TH1D("hScan", str, 41, 0.8975, 1.1025);
 	sprintf(str, "Scan over scale for %s, %s, %s, SiPM;Scale;#chi^{2}", what, when, where);
-	TH1D *hScanSiPM = new TH1D("hScanSiPM", str, 41, 0.8975, 1.0025);
+	TH1D *hScanSiPM = new TH1D("hScanSiPM", str, 41, 0.8975, 1.1025);
 	sprintf(str, "Scan over scale for %s, %s, %s, PMT;Scale;#chi^{2}", what, when, where);
-	TH1D *hScanPMT = new TH1D("hScanPMT", str, 41, 0.8975, 1.0025);
+	TH1D *hScanPMT = new TH1D("hScanPMT", str, 41, 0.8975, 1.1025);
 	hScan->SetMarkerStyle(kFullCircle);
 	hScanSiPM->SetMarkerStyle(kFullCircle);
 	hScanPMT->SetMarkerStyle(kFullCircle);
@@ -708,7 +709,7 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	hScanSiPM->SetMarkerSize(1.5);
 	hScanPMT->SetMarkerSize(1.5);
 
-	sprintf(expname, exppattern, what, when, where, version);
+	sprintf(expname, exppattern, what, when, where, version, RMAX);
 	TFile *fExp = new TFile(expname);
 	if (!fExp->IsOpen()) return;
 	TH1D *hExp = (TH1D *) fExp->Get("hExpC");
@@ -735,7 +736,7 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	
 	for (i=0; i<41; i++) {
 		scale = 0.9 + 0.005*i;
-		sprintf(MCname, MCpattern, what, where, version, scale);
+		sprintf(MCname, MCpattern, what, whereMC, version, scale, RMAX);
 		fMC = new TFile(MCname);
 		if (!fMC->IsOpen()) return;
 		hMC = (TH1D *) fMC->Get("hMc");
@@ -757,17 +758,13 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	TF1 *fPol2 = new TF1("fPol2", "pol2", 0.1, 10);
 	TLatex txt;
 	
-	TCanvas *cv = new TCanvas("CV", "CV", 1200, 900);
+	TCanvas *cv = new TCanvas("CV", "CV", 1440, 1000);
 	cv->Divide(3, 2);
 	
 	cv->cd(4);
-	hScan->Fit(fPol2);
-	sMin = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
-	sprintf(str, "scale = %5.3f", sMin);
-	txt.DrawLatexNDC(0.4, 0.8, str);
-	
-	cv->cd(4);
 	hScan->Fit(fPol2, "q");
+	sMin = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
+	hScan->Fit(fPol2, "q", "", sMin - 0.05, sMin + 0.05);
 	hScan->DrawCopy();
 	sMin = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
 	sprintf(str, "scale = %5.3f", sMin);
@@ -775,6 +772,8 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 
 	cv->cd(5);
 	hScanSiPM->Fit(fPol2, "q");
+	sMinSiPM = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
+	hScanSiPM->Fit(fPol2, "q", "", sMinSiPM - 0.05, sMinSiPM + 0.05);
 	hScanSiPM->DrawCopy();
 	sMinSiPM = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
 	sprintf(str, "scale = %5.3f", sMinSiPM);
@@ -782,6 +781,8 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 
 	cv->cd(6);
 	hScanPMT->Fit(fPol2, "q");
+	sMinPMT = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
+	hScanPMT->Fit(fPol2, "q", "", sMinPMT - 0.05, sMinPMT + 0.05);
 	hScanPMT->DrawCopy();
 	sMinPMT = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
 	sprintf(str, "scale = %5.3f", sMinPMT);
@@ -791,7 +792,7 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	if (i < 0) i = 0;
 	if (i > 41) i = 41;
 	scale = 0.9 + 0.005*i;
-	sprintf(MCname, MCpattern, what, where, version, scale);
+	sprintf(MCname, MCpattern, what, whereMC, version, scale, RMAX);
 	fMC = new TFile(MCname);
 	if (!fMC->IsOpen()) return;
 	hMC = (TH1D *) fMC->Get("hMc");
@@ -823,10 +824,10 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	hMCPMT->DrawCopy("same,hist");
 	lg->Draw();
 
-	sprintf(str, "%s_%s_%s_%s_scan.png", what, when, where, version);
+	sprintf(str, "%s_%s_%s_%s_R%4.1f_scan.png", what, when, where, version, RMAX);
 	cv->SaveAs(str);
 
-	sprintf(str, "%s_%s_%s_%s_scan.root", what, when, where, version);
+	sprintf(str, "%s_%s_%s_%s_R%4.1f_scan.root", what, when, where, version, RMAX);
 	TFile *fOut = new TFile(str, "RECREATE");
 	if (!fOut->IsOpen()) return;
 	hExp->Write();
@@ -839,7 +840,6 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	hMCPMT->Write();
 	hScanPMT->Write();
 	fOut->Close();
-	
 
 	fExp->Close();
 	fMC->Close();
