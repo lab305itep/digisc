@@ -1,8 +1,8 @@
 #!/bin/bash
-#PBS -N run_digiMC127
+#PBS -N run_digiMC
 #PBS -q long
-#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC127.out
-#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC127.err
+#PBS -o /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.out
+#PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/run_digiMC.err
 #PBS -l nodes=1
 #PBS -l walltime=199:00:00
 cd /home/itep/alekseev/igor
@@ -30,6 +30,24 @@ do_sources()
 	RAWLIST=(12B_v2 22Na_v2 22Na_92_5_cm_pos_v2 248Cm_v2 248Cm_92_5_cm_pos_v2 60Co_v2 60Co_92_5_cm_pos_v2 12B-DB)
 	
 	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/RadSources_v2
+	if [ "x$1" == "x" ] ; then
+		for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
+			${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$i]}/DANSS0_1.root ${DEAD}
+		done
+	else
+		${EXE} ${DIGIN}/${SRCLIST[$1]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$1]}/DANSS0_1.root ${DEAD} -events 500000
+	fi
+}
+
+do_sources_full()
+{
+	declare -a SRCLIST
+	declare -a RAWLIST
+	SRCLIST=(mc_22Na_full_decay_central_pos_indLY_transcode_rawProc_pedSim.digi \
+		mc_26Al_full_decay_central_pos_indLY_transcode_rawProc_pedSim.digi)
+	RAWLIST=(22Na_full_decay_central_pos 26Al_full_decay_central_pos)
+	
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/RadSources_v2_1
 	if [ "x$1" == "x" ] ; then
 		for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
 			${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$i]}/DANSS0_1.root ${DEAD}
@@ -263,6 +281,6 @@ do_StMuCenter_new()
 }
 
 date
-do_cutmuons_127
+do_sources_full
 date
 exit 0

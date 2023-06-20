@@ -40,9 +40,9 @@ int main(int argc, char *argv[])
 	k = serial % nParts;
 //		The run itself
 	if (nEvents) {
-		sprintf(str, "./mcConvert %s/DANSSmod%d_%d.root %s/DANSS%d_%dp%d.root %d %d", dir, i, j, dir, i, j, k, nEvents, k*nEvents);
+		sprintf(str, "./mcConvert -c -p -n %d -f %d %s/DANSSmod%d_%d.root %s/DANSS%d_%dp%d.root", nEvents, k*nEvents, dir, i, j, dir, i, j, k);
 	} else {
-		sprintf(str, "./mcConvert %s/DANSSmod%d_%d.root %s/DANSS%d_%d.root", dir, i, j, dir, i, j);
+		sprintf(str, "./mcConvert -c -p %s/DANSSmod%d_%d.root %s/DANSS%d_%d.root", dir, i, j, dir, i, j);
 	}
 	irc = system(str);
 	if (irc) printf("Run %d_%d: error [%s]: %m\n", i , j, str);

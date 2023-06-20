@@ -114,7 +114,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 	struct DanssEventStruct7 DanssEvent;
 	struct HitTypeStruct HitType[2600];
 	struct RawHitInfoStruct RawHits;
-	double r2;
+	double r2, E;
 
 	chain->SetBranchAddress("Data", &DanssEvent);
 	chain->SetBranchAddress("HitType", &HitType);
@@ -154,10 +154,11 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		if (k != 0) continue;
 		N6++;
 //	Fill
-		hSum->Fill((DanssEvent.SiPmCleanEnergy+DanssEvent.PmtCleanEnergy)/2.0);
+		E = (DanssEvent.SiPmCleanEnergy+DanssEvent.PmtCleanEnergy)/2.0;
+		hSum->Fill(E);
 		hSiPM->Fill(DanssEvent.SiPmCleanEnergy);
 		hPMT->Fill(DanssEvent.PmtCleanEnergy);
-		hHits->Fill(DanssEvent.SiPmCleanHits);
+		if (E > 1.0 && E < 2.6) hHits->Fill(DanssEvent.SiPmCleanHits);
 	}
 	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips)\n", N, N1, N2, N3, N4, N5, N6);
 }
@@ -199,6 +200,7 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	TCut cVeto("VetoCleanHits < 2 && VetoCleanEnergy < 4");
 	TCut cn("SiPmCleanHits > 2 && PmtCleanHits > 0");
 	TCut cNoise("((PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3) && VetoCleanHits == 0");
+	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6");
 	TCut cSel = cxyz && cVeto && cn && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
@@ -326,15 +328,16 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, double scale, dou
 	sprintf(str, "(NeutronX[0]+2-%5.1f)*(NeutronX[0]+2-%5.1f) + (NeutronX[1]+2-%5.1f)*(NeutronX[1]+2-%5.1f) + "
 		"(NeutronX[2]+0.5-%5.1f)*(NeutronX[2]+0.5-%5.1f) < %5.1f*%5.1f", X, X, Y, Y, Z, Z, RMAX, RMAX);
 	TCut cR2(str);
+	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6");
 	
-	tMc->Project("hMcXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
+	tMc->Project("hMcXY", "NeutronX[1]+2:NeutronX[0]+2", cSel && cE);
 	sprintf(str, "%5.3f*(SiPmCleanEnergy+PmtCleanEnergy)/2.0", scale);
 	tMc->Project("hMc", str, cSel && cR2);
 	sprintf(str, "%5.3f*SiPmCleanEnergy", scale);
 	tMc->Project("hMcSiPM", str, cSel && cR2);
 	sprintf(str, "%5.3f*PmtCleanEnergy", scale);
 	tMc->Project("hMcPMT", str, cSel && cR2);
-	tMc->Project("hMcHits", "SiPmCleanHits", cSel && cR2);
+	tMc->Project("hMcHits", "SiPmCleanHits", cSel && cR2 && cE);
 
 	hMc->Sumw2();
 	hMcSiPM->Sumw2();
@@ -841,6 +844,55 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	hScanPMT->Write();
 	fOut->Close();
 
+	fExp->Close();
+	fMC->Close();
+}
+
+/*
+        Draw nHits
+*/
+void draw_nHits(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2", double RMAX = 30)
+{
+	const char *exppattern = "%s_%s_%s_%s_R%4.1f.root"; 		// what, when, where, version, RMAX
+	const char *MCpattern = "%s_MC_%s_%s_S%5.3f_R%4.1f.root";	// what, whereMC, version, scale, RMAX
+	char expname[1024];
+	char MCname[1024];
+	char str[1024];
+	
+	sprintf(expname, exppattern, what, when, where, version, RMAX);
+	TFile *fExp = new TFile(expname);
+	if (!fExp->IsOpen()) return;
+	TH1D *hHits = (TH1D *) fExp->Get("hHitsC");
+	
+	char *whereMC = strdup(where);
+	if (!whereMC) return;
+	if (strlen(whereMC) > strlen("center")) whereMC[strlen("center")] = '\0';
+	sprintf(MCname, MCpattern, what, whereMC, version, 1.0, RMAX);
+	TFile *fMC = new TFile(MCname);
+	if (!fMC->IsOpen()) return;
+	TH1D *hMcHits = (TH1D *) fMC->Get("hMcHits");
+	
+	hHits->SetLineColor(kRed);
+	hHits->SetMarkerColor(kRed);
+	hHits->SetMarkerStyle(kFullCircle);
+	hHits->SetStats(0);
+	hMcHits->SetLineWidth(2);
+	hMcHits->SetLineColor(kBlue);
+	
+	hMcHits->Scale(hHits->Integral() / hMcHits->Integral());
+	hMcHits->DrawCopy("hist");
+	hHits->DrawCopy("same");
+	
+	sprintf(str, "%s_%s_%s_%s_R%4.1f_nHits.png", what, when, where, version, RMAX);
+	gPad->SaveAs(str);
+
+	sprintf(str, "%s_%s_%s_%s_R%4.1f_nHits.root", what, when, where, version, RMAX);
+	TFile *fOut = new TFile(str, "RECREATE");
+	if (!fOut->IsOpen()) return;
+	hHits->Write();
+	hMcHits->Write();
+	fOut->Close();
+	
 	fExp->Close();
 	fMC->Close();
 }
