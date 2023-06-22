@@ -236,32 +236,41 @@ void src_12B(int from, int to, const char *format = "/home/clusters/rrcmpi/aleks
 /*
 	Make MC histograms for 12B decay. A matrix over scale and shift is createed.
 	scale [0.9; 1.0] with step 0.005
-	shift [-0.15; 0.15] with step 0.025 MeV
-	mcname - file with MC generated 12B decays
+	shift [-0.15; 0.15] with step 0.025 MeV		no shift
+	mcname - file(s) with MC generated 12B decays
 */
-void src_12BMC(const char *mcname = "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_12B_indLY_transcode_rawProc_pedSim.root")
+void src_12BMC(const char *mcname, const char *mchist)
 {
 	char strs[256], strl[1024];
 	int i, j;
 	double scale, shift;
+	char *ptr;
+	char *mclist;
 
-	TFile *fMC = new TFile(mcname);
-	if (!fMC->IsOpen()) return;
-	TTree *tMC = (TTree *) fMC->Get("DanssEvent");
-	if (!tMC) {
-		printf("Bad file %s\n", mcname);
+	mclist = strdup(mcname);
+	ptr = strtok(mclist, " \t,");
+	TChain *tMC = new TChain("DanssEvent", "DanssEvent");
+	mclist = strdup(mcname);
+	ptr = strtok(mclist, " \t,");
+	for(;;) {
+		if (!ptr || !strlen(ptr)) break;
+		tMC->AddFile(ptr);
+		ptr = strtok(NULL, " \t,");
+	}
+	if (!tMC->GetEntries()) {
+		printf("Bad file(s) %s\n", mcname);
 		return;
 	}
 	
-	TFile *fOut = new TFile("12B_MC82.root", "RECREATE");
+	TFile *fOut = new TFile(mchist, "RECREATE");
 	if (!fOut->IsOpen()) return;
 
 	TH1D *hMCT = new TH1D("hMC12BT", "Time from muon, MC;ms;Events", 99, 1, 100);
 	tMC->Project(hMCT->GetName(), "TimelineShift / 1000000.0", "AnnihilationEnergy < 0.25 && PositronEnergy > 4.0");
 	hMCT->Sumw2();
 	hMCT->Write();
-	
-	for (i=0; i<41; i++) for (j=0; j<13; j++) {
+	j = 6;
+	for (i=0; i<41; i++) {
 		scale = 0.9 + 0.005*i;
 		shift = -0.15 + 0.025 * j;
 		
@@ -440,8 +449,8 @@ void scan_12B(const char *expname, const char *mcname)
 		printf("Not all histograms found in %s.\n", expname);
 		return;
 	}
-	
-	for (i=0; i<41; i++) for (j=0; j<13; j++) {
+	j = 6;	// no shift
+	for (i=0; i<41; i++) {
 		sprintf(str, "hMC12B_%2.2d_%2.2d", i, j);
 		hMC = (TH1D *) fMC->Get(str);
 		sprintf(str, "hMC12BSiPM_%2.2d_%2.2d", i, j);

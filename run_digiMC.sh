@@ -8,7 +8,7 @@
 cd /home/itep/alekseev/igor
 
 OVERWRITE=NO
-MCRAW=MC_RAW
+MCRAW=/home/clusters/rrcmpi/danss/MC_RAW/New
 OUTDIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/
 DIGI=digi_MC
 EXE=./evtbuilder5
@@ -19,23 +19,42 @@ do_sources()
 {
 	declare -a SRCLIST
 	declare -a RAWLIST
-	SRCLIST=(mc_12B_indLY_transcode_rawProc_pedSim.digi \
-		 mc_22Na_indLY_transcode_rawProc_pedSim.digi \
-		 mc_22Na_92_5_cmPos_indLY_transcode_rawProc_pedSim.digi \
-		 mc_248Cm_indLY_transcode_rawProc_pedSim.digi \
-		 mc_248Cm_92_5_cmPos_indLY_transcode_rawProc_pedSim.digi \
-		 mc_60Co_indLY_transcode_rawProc_pedSim.digi \
-		 mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.digi\
-		 mc_12B-DB_indLY_transcode_rawProc_pedSim.digi)
-	RAWLIST=(12B_v2 22Na_v2 22Na_92_5_cm_pos_v2 248Cm_v2 248Cm_92_5_cm_pos_v2 60Co_v2 60Co_92_5_cm_pos_v2 12B-DB)
+	SRCLIST=(12B/mc_12B_indLY_transcode_rawProc_pedSim_DBspectrum1.digi \
+		12B/mc_12B_indLY_transcode_rawProc_pedSim_DBspectrum2.digi \
+		12B/mc_12B_indLY_transcode_rawProc_pedSim_G4spectrum1.digi \
+		12B/mc_12B_indLY_transcode_rawProc_pedSim_G4spectrum2.digi \
+		22Na/mc_22Na_indLY_transcode_rawProc_pedSim_92_5_cm1.digi \
+		22Na/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.digi \
+		22Na/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_92_5_cm1.digi \
+		22Na/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_Center1.digi \
+		248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.digi \
+		248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.digi \
+		248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.digi \
+		248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.digi \
+		60Co/mc_60Co_indLY_transcode_rawProc_pedSim_92_5_cm1.digi \
+		60Co/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.digi)
+	RAWLIST=(12B/DB_spectrum_new_model/DANSS0_1.root \
+		12B/DB_spectrum_new_model/DANSS0_2.root \
+		12B/G4_spectrum_new_model/DANSS0_1.root \
+		12B/G4_spectrum_new_model/DANSS0_2.root \
+		22Na/92_5_cm_pos_new_model/DANSS0_1.root \
+		22Na/Center_new_model/DANSS0_1.root \
+		22Na/Full_decay_92_5_cm_pos_new_model/DANSS0_1.root \
+		22Na/Full_decay_center_new_model/DANSS0_1.root \
+		248Cm_neutron/92_5_cm_pos_new_model/DANSS0_1.root \
+		248Cm_neutron/92_5_cm_pos_new_model/DANSS0_2.root \
+		248Cm_neutron/Center_new_model/DANSS0_1.root \
+		248Cm_neutron/Center_new_model/DANSS0_2.root \
+		60Co/92_5_cm_pos_new_model/DANSS0_1.root
+		60Co/Center_new_model/DANSS0_1.root)
 	
-	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/newNewLY/DataTakingPeriod02/RadSources_v2
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/RadSources
 	if [ "x$1" == "x" ] ; then
 		for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
-			${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$i]}/DANSS0_1.root ${DEAD}
+			${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources_v6 -mcfile ${MCRAW}/${RAWLIST[$i]} ${DEAD}
 		done
 	else
-		${EXE} ${DIGIN}/${SRCLIST[$1]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$1]}/DANSS0_1.root ${DEAD} -events 500000
+		${EXE} ${DIGIN}/${SRCLIST[$1]} 0x70000 ${OUTDIR}/RadSources -mcfile ${MCRAW}/${RAWLIST[$1]} ${DEAD} -events 500000
 	fi
 }
 
@@ -281,6 +300,6 @@ do_StMuCenter_new()
 }
 
 date
-do_sources_full
+do_sources
 date
 exit 0

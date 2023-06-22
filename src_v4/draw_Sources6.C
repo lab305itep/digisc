@@ -537,30 +537,43 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "60Co_jun22_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
-		
 	case 1001:	// Na MC, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_22Na_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1002:	// Na MC, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_22Na_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
+	case 1011:	// Na MC - full model, center
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_Center1.root");
+		tMc->AddFile(str);
+		name = "22Na";
+		sprintf(fname, "22Na_MCF_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
+	case 1012:	// Na MC - full model, edge
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_92_5_cm1.root");
+		tMc->AddFile(str);
+		name = "22Na";
+		sprintf(fname, "22Na_MCF_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 90;
+		break;
 	case 1101:	// Co MC, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1102:	// Co MC, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources/mc_60Co_92_5_cmPos_indLY_transcode_rawProc_pedSim.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_60Co_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
@@ -569,19 +582,21 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 	default:
 		printf("%d - unknown\n", iser);
 		printf("Available valuse for iser = MIDD:\n");
-		printf("M - MC (1) or experiment (0);\n");
-		printf("I - isotope: 60Co (1) or 22Na (0);\n");
+		printf("M  - MC (1) or experiment (0);\n");
+		printf("I  - isotope: 60Co (1) or 22Na (0);\n");
 		printf("DD - serial for experiment:\n");
 		printf("1  - February 17, center\n");
 		printf("2  - February 17, edge\n");
-		printf("11  - November 18, center\n");
-		printf("12  - November 18, edge\n");
-		printf("21  - June 22, center\n");
-		printf("31  - June 22, center, UP\n");
+		printf("11 - November 18, center\n");
+		printf("12 - November 18, edge\n");
+		printf("21 - June 22, center\n");
+		printf("31 - June 22, center, UP\n");
 		printf("DD - for MC:\n");
 		printf("1  - center (50, 50, 50) position\n");
 		printf("2  - edge (50, 90, 50) position\n");
-		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 1001 1002 1101 1102\n");
+		printf("11 - center (50, 50, 50) position, full decay\n");
+		printf("12 - edge (50, 90, 50) position, full decay\n");
+		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 1001 1002 1011 1012 1101 1102\n");
 		code = -1;
 		break;
 	}
@@ -679,10 +694,11 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 	version = "root8n2"
 	RMAX - maximum distance from the source
 */
-void draw_scale_scan(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2", double RMAX = 30)
+void draw_scale_scan(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2", 
+	double RMAX = 30, const char *mcsuffix = "MC")
 {
 	const char *exppattern = "%s_%s_%s_%s_R%4.1f.root"; 		// what, when, where, version, RMAX
-	const char *MCpattern = "%s_MC_%s_%s_S%5.3f_R%4.1f.root";	// what, whereMC, version, scale, RMAX
+	const char *MCpattern = "%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
 	const int binMin = 11;
 	const int binMax = 26;
 	char expname[1024];
@@ -739,7 +755,7 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	
 	for (i=0; i<41; i++) {
 		scale = 0.9 + 0.005*i;
-		sprintf(MCname, MCpattern, what, whereMC, version, scale, RMAX);
+		sprintf(MCname, MCpattern, what, mcsuffix, whereMC, version, scale, RMAX);
 		fMC = new TFile(MCname);
 		if (!fMC->IsOpen()) return;
 		hMC = (TH1D *) fMC->Get("hMc");
@@ -772,6 +788,8 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	sMin = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
 	sprintf(str, "scale = %5.3f", sMin);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#chi^{2}_{min} = %6.1f", fPol2->Eval(sMin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 
 	cv->cd(5);
 	hScanSiPM->Fit(fPol2, "q");
@@ -781,6 +799,8 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	sMinSiPM = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
 	sprintf(str, "scale = %5.3f", sMinSiPM);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#chi^{2}_{min} = %6.1f", fPol2->Eval(sMinSiPM));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 
 	cv->cd(6);
 	hScanPMT->Fit(fPol2, "q");
@@ -790,12 +810,14 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	sMinPMT = -fPol2->GetParameter(1) / (2 * fPol2->GetParameter(2));
 	sprintf(str, "scale = %5.3f", sMinPMT);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#chi^{2}_{min} = %6.1f", fPol2->Eval(sMinPMT));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 	
 	i = (sMin - 0.8975) / 0.005;
 	if (i < 0) i = 0;
 	if (i > 41) i = 41;
 	scale = 0.9 + 0.005*i;
-	sprintf(MCname, MCpattern, what, whereMC, version, scale, RMAX);
+	sprintf(MCname, MCpattern, what, mcsuffix, whereMC, version, scale, RMAX);
 	fMC = new TFile(MCname);
 	if (!fMC->IsOpen()) return;
 	hMC = (TH1D *) fMC->Get("hMc");
