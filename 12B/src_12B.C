@@ -497,6 +497,8 @@ void scan_12B(const char *expname, const char *mcname)
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Scale=%5.3f", xmin);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 	cv->cd(5);
 	TH1D *hScanSiPMX = hScanSiPM->ProjectionX("_px", iMinYSiPM, iMinYSiPM);
 	hScanSiPMX->SetTitle("Profile at Shift = 0");
@@ -505,6 +507,8 @@ void scan_12B(const char *expname, const char *mcname)
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Scale=%5.3f", xmin);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 	cv->cd(6);
 	TH1D *hScanPMTX = hScanPMT->ProjectionX("_px", iMinYPMT, iMinYPMT);
 	hScanPMTX->SetTitle("Profile at Shift = 0");
@@ -513,6 +517,8 @@ void scan_12B(const char *expname, const char *mcname)
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Scale=%5.3f", xmin);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 	cv->cd(7);
 	TH1D *hScanY = hScan->ProjectionY("_py", iMinX, iMinX);
 	hScanY->SetTitle("Profile at Scale = 1");
@@ -521,6 +527,8 @@ void scan_12B(const char *expname, const char *mcname)
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Shift=%6.3f", xmin);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 	cv->cd(8);
 	TH1D *hScanSiPMY = hScanSiPM->ProjectionY("_py", iMinXSiPM, iMinXSiPM);
 	hScanSiPMY->SetTitle("Profile at Scale = 1");
@@ -529,6 +537,8 @@ void scan_12B(const char *expname, const char *mcname)
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Shift=%6.3f", xmin);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 	cv->cd(9);
 	TH1D *hScanPMTY = hScanPMT->ProjectionY("_py", iMinXPMT, iMinXPMT);
 	hScanPMTY->SetTitle("Profile at Scale = 1");
@@ -537,6 +547,8 @@ void scan_12B(const char *expname, const char *mcname)
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Shift=%6.3f", xmin);
 	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
 	cv->SaveAs("12B_82_scan.png");
 	
 	TFile *fOut = new TFile("12B_82_scan.root", "RECREATE");
