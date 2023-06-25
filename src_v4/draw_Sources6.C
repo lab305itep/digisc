@@ -680,6 +680,7 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 {
 	double sum;
 	int i;
+	sum = 0;
 	for (i = binMin; i <= binMax; i++) sum += 
 		(hA->GetBinContent(i) - hB->GetBinContent(i)) * (hA->GetBinContent(i) - hB->GetBinContent(i)) /
 		(hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i));
