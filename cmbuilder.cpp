@@ -183,23 +183,22 @@ int main(int argc, char **argv)
 		if (DanssEvent.globalTime - lastVeto < VETOBLK * GFREQ2US) {
 			continue;	// Veto is active
 		}
-		if (DanssEvent.globalTime - lastgTime < MAXTDIFF * GFREQ2US) {
-			Add2Cm(&DanssEvent, &DanssCm, nCnt, lastgTime);
-			nCnt++;
-			continue;
-		} else {
-			if (nCnt) {
-				DanssCm.N = nCnt;
-				tOut->Fill();
-				if (nCnt > 0) CmCnt++;
-				nCnt = 0;
-				memset(&DanssCm, 0, sizeof(struct DanssCmStruct));			
-			}
-			if (IsFission(&DanssEvent)) {
-				lastgTime = DanssEvent.globalTime;
+		if (nCnt) {
+			if (DanssEvent.globalTime - lastgTime < MAXTDIFF * GFREQ2US) {		// MAXTDIFF is not over
 				Add2Cm(&DanssEvent, &DanssCm, nCnt, lastgTime);
 				nCnt++;
+			} else {								// MAXTDIFF is over
+				if (nCnt > 1) {							// We have at least gamma flush and one neutron candidate - store
+					DanssCm.N = nCnt;
+					tOut->Fill();
+				}
+				nCnt = 0;
+				memset(&DanssCm, 0, sizeof(struct DanssCmStruct));
 			}
+		} else if (IsFission(&DanssEvent)) {
+			lastgTime = DanssEvent.globalTime;
+			Add2Cm(&DanssEvent, &DanssCm, nCnt, lastgTime);
+			nCnt = 1;
 		}
 	}
 	
