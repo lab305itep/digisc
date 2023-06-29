@@ -178,11 +178,11 @@ int main(int argc, char **argv)
 		if (IsVeto(&DanssEvent)) {
 			lastVeto = DanssEvent.globalTime;
 			lastgTime = -GLOBALFREQ;
-			nCnt = 0;
+			nCnt = 0;							// kill event if it is overlapped by muon etc
+			memset(&DanssCm, 0, sizeof(struct DanssCmStruct));
 		}
-		if (DanssEvent.globalTime - lastVeto < VETOBLK * GFREQ2US) {
-			continue;	// Veto is active
-		}
+		if (DanssEvent.globalTime - lastVeto < VETOBLK * GFREQ2US) continue;	// Veto is active
+		if (DanssEvent.SiPmCleanEnergy < 0.0001) continue;
 		if (nCnt) {
 			if (DanssEvent.globalTime - lastgTime < MAXTDIFF * GFREQ2US) {		// MAXTDIFF is not over
 				Add2Cm(&DanssEvent, &DanssCm, nCnt, lastgTime);
@@ -191,6 +191,7 @@ int main(int argc, char **argv)
 				if (nCnt > 1) {							// We have at least gamma flush and one neutron candidate - store
 					DanssCm.N = nCnt;
 					tOut->Fill();
+					CmCnt++;
 				}
 				nCnt = 0;
 				memset(&DanssCm, 0, sizeof(struct DanssCmStruct));

@@ -78,7 +78,8 @@ void src_248Cm(const char *fnameIn, const char *fnameOut, int nMax = 7)
 
 	fOut->cd();
 	for (i=1; i<=nMax; i++) {
-		sprintf(strA, "(SiPmCleanEnergy[%d]+PmtCleanEnergy[%d])/2", i, i);
+//		sprintf(strA, "(SiPmCleanEnergy[%d]+PmtCleanEnergy[%d])/2", i, i);
+		sprintf(strA, "NeutronEnergy[%d]", i);
 		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2", i, i, i);
 		t->Project(hCm1->GetName(), strA, strB);
 		hCm->Add(hCm1);
@@ -140,7 +141,7 @@ void src_248CmMCn(const char *fnameIn, const char *fnameOut, int nMax = 7)
 		sprintf(strA, "hMCPMT_%2.2d", i);
 		sprintf(strB, "^{248}Cm MC neutron data. Scale=%5.3f, PMT;Energy of delayed event, MeV;Events", scale);
 		hMCPMT = new TH1D(strA, strB, 120, 0, 12);
-		sprintf(strA, "(SiPmCleanEnergy+PmtCleanEnergy)*%5.3f", scale/2);
+		sprintf(strA, "NeutronEnergy*%5.3f", scale);
 		t->Project(hMC->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250");
 		sprintf(strA, "SiPmCleanEnergy*%5.3f", scale);
 		t->Project(hMCSiPM->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250");
@@ -162,20 +163,84 @@ void src_248CmMCn(const char *fnameIn, const char *fnameOut, int nMax = 7)
 	fOut->Close();
 }
 
-// To be called from batch - generate exp and MC files
-void cm_capture_energy5(void)
+//	Make MC hists from file(s) with a tree of 248Cm fission events
+//  fnameIn - input file name(s)
+//  fnameOut - outptu file name
+void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMax = 7)
 {
-	src_248Cm("cm_14428_14485_8.2.root", "248Cm_mar17_center_8.2.root");
-	src_248Cm("cm_50578_50647_8.2.root", "248Cm_nov18_center_8.2.root");
-	src_248Cm("cm_127720_127772_8.2.root", "248Cm_jun22_center_8.2.root");
-	src_248Cm("cm_14487_14512_8.2.root", "248Cm_mar17_edge_8.2.root");
-	src_248Cm("cm_50875_50947_8.2.root", "248Cm_nov18_edge_8.2.root");
-	src_248Cm("cm_14428_14485_8.2.root cm_50578_50647_8.2.root cm_127720_127772_8.2.root", "248Cm_ALL_center_8.2.root");
-	src_248Cm("cm_14487_14512_8.2.root cm_50875_50947_8.2.root", "248Cm_ALL_edge_8.2.root");
-	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.root "
-		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.root", "248Cm_MC_center_8.2.root");
-	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root "
-		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.root", "248Cm_MC_edge_8.2.root");
+	char strA[1024];
+	char strB[1024];
+	int i, j;
+	double scale;
+	TH1D *hMC;
+	TH1D *hMCSiPM;
+	TH1D *hMCPMT;
+	TH2D *hMCXY;
+	TH1D *hMC1;
+	TH1D *hMCSiPM1;
+	TH1D *hMCPMT1;
+	
+	TFile *fOut = new TFile(fnameOut, "RECREATE");
+	if (!fOut->IsOpen()) return;
+	
+	TChain *t = create_chain(fnameIn, "DanssCm");
+	if (!t) {
+		printf("Something is wrong with the MC tree file %s\n", fnameIn);
+		return;
+	}
+
+	fOut->cd();
+	for (i=0; i<41; i++) {
+		scale = 0.9 + 0.005 * i;
+		sprintf(strA, "hMC_%2.2d", i);
+		sprintf(strB, "^{248}Cm MC neutron data. Scale=%5.3f;Energy of delayed event, MeV;Events", scale);
+		hMC = new TH1D(strA, strB, 120, 0, 12);
+		sprintf(strA, "hMCSiPM_%2.2d", i);
+		sprintf(strB, "^{248}Cm MC neutron data. Scale=%5.3f, SiPM;Energy of delayed event, MeV;Events", scale);
+		hMCSiPM = new TH1D(strA, strB, 120, 0, 12);
+		sprintf(strA, "hMCPMT_%2.2d", i);
+		sprintf(strB, "^{248}Cm MC neutron data. Scale=%5.3f, PMT;Energy of delayed event, MeV;Events", scale);
+		hMCPMT = new TH1D(strA, strB, 120, 0, 12);
+		
+		hMC1 = (TH1D*) hMC->Clone("hMC1");
+		hMCSiPM1 = (TH1D*) hMCSiPM->Clone("hMCSiPM1");
+		hMCPMT1 = (TH1D*) hMCPMT->Clone("hMCPMT1");
+		for (j=1; j<=nMax; j++) {
+			sprintf(strA, "NeutronEnergy[%d]*%5.3f", j, scale);
+			sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2", j, j, j);
+			t->Project(hMC1->GetName(), strA, strB);
+			hMC->Add(hMC1);
+			sprintf(strA, "SiPmCleanEnergy[%d]*%5.3f", j, scale);
+			t->Project(hMCSiPM1->GetName(), strA, strB);
+			hMCSiPM->Add(hMCSiPM1);
+			sprintf(strA, "PmtCleanEnergy[%d]*%5.3f", j, scale);
+			t->Project(hMCPMT1->GetName(), strA, strB);
+			hMCPMT->Add(hMCPMT1);
+		}
+
+		hMC->Sumw2();
+		hMCSiPM->Sumw2();
+		hMCPMT->Sumw2();
+
+		hMC->Write();
+		hMCSiPM->Write();
+		hMCPMT->Write();
+		
+		delete hMC1;
+		delete hMCSiPM1;
+		delete hMCPMT1;
+	}
+	hMCXY = new TH2D("hMCXY", "^{248}Cm MC neutron data;X, cm;Y, cm", 25, 0, 100, 25, 0, 100);
+	TH2D *hMCXY1 = (TH2D*) hMCXY->Clone("hCmXY1");
+	for (i=1; i<=nMax; i++) {
+		sprintf(strA, "NeutronX[%d][1]+2:NeutronX[%d][0]+2", i, i);
+		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2 && NeutronX[%d][1]>=0 && NeutronX[%d][0]>=0", i, i, i, i, i);
+		t->Project(hMCXY1->GetName(), strA, strB);
+		hMCXY->Add(hMCXY1);
+	}
+	hMCXY->Fill(18., 2., -1);
+	hMCXY->Write();
+	fOut->Close();
 }
 
 /*
@@ -328,4 +393,22 @@ void scan_248Cm(const char *expname, const char *mcname, const char *resname)
 	fOut->Close();
 	fExp->Close();
 	fMC->Close();
+}
+
+// To be called from batch - generate exp and MC files
+void cm_capture_energy5(void)
+{
+	src_248Cm("cm_14428_14485_8.2.root", "248Cm_mar17_center_8.2.root");
+	src_248Cm("cm_50578_50647_8.2.root", "248Cm_nov18_center_8.2.root");
+	src_248Cm("cm_127720_127772_8.2.root", "248Cm_jun22_center_8.2.root");
+	src_248Cm("cm_14487_14512_8.2.root", "248Cm_mar17_edge_8.2.root");
+	src_248Cm("cm_50875_50947_8.2.root", "248Cm_nov18_edge_8.2.root");
+	src_248Cm("cm_14428_14485_8.2.root cm_50578_50647_8.2.root cm_127720_127772_8.2.root", "248Cm_ALL_center_8.2.root");
+	src_248Cm("cm_14487_14512_8.2.root cm_50875_50947_8.2.root", "248Cm_ALL_edge_8.2.root");
+	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.root "
+		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.root", "248Cm_MC_center_8.2.root");
+	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root "
+		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.root", "248Cm_MC_edge_8.2.root");
+	src_248CmMC("cm_MC_center_8.2.root", "248Cm_MCF_center_8.2.root");
+	src_248CmMC("cm_MC_edge_8.2.root", "248Cm_MCF_edge_8.2.root");
 }
