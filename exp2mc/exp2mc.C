@@ -37,6 +37,7 @@ TChain *make_MCchain(int isotope)
 }
 
 // average fPu239 for Oct16-Mar22 = 31.8%
+// average fPu239 for Oct16-Mar23 = 28.3% !!! new fractions
 
 void exp2mc(const char *file_exp, const char *name_exp = "hSum_Main", double fPu239 = 34.0, 
 	double kScale = 1.00, double kShift = 0, const char *cAux = NULL, const char *sAux = NULL)

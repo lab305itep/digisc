@@ -22,8 +22,8 @@
 #define UGLY_MC_SIPM_CORR	1.08
 
 /* MC nominal values */
-const double pheSiPM = 20.4 / UGLY_MC_SIPM_CORR;
-const double phePMT = 15.2;
+// const double pheSiPM = 20.4 / UGLY_MC_SIPM_CORR;
+// const double phePMT = 15.2;
 // 0 = 50, 9 = 51, 15 = 52 = <Avr> = 71.1, 27 = 53
 const double PMTpheADC[64] = {
 	77.2, 73.6, 73.5, 70.3, 65.1, 81.5, 70.8, 69.2, 74.3, 77.8, 
@@ -713,6 +713,8 @@ void draw_mc2exp(const char *fname)
  * fname - Calibration filename.bin
  * pheSiPM0, phePMT - new values for MC ph.c./MeV
  * 01.05.2023: 20.94 and 15.61
+ * 13.07.2023: 20.19 and 15.07 - new Birks and Cherenkov
+ * 06.08.2023: 20.04 and 15.15 - next iteration
  * Median valuse are calculated from the calibration file.
  * The result is written in two files (for SiPM and PMT)
  * Old constants: MC nominal values 

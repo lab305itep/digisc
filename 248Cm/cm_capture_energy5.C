@@ -51,7 +51,7 @@ TChain *create_chain(const char *fname, const char *chname)
 //	Make experimental hists from file(s) with a tree of 248Cm fission events
 //  fnameIn - input file name(s)
 //  fnameOut - outptu file name
-void src_248Cm(const char *fnameIn, const char *fnameOut, int nMax = 7)
+void src_248Cm(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax = 7)
 {
 	char strA[1024];
 	char strB[1024];
@@ -77,7 +77,7 @@ void src_248Cm(const char *fnameIn, const char *fnameOut, int nMax = 7)
 	TH2D *hCmXY1 = (TH2D*) hCmXY->Clone("hCmXY1");
 
 	fOut->cd();
-	for (i=1; i<=nMax; i++) {
+	for (i=nMin; i<=nMax; i++) {
 //		sprintf(strA, "(SiPmCleanEnergy[%d]+PmtCleanEnergy[%d])/2", i, i);
 		sprintf(strA, "NeutronEnergy[%d]", i);
 		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2", i, i, i);
@@ -109,7 +109,7 @@ void src_248Cm(const char *fnameIn, const char *fnameOut, int nMax = 7)
 //	Make MC hists from file(s) with a tree of 248Cm neutrons
 //  fnameIn - input file name(s)
 //  fnameOut - outptu file name
-void src_248CmMCn(const char *fnameIn, const char *fnameOut, int nMax = 7)
+void src_248CmMCn(const char *fnameIn, const char *fnameOut)
 {
 	char strA[1024];
 	char strB[1024];
@@ -166,7 +166,7 @@ void src_248CmMCn(const char *fnameIn, const char *fnameOut, int nMax = 7)
 //	Make MC hists from file(s) with a tree of 248Cm fission events
 //  fnameIn - input file name(s)
 //  fnameOut - outptu file name
-void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMax = 7)
+void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax = 7)
 {
 	char strA[1024];
 	char strB[1024];
@@ -205,7 +205,7 @@ void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMax = 7)
 		hMC1 = (TH1D*) hMC->Clone("hMC1");
 		hMCSiPM1 = (TH1D*) hMCSiPM->Clone("hMCSiPM1");
 		hMCPMT1 = (TH1D*) hMCPMT->Clone("hMCPMT1");
-		for (j=1; j<=nMax; j++) {
+		for (j=nMin; j<=nMax; j++) {
 			sprintf(strA, "NeutronEnergy[%d]*%5.3f", j, scale);
 			sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2", j, j, j);
 			t->Project(hMC1->GetName(), strA, strB);
@@ -232,7 +232,7 @@ void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMax = 7)
 	}
 	hMCXY = new TH2D("hMCXY", "^{248}Cm MC neutron data;X, cm;Y, cm", 25, 0, 100, 25, 0, 100);
 	TH2D *hMCXY1 = (TH2D*) hMCXY->Clone("hCmXY1");
-	for (i=1; i<=nMax; i++) {
+	for (i=nMin; i<=nMax; i++) {
 		sprintf(strA, "NeutronX[%d][1]+2:NeutronX[%d][0]+2", i, i);
 		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2 && NeutronX[%d][1]>=0 && NeutronX[%d][0]>=0", i, i, i, i, i);
 		t->Project(hMCXY1->GetName(), strA, strB);

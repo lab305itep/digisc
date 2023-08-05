@@ -326,7 +326,16 @@ do_StMuCenter_new()
 		${OUTDIR}/Stopped_muons_central_part_new_model -mcfile ${_mc_raw}/DANSS0_2.root ${DEAD}
 }
 
+do_mu_e_C_decay()
+{
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/New/Muons/Electrons_from_muminus_decay_in_C_orbit_new_model
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Muons/Electrons_from_muminus_decay_in_C_orbit_new_model
+	mkdir -p ${OUTDIR}/Electrons_from_muminus_decay_in_C_orbit_new_model
+	${EXE} ${DIGIN}/mc_MuonsMuMinus_indLY_transcode_rawProc_pedSim_01.digi 0x70000 \
+		${OUTDIR}/Electrons_from_muminus_decay_in_C_orbit_new_model -mcfile ${_mc_raw}/DANSS0_1.root ${DEAD}
+}
+
 date
-do_sources
+do_mu_e_C_decay
 date
 exit 0
