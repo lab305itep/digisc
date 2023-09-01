@@ -398,17 +398,21 @@ void scan_248Cm(const char *expname, const char *mcname, const char *resname)
 // To be called from batch - generate exp and MC files
 void cm_capture_energy5(void)
 {
-	src_248Cm("cm_14428_14485_8.2.root", "248Cm_mar17_center_8.2.root");
-	src_248Cm("cm_50578_50647_8.2.root", "248Cm_nov18_center_8.2.root");
-	src_248Cm("cm_127720_127772_8.2.root", "248Cm_jun22_center_8.2.root");
-	src_248Cm("cm_14487_14512_8.2.root", "248Cm_mar17_edge_8.2.root");
-	src_248Cm("cm_50875_50947_8.2.root", "248Cm_nov18_edge_8.2.root");
-	src_248Cm("cm_14428_14485_8.2.root cm_50578_50647_8.2.root cm_127720_127772_8.2.root", "248Cm_ALL_center_8.2.root");
-	src_248Cm("cm_14487_14512_8.2.root cm_50875_50947_8.2.root", "248Cm_ALL_edge_8.2.root");
-	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.root "
-		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.root", "248Cm_MC_center_8.2.root");
-	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root "
-		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.root", "248Cm_MC_edge_8.2.root");
-	src_248CmMC("cm_MC_center_8.2.root", "248Cm_MCF_center_8.2.root");
-	src_248CmMC("cm_MC_edge_8.2.root", "248Cm_MCF_edge_8.2.root");
+//	src_248Cm("cm_14428_14485_8.2.root", "248Cm_mar17_center_8.2.root");
+//	src_248Cm("cm_50578_50647_8.2.root", "248Cm_nov18_center_8.2.root");
+//	src_248Cm("cm_127720_127772_8.2.root", "248Cm_jun22_center_8.2.root");
+//	src_248Cm("cm_14487_14512_8.2.root", "248Cm_mar17_edge_8.2.root");
+//	src_248Cm("cm_50875_50947_8.2.root", "248Cm_nov18_edge_8.2.root");
+//	src_248Cm("cm_14428_14485_8.2.root cm_50578_50647_8.2.root cm_127720_127772_8.2.root", "248Cm_ALL_center_8.2.root");
+//	src_248Cm("cm_14487_14512_8.2.root cm_50875_50947_8.2.root", "248Cm_ALL_edge_8.2.root");
+//	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.root "
+//		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.root", "248Cm_MC_center_8.2.root");
+//	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root "
+//		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.root", "248Cm_MC_edge_8.2.root");
+	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.root",
+		"248Cm_MC_center_8.2_v9.root");
+	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root",
+		"248Cm_MC_edge_8.2_v9.root");
+//	src_248CmMC("cm_MC_center_8.2.root", "248Cm_MCF_center_8.2.root");
+//	src_248CmMC("cm_MC_edge_8.2.root", "248Cm_MCF_edge_8.2.root");
 }

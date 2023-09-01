@@ -538,42 +538,42 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Y = 50;
 		break;
 	case 1001:	// Na MC, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1002:	// Na MC, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
 	case 1011:	// Na MC - full model, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_Center1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_Center1.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MCF_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1012:	// Na MC - full model, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_92_5_cm1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "22Na_MCF_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
 	case 1101:	// Co MC, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1102:	// Co MC, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_60Co_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_60Co_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "60Co_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
@@ -693,7 +693,8 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 	when = "feb17", "nov18" or "jun22"
 	where = "center", "centerUP" or "edge"
 	version = "root8n2"
-	RMAX - maximum distance from the source
+	RMAX - maximum distance from the source ()
+	mcsuffix - "MC" or "MCF"
 */
 void draw_scale_scan(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2", 
 	double RMAX = 30, const char *mcsuffix = "MC")
