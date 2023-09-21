@@ -67,8 +67,16 @@ do_sources()
 #		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm8.digi \
 #		/60Co/mc_60Co_indLY_transcode_rawProc_pedSim_92_5_cm1.digi \
 #		/60Co/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.digi)
-	SRCLIST=(/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.digi \
-		/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.digi)
+	SRCLIST=(/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.digi \
+		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.digi \
+		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center3.digi \
+		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center4.digi \
+		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center5.digi \
+		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center6.digi \
+		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center7.digi \
+		/248Cm/mc_248Cm_indLY_transcode_rawProc_pedSim_Center8.digi \
+		/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.digi \
+		/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.digi)
 #	RAWLIST=(12B/DB_spectrum_new_model/DANSS0_1.root \
 #		12B/DB_spectrum_new_model/DANSS0_2.root \
 #		12B/G4_spectrum_new_model/DANSS0_1.root \
@@ -117,10 +125,22 @@ do_sources()
 #		/248Cm/92_5_cm_pos_new_Cherenkov/DANSS0_8.root \
 #		/60Co/92_5_cm_pos_new_Cherenkov/DANSS0_1.root \
 #		/60Co/Center_new_Cherenkov/DANSS0_1.root)
-	RAWHIST=(/248Cm_neutron/92_5_cm_pos_new_Cherenkov/DANSS0_1.root \
-		/248Cm_neutron/Center_new_Cherenkov/DANSS0_1.root)
+	RAWHIST=(/248Cm/Center_new_Cherenkov/DANSS0_1.root
+		/248Cm/Center_new_Cherenkov/DANSS0_2.root \
+		/248Cm/Center_new_Cherenkov/DANSS0_3.root \
+		/248Cm/Center_new_Cherenkov/DANSS0_4.root \
+		/248Cm/Center_new_Cherenkov/DANSS0_5.root \
+		/248Cm/Center_new_Cherenkov/DANSS0_6.root \
+		/248Cm/Center_new_Cherenkov/DANSS0_7.root \
+		/248Cm/Center_new_Cherenkov/DANSS0_8.root \
+		/248Cm_neutron/92_5_cm_pos_new_Cherenkov/DANSS0_2.root \
+		/248Cm_neutron/Center_new_Cherenkov/DANSS0_2.root)
 	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v9/RadSources/
-	for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
+#	for ((i=0;$i<${#SRCLIST[@]};i=$i+1)) ; do
+	for ((i=0;$i<8;i=$i+1)) ; do
+		${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources_v9 -mcfile ${MCRAW}/${RAWLIST[$i]} ${DEAD}
+	done
+	for ((i=8;$i<10;i=$i+1)) ; do
 		${EXE} ${DIGIN}/${SRCLIST[$i]} 0x70000 ${OUTDIR}/RadSources_v9/248Cm_neutron -mcfile ${MCRAW}/${RAWLIST[$i]} ${DEAD}
 	done
 }
@@ -181,13 +201,13 @@ do_stoppedmuons()
 
 do_cutmuons()
 {
-	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/Hit_checker_new_model_cutted
-	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v6/Hit_checker_new_model_cutted
+	_mc_raw=/home/clusters/rrcmpi/danss/MC_RAW/v9/Hit_checker_new_Cherenkov_cutted
+	DIGIN=/home/clusters/rrcmpi/danss/DANSS/digi_MC/new_model_newProfiles_v9/Hit_checker_new_Cherenkov_cutted
 	for ((k=0;$k<5;k=$k+1)) ; do
 		for ((i=1;$i<=16;i=$i+1)) ; do
 			j=`printf "%2.2d" $i`
 			${EXE} ${DIGIN}/mc_Muons_indLY_transcode_rawProc_pedSim_0${k}_${j}.digi 0x70000 \
-				${OUTDIR}/Hit_checker_new_model_cutted -mcfile ${_mc_raw}/DANSS${k}_${i}.root ${DEAD}
+				${OUTDIR}/Hit_checker_new_model_cutted_v9 -mcfile ${_mc_raw}/DANSS${k}_${i}.root ${DEAD}
 		done
 	done
 }
@@ -376,6 +396,6 @@ do_mu_e_C_decay()
 }
 
 date
-do_sources
+do_cutmuons
 date
 exit 0

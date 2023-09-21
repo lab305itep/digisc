@@ -409,10 +409,12 @@ void cm_capture_energy5(void)
 //		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.root", "248Cm_MC_center_8.2.root");
 //	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root "
 //		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v6/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.root", "248Cm_MC_edge_8.2.root");
-	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.root",
-		"248Cm_MC_center_8.2_v9.root");
-	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root",
-		"248Cm_MC_edge_8.2_v9.root");
-//	src_248CmMC("cm_MC_center_8.2.root", "248Cm_MCF_center_8.2.root");
-//	src_248CmMC("cm_MC_edge_8.2.root", "248Cm_MCF_edge_8.2.root");
+//	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center1.root "
+//		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_Center2.root",
+//		"248Cm_MC_center_8.2_v9.root");
+//	src_248CmMCn("/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm1.root "
+//		"/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/248Cm_neutron/mc_248Cm_indLY_transcode_rawProc_pedSim_92_5_cm2.root",
+//		"248Cm_MC_edge_8.2_v9.root");
+	src_248CmMC("cm_MC_center_8.2_v9.root", "248Cm_MCF_center_8.2_v9.root");
+	src_248CmMC("cm_MC_edge_8.2_v9.root", "248Cm_MCF_edge_8.2_v9.root");
 }
