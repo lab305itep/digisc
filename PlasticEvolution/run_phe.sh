@@ -8,9 +8,8 @@
 
 cd /home/itep/alekseev/igor/PlasticEvolution
 date
-./phe_hist phe_2000_121999.root 2000 121999 100 0.0
-for adc in 9 10 11 18 19 29 30 31 32 ; do
-	./phe_hist phe_2000_121999_${adc}.root 2000 121999 200 0.0 $adc
+for alpha in -1.0 -0.8 -0.6 -0.4 -0.2 0 0.2 0.4 0.6 0.8 1.0 ; do
+	./phe_hist phe_2200_142799a${alpha}.root 2200 142799 100 $alpha
 done
 date
 

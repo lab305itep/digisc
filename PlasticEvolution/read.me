@@ -1,0 +1,8 @@
+    Plastic ageing analysis
+1) Get vertical tracks and corresponding hits from digi files.
+    danss_submit run_digi_mpi run_begin run_end
+2) Calculate average 1 pixel integrals for all strips.
+    ./f1px_avr file_with_1px_average.bin [run_begin run_end]
+File name avr1px.bin is expected at the next step.
+3) Run phe_hist to create medians etc.
+    ./phe_hist result_file.root run_begin run_end chunk_size alpha [cuts]

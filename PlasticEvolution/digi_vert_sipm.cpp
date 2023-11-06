@@ -38,6 +38,7 @@
 #include "TF1.h"
 #include "TH1.h"
 #include "TH2.h"
+#include "TString.h"
 
 #include "readDigiData.h"
 #include "danssGlobals.h"
@@ -89,10 +90,13 @@ TH2D  *hXZ;
 TH2D  *hYZ;
 TH1D  *hCoef[MAXADC][MAXCHAN];
 TH1D  *hNhits;
+float XZ[50][25], YZ[50][25];
 
 int EventCnt;
 int SelectedCnt;
 int HitCnt;
+int DebugFlag;
+int CoefFlag;
 
 //**************** Longitudinal correction
 
@@ -150,10 +154,18 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	char *chOutputFile;
 
 	chOutputFile = NULL;
+	DebugFlag = 0;
+	CoefFlag = 0;
 
 	for (i=1; i<argc; i++) if (!strcmp(argv[i], "-output")) {
 		i++;
 		chOutputFile = (char *)argv[i];
+	}
+	for (i=1; i<argc; i++) if (!strcmp(argv[i], "-debug")) {
+		DebugFlag = 1;
+	}
+	for (i=1; i<argc; i++) if (!strcmp(argv[i], "-coef")) {
+		CoefFlag = 1;
 	}
 
 	if (!chOutputFile) {
@@ -167,6 +179,10 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	OutputHit->Branch("Data", &SelectedHit, "E/F:phe/F:pix/F:signal/F:dist/F:adc/I:chan/I:xy/I:z/I:ovf/I");
 	OutputEvent = new TTree("Event", "Event");
 	OutputEvent->Branch("Data", &SelectedEvent, "MCNum/I:NHits/I:xUP/F:yUP/F:xDown/F:yDown/F:r2/F");
+	if (DebugFlag) {
+		OutputEvent->Branch("XZ", &XZ, "XZ[50][25]/F");
+		OutputEvent->Branch("YZ", &YZ, "XZ[50][25]/F");
+	}
 	hXZ = new TH2D("hXZ", "XZ 2D plot;X;Z,N", 25, 0, 100, 50, 0, 100);
 	hYZ = new TH2D("hYZ", "YZ 2D plot;Y;Z,N", 25, 0, 100, 50, 0, 100);
 	hNhits = new TH1D("hNhits", "Total number of hits for selected events;N_{hits};events", 300,0,300);
@@ -190,7 +206,6 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 int ReadDigiDataUser::processUserEvent()
 {
 	int i, j, k, N, NHits, NSiPMhits;
-	double XZ[50][25], YZ[50][25];
 	double xUp, yUp, xDown, yDown;
 	double ExUp, EyUp, ExDown, EyDown;
 	double x, z;
@@ -198,15 +213,48 @@ int ReadDigiDataUser::processUserEvent()
 	double Lcorr, Ccorr;
 	char strs[128];
 	char strl[1024];
+	int iAdcNum, iAdcChan, iRc;
+	float fConv, f1px, fXtalk;
+	struct chanCalibStruct {
+		int adc;
+		int chan;
+		float fConv;
+		float f1px;
+		float fXtalk;
+	} chanCalib;
+	TTree *tCalib;
 
 	if( ttype() != 1 ) return 0;
+//		Make channel amplification tree - only once at the first event
+	if (EventCnt == 0) {
+		OutputFile->cd();
+		tCalib = new TTree("Calib", "Calib");
+		tCalib->Branch("SiPM", &chanCalib, "adc/I:chan/I:fConv/F:f1px/F:fXtalk/F");
+		
+		for( int i = 0; i < iNElements; i++ ) {
+			iAdcNum = i / 100;
+			iAdcChan = i % 100;
+			if (!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
+			if (adcType(iAdcNum) != bSiPm) continue;
+			iRc = channelCalib(i, fConv, f1px, fXtalk);
+			if (!iRc) {
+				chanCalib.adc = iAdcNum;
+				chanCalib.chan = iAdcChan;
+				chanCalib.fConv = fConv;
+				chanCalib.f1px = f1px;
+				chanCalib.fXtalk = fXtalk;
+				tCalib->Fill();
+			}
+		}
+		tCalib->Write();
+	}
 	EventCnt++;
 	memset(XZ, 0, sizeof(XZ));
 	memset(YZ, 0, sizeof(YZ));
 	N = nhits();
 	
 	// Fill channel amplification histogram
-	for(i=0; i<N; i++) if (type(i) == bSiPm && e(i) > MINEK && e(i) < MAXEK && npe(i) > 0) {
+	if (CoefFlag) for(i=0; i<N; i++) if (type(i) == bSiPm && e(i) > MINEK && e(i) < MAXEK && npe(i) > 0) {
 		if (!hCoef[adc(i)][adcChan(i)]) {
 			sprintf(strs, "hCoef_%d_%2.2d", adc(i), adcChan(i));
 			sprintf(strl, "signal/phe for channel %d.%2.2d;signal/phe;N", adc(i), adcChan(i));
@@ -346,7 +394,7 @@ int ReadDigiDataUser::processUserEvent()
 void ReadDigiDataUser::finishUserProc()
 {
 	int i, j;
-	for (i=0; i<MAXADC; i++) for (j=0; j<MAXCHAN; j++) if (hCoef[i][j]) hCoef[i][j]->Write();
+	if (CoefFlag) for (i=0; i<MAXADC; i++) for (j=0; j<MAXCHAN; j++) if (hCoef[i][j]) hCoef[i][j]->Write();
 	OutputEvent->Write();
 	OutputHit->Write();
 	hXZ->Write();

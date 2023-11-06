@@ -715,6 +715,7 @@ void draw_mc2exp(const char *fname)
  * 01.05.2023: 20.94 and 15.61
  * 13.07.2023: 20.19 and 15.07 - new Birks and Cherenkov
  * 06.08.2023: 20.04 and 15.15 - next iteration
+ * Kb = 0.0088 and Kc = 0.570: 15.18 and 12.46
  * Median valuse are calculated from the calibration file.
  * The result is written in two files (for SiPM and PMT)
  * Old constants: MC nominal values 

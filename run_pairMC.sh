@@ -61,25 +61,24 @@ do_neutrons()
 	done
 }
 
-do_Edik_n()
+do_gamma()
 {
-	RDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC/Edik_profile
-	PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Edik_profile
-	MDIR=/home/clusters/rrcmpi/danss/MC_RAW/Edik_profile/Ready/
+	RDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC/Gamma_v9
+	PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Gamma_v9
+	MDIR=/home/clusters/rrcmpi/danss/MC_RAW/v9/Gamma/MeasuredSpectrum
 	mkdir -p ${PDIR}
-	for ((i=0; $i<10; i=$i+1)) ; do 
-		for ((j=1; $j<=16; j=$j+1)) ; do
-			rname=`printf "${RDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim0_%dp%d.root" $j $i`
-			pname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_pair0_%dp%d.root" $j $i`
-			iname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_info0_%dp%d.root" $j $i`
-			mname=`printf "${MDIR}/DANSS0_%dp%d.root" $j $i`
-#			./pairbuilder8 $rname $pname
-			./getMCinfo $pname $mname $iname
-		done
+	for ((j=1; $j<=16; j=$j+1)) ; do
+		rname=`printf "${RDIR}/mc_GammaMeasuredSpectrum_indLY_transcode_rawProc_pedSim_DBspectrum%d.root" $j`
+		pname=`printf "${PDIR}/mc_GammaMeasuredSpectrum_indLY_transcode_rawProc_pedSim_DBspectrum_pair%d.root" $j`
+		iname=`printf "${PDIR}/mc_GammaMeasuredSpectrum_indLY_transcode_rawProc_pedSim_DBspectrum_info%d.root" $j`
+		mname=`printf "${MDIR}/DANSS0_%d.root" $j`
+		./pairbuilder8 $rname $pname
+		./getMCinfo $pname $mname $iname
 	done
 }
+
 date
-do_Edik_n
+do_gamma
 date
 
 exit 0

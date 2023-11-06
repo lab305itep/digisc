@@ -13,7 +13,8 @@
 /****************************************************************/
 
 #define VDIR "/home/clusters/rrcmpi/alekseev/igor/dvert"
-#define MAXRUN 150000
+#define AVR1PXFILE "avr1px.bin"
+#define MAXRUN 200000
 #define MAXADC 60
 #define MAXCHAN 64
 
@@ -54,7 +55,7 @@ class MyDead {
 MyDead::MyDead(const char *file_list)
 {
 	int chan, adc, irc;
-	const int DeadADC[] = {4, 13, 20, 24, 25, 43, 47, 51, 52};	// too complex history to analyze hete
+	const int DeadADC[] = {4, 13, 20, 24, 25, 43, 47, 51, 52};	// too complex history to analyze here
 
 	memset(DeadList, 0, sizeof(DeadList));
 
@@ -102,6 +103,8 @@ MyRunList::MyRunList(const char *stat_all)
 		printf("No Memory for RunList!\n");
 		throw;
 	}
+
+	for (i=0; i < MAXRUN; i++) RunList[i] = -1;
 	
 	f = fopen(stat_all, "rt");
 	if (!f) {
@@ -154,76 +157,60 @@ double MyRunList::date2year(int year, int month, int day)
 
 /****************************************************************/
 
-class MyCoef {
-	private:
-		double *Coef;
-		int begin;
-		int end;
-		int step;
-	public:
-		MyCoef(int run_begin, int run_end, int run_step, double *data);
-		~MyCoef(void);
-		double GetCoef(int run);
-};
+double f1pxAvr[MAXADC][MAXCHAN];
+double f1px[MAXADC][MAXCHAN];
+double f1pxMid[MAXADC][MAXCHAN];
+int f1pxCnt[MAXADC][MAXCHAN];
 
-MyCoef *CoefArray[MAXADC][MAXCHAN];
-
-MyCoef::MyCoef(int run_begin, int run_end, int run_step, double *data)
-{
-	int i, N;
-	begin = run_begin;
-	end = run_end;
-	step = run_step;
-	N = ((end - begin) / step + 1) * sizeof(double);
-	Coef = (double *)malloc(N);
-	if (!Coef) {
-		printf("No memory\n");
-		throw;
-	}
-	memcpy(Coef, data, N);
-}
-
-MyCoef::~MyCoef(void)
-{
-	free(Coef);
-}
-
-double MyCoef::GetCoef(int run)
-{
-	int n;
-	n = (run - begin) / step;
-	return Coef[n];
-}
 
 void InitCoef(const char *fname)
 {
 	FILE *fIn;
-	double *coef;
-	struct HeadStruct {
-		int adc;
-		int chan;
-		int num;
-		int run_begin;
-		int run_step;
-		int run_end;
-	} head;
 	int irc;
-	
-	memset(CoefArray, 0, sizeof(CoefArray));
+
 	fIn = fopen(fname, "rb");
 	if (!fIn) {
 		printf("Can not open file %s - %m\n", fname);
 		throw;
 	}
-	coef = (double *)malloc((MAXRUN / 50) * sizeof(double));
-	for(;!feof(fIn);) {
-		irc = fread(&head, sizeof(head), 1, fIn);
-		if (irc != 1) break;	// EOF ?
-		fread(coef, head.num * sizeof(double), 1, fIn);
-		CoefArray[head.adc][head.chan] = new MyCoef(head.run_begin, head.run_end, head.run_step, coef);
+	irc = fread(f1pxAvr, sizeof(f1pxAvr), 1, fIn);
+	if (irc != 1) {
+		printf("Can not read file %s - %m\n", fname);
+		throw;
 	}
-	
 	fclose(fIn);
+}
+
+int ReadCoef(TFile *fIn)
+{
+	TTree *tCalib;
+	struct chanCalibStruct {
+		int adc;
+		int chan;
+		float fConv;
+		float f1px;
+		float fXtalk;
+	} chanCalib;
+	int j, N;
+
+	memset(f1px, 0, sizeof(f1px));
+	tCalib = (TTree *) fIn->Get("Calib");
+	if (!tCalib) {
+		printf("Tree Calib not found in %s\n", fIn->GetName());
+		return -10;
+	}
+	tCalib->SetBranchAddress("SiPM", &chanCalib);
+	N = tCalib->GetEntries();
+	for (j=0; j<N; j++) {
+		tCalib->GetEntry(j);
+		if (chanCalib.f1px <= 0) continue;
+		f1px[chanCalib.adc][chanCalib.chan] = chanCalib.f1px;
+		if (f1pxAvr[chanCalib.adc][chanCalib.chan]) {
+			f1pxMid[chanCalib.adc][chanCalib.chan] += (chanCalib.f1px - f1pxAvr[chanCalib.adc][chanCalib.chan]) / f1pxAvr[chanCalib.adc][chanCalib.chan];
+			f1pxCnt[chanCalib.adc][chanCalib.chan]++;
+		}
+	}
+	return 0;
 }
 
 /****************************************************************/
@@ -266,7 +253,7 @@ MyCuts::MyCuts(char *strcut)
 	side.min = 0;
 	side.max = 1;
 	
-	for (i=0; i<6; i++) {
+	if (strcut) for (i=0; i<6; i++) {
 		ptr = strstr(strcut, param[i]);
 		if (!ptr) continue;
 		ptr += strlen(param[i]);
@@ -383,6 +370,8 @@ int main(int argc, char **argv)
 	TTree *tHit;
 	double median, error, year;
 	struct HitOutStruct MyHit;
+	int adc, chan;
+	double r_sum, r_sum2, r_cnt;
 	
 	if (argc < 6) {
 		printf("Usage: %s fname run_begin run_end run_step alpha [\"cuts\"]\n", argv[0]);
@@ -395,7 +384,7 @@ int main(int argc, char **argv)
 	
 	MyDead Dead("all_dead_list.txt");
 	MyRunList Runs("../stat_all.txt");
-	InitCoef(VDIR "/phe/relcoef_all.bin");
+	InitCoef(AVR1PXFILE);
 	run_begin = strtol(argv[2], NULL, 10);
 	run_end = strtol(argv[3], NULL, 10);
 	run_step = strtol(argv[4], NULL, 10);
@@ -406,24 +395,40 @@ int main(int argc, char **argv)
 	if (!fOut->IsOpen()) return 20;
 
 	TH1D *hMedian = new TH1D("hMedian", "Median p.h.e. plot;run;p.h.e.", (run_end - run_begin + 1) / run_step, run_begin, run_end);
+	TH1D *hR = new TH1D("hR", "Average relative coef;run;r", (run_end - run_begin + 1) / run_step, run_begin, run_end);
 	TGraphErrors *gMedian = new TGraphErrors();
 	gMedian->SetName("gMedian");
 	gMedian->SetTitle("Median p.h.e. graph;year;p.h.e.");
+	TGraphErrors *gR = new TGraphErrors();
+	gR->SetName("gR");
+	gR->SetTitle("Average relative coef;year;r");
 	mcnt = 0;
 	for (i = run_begin; i <= run_end; i += run_step) {
 		sprintf(strs, "hPhe_%6.6d", i);
 		sprintf(strl, "Runs %d - %d;p.h.e.", i, i+run_step-1);
 		h = new TH1D(strs, strl, 200, 0, 200);
 		lcnt = 0;
+		memset(f1pxMid, 0, sizeof(f1pxMid));
+		memset(f1pxCnt, 0, sizeof(f1pxCnt));
 		for (j=0; j<run_step; j++) {
 			if (Runs.GetRunYear(i+j) < -100) continue;
 			sprintf(strl, "%s/%3.3dxxx/vert_%6.6d.root", VDIR, (i+j) / 1000, i+j);
 			irc = access(strl, R_OK);
 			if (irc) continue;
 			fIn = new TFile(strl);
-			if (!fIn->IsOpen()) continue;
+			if (!fIn->IsOpen()) {
+				delete fIn;
+				continue;
+			}
 			tHit = (TTree *) fIn->Get("Hit");
-			if (!tHit) continue;
+			if (!tHit) {
+				delete fIn;
+				continue;
+			}
+			if (ReadCoef(fIn)) {
+				delete fIn;
+				continue;
+			}
 			tHit->SetBranchAddress("Data", &MyHit);
 			year = Runs.GetRunYear(i+j);
 			Num = tHit->GetEntries();
@@ -432,9 +437,9 @@ int main(int argc, char **argv)
 				tHit->GetEntry(cnt);
 				if (Dead.IsDead(MyHit.adc, MyHit.chan)) continue;
 				if (!Cuts.Check(&MyHit)) continue;
-				if (!CoefArray[MyHit.adc][MyHit.chan]) continue;
-				r = CoefArray[MyHit.adc][MyHit.chan]->GetCoef(i+j);
-				if (r < -500) continue;
+				if (f1px[MyHit.adc][MyHit.chan] <= 0) continue;
+				if (f1pxAvr[MyHit.adc][MyHit.chan] <= 0) continue;
+				r = (f1px[MyHit.adc][MyHit.chan] - f1pxAvr[MyHit.adc][MyHit.chan]) / f1pxAvr[MyHit.adc][MyHit.chan];
 				h->Fill(MyHit.phe*(1+alpha*r));
 				lcnt++;
 			}
@@ -447,6 +452,19 @@ int main(int argc, char **argv)
 			hMedian->SetBinError(j, error);
 			gMedian->AddPoint(year, median);
 			gMedian->SetPointError(mcnt, 0, error);
+			r_sum = r_sum2 = r_cnt = 0;
+			for (adc = 0; adc < MAXADC; adc++) for(chan = 0; chan < MAXCHAN; chan++) if (!Dead.IsDead(adc, chan) && f1pxCnt[adc][chan]) {
+				r_sum += f1pxMid[adc][chan];
+				r_sum2 += f1pxMid[adc][chan] * f1pxMid[adc][chan] / f1pxCnt[adc][chan];
+				r_cnt += f1pxCnt[adc][chan];
+			}
+			r_sum /= r_cnt;
+			r_sum2 /= r_cnt;
+			r_sum2 = sqrt(r_sum2 - r_sum*r_sum);
+			hR->SetBinContent(j, r_sum);
+			hR->SetBinError(j, r_sum2);
+			gR->AddPoint(year, r_sum);
+			gR->SetPointError(mcnt, 0, r_sum2);
 			mcnt++;
 		}
 		fOut->cd();
@@ -456,6 +474,8 @@ int main(int argc, char **argv)
 
 	gMedian->Write();
 	hMedian->Write();
+	gR->Write();
+	hR->Write();
 	fOut->Close();
 	
 	return 0;

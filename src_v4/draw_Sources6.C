@@ -538,46 +538,60 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Y = 50;
 		break;
 	case 1001:	// Na MC, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "v10/22Na_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1002:	// Na MC, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_22Na_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "v10/22Na_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
 	case 1011:	// Na MC - full model, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_Center1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_Center1.root");
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MCF_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "v10/22Na_MCF_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1012:	// Na MC - full model, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_92_5_cm1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_22Na_indLY_transcode_rawProc_pedSim_Full_decay_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "22Na_MCF_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "v10/22Na_MCF_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
+	case 1021:	// Na MC, center, full model, Akagi
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/RadSources/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
+		tMc->AddFile(str);
+		name = "22Na";
+		sprintf(fname, "Akagi/22Na_MCF_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
 	case 1101:	// Co MC, center
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "v10/60Co_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1102:	// Co MC, edge
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v9/mc_60Co_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_60Co_indLY_transcode_rawProc_pedSim_92_5_cm1.root");
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "60Co_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "v10/60Co_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
+		break;
+	case 1121:	// Co MC, center, Akagi
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/RadSources/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
+		tMc->AddFile(str);
+		name = "60Co";
+		sprintf(fname, "Akagi/60Co_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
 		break;
 	default:
 		printf("%d - unknown\n", iser);
@@ -596,7 +610,8 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("2  - edge (50, 90, 50) position\n");
 		printf("11 - center (50, 50, 50) position, full decay\n");
 		printf("12 - edge (50, 90, 50) position, full decay\n");
-		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 1001 1002 1011 1012 1101 1102\n");
+		printf("21 - center (50, 50, 50) position, Akagi\n");
+		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 1001 1002 1011 1012 1021 1101 1102 1121\n");
 		code = -1;
 		break;
 	}
@@ -700,7 +715,8 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	double RMAX = 30, const char *mcsuffix = "MC")
 {
 	const char *exppattern = "%s_%s_%s_%s_R%4.1f.root"; 		// what, when, where, version, RMAX
-	const char *MCpattern = "%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
+//	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
+	const char *MCpattern = "Akagi/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
 	const int binMin = 11;
 	const int binMax = 26;
 	char expname[1024];

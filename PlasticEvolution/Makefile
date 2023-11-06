@@ -9,6 +9,12 @@ bin_hists: bin_hists.cpp
 make_rel_coef_bin: make_rel_coef_bin.cpp
 	g++ $^ -o $@ $(shell root-config --cflags --libs)
 
+f1px_avr: f1px_avr.cpp
+	g++ $^ -o $@ $(shell root-config --cflags --libs)
+
+graph_1px: graph_1px.cpp
+	g++ $^ -o $@ $(shell root-config --cflags --libs)
+
 join_rel_coef: join_rel_coef.cpp
 	g++ $^ -o $@
 
