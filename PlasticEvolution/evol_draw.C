@@ -237,14 +237,29 @@ void evol_draw(int what)
 	}
 }
 
+void evol_draw(const char *what)
+{
+	gStyle->SetOptStat(0);
+	gStyle->SetOptFit(1);
+	gStyle->SetPadLeftMargin(0.05);
+	gStyle->SetPadRightMargin(0.01);
+	gStyle->SetTitleYOffset(0.6);
+
+	TH1D *hFrame = new TH1D("hFrame", ";Year-2016;LY, ph.c.", 100, 0.75, 7.2);
+	hFrame->SetMinimum(25);
+	hFrame->SetMaximum(38);
+	drawGraphs(hFrame, what);
+}
+
 void draw_chi2(double from, double to)
 {
-	double alpha, chi2, alpha0;
+	double alpha, chi2, alpha0, sigma;
 	TFile *f;
 	TGraph *g;
 	char str[1024];
-	int i;
+	int i, NDF;
 	
+	gStyle->SetOptStat(0);
 	gStyle->SetOptFit(0);
 	TF1 *fPol = new TF1("fPol", "[0]*(1-[1]*x/100.0)", 0, 10);
 	TF1 *fPbl = new TF1("fPbl", "pol2", 0, 2);
@@ -261,6 +276,7 @@ void draw_chi2(double from, double to)
 		if (!g) return;
 		g->Fit("fPol", "", "", from, to);
 		chi2 = fPol->GetChisquare();
+		NDF = fPol->GetNDF();
 		printf("alpha = %4.2f    chi2 = %f\n", alpha, chi2);
 		delete f;
 		hChi2->SetBinContent(i+1, chi2);
@@ -272,15 +288,109 @@ void draw_chi2(double from, double to)
 	hChi2->GetYaxis()->SetLabelSize(0.05);
 	hChi2->GetXaxis()->SetTitleSize(0.05);
 	hChi2->GetYaxis()->SetTitleSize(0.05);
-	hChi2->GetYaxis()->SetTitleOffset(0.5);
+	hChi2->GetYaxis()->SetTitleOffset(0.9);
 	hChi2->Fit("fPbl", "", "P");
-	alpha0 = - fPbl->GetParameter(1) / (2*fPbl->GetParameter(2));
+	alpha0 = - fPbl->GetParameter(1) / (2 * fPbl->GetParameter(2));
+	sigma = sqrt(fPbl->Eval(alpha0) / (2 * fPbl->GetParameter(2) * NDF));
 	TLine ln;
 	ln.SetLineColor(kRed);
 	ln.SetLineWidth(3);
 	ln.DrawLine(alpha0, hChi2->GetMinimum(), alpha0, hChi2->GetMaximum());
 	TLatex txt;
-	sprintf(str, "#alpha = %4.2f", alpha0);
-	txt.DrawLatexNDC(0.6, 0.8, str);
+	sprintf(str, "#alpha = %5.3f #pm %5.3f", alpha0, sigma);
+	txt.DrawLatexNDC(0.55, 0.8, str);
 	delete fPol;
+}
+
+void draw_LY(double from, double to)
+{
+	TFile *f;
+	TGraph *g;
+	char str[1024];
+	int i, j, k;
+	
+	gStyle->SetOptStat(1100);
+	gStyle->SetOptFit(1);
+	gPad->SetRightMargin(0.02);
+	gPad->SetLeftMargin(0.05);
+	TF1 *fPol = new TF1("fPol", "[0]*(1-[1]*x/100.0)", 0, 10);
+	
+	TH1D *hLY = new TH1D("hLY", ";#frac{-dLY}{dt}, %", 15, 0.4, 0.7);
+	for (i=0; i<2; i++) for (j=0; j<5; j++) for (k=0; k<5; k++) {
+		sprintf(str, "newroot/phe_side_%d_%dxy_%d_%dz_%d_%d_0.85.root", i, i, 5*j, 5*j+4, 10*k, 10*k+9);
+		f = new TFile(str);
+		if (!f->IsOpen()) return;
+		g = (TGraph *) f->Get("gMedian");
+		if (!g) return;
+		g->Fit("fPol", "", "", from, to);
+		hLY->Fill(fPol->GetParameter(1));
+		delete f;
+	}
+	hLY->Draw();
+}
+
+void draw_dist(double from, double to)
+{
+	TFile *f;
+	TGraph *g;
+	char str[1024];
+	int i;
+	
+	gStyle->SetOptStat(0);
+	gStyle->SetOptFit(10);
+	gPad->SetRightMargin(0.02);
+	gPad->SetLeftMargin(0.12);
+	TF1 *fPol = new TF1("fPol", "[0]*(1-[1]*x/100.0)", 0, 10);
+	
+	TH1D *hL = new TH1D("hL", ";l, cm;#frac{-dLY}{dt}, %", 100, 0, 100);
+	hL->SetMinimum(0.5);
+	hL->SetMaximum(0.65);
+	hL->GetYaxis()->SetTitleOffset(1.3);
+	TGraph *gL = new TGraph();
+	for (i=0; i<5; i++) {
+		sprintf(str, "newroot/phe_dist_%d_%d_0.85.root", 20*i, 20*(i+1));
+		f = new TFile(str);
+		if (!f->IsOpen()) return;
+		g = (TGraph *) f->Get("gMedian");
+		if (!g) return;
+		g->Fit("fPol", "", "", from, to);
+		gL->AddPoint(20*i+10, fPol->GetParameter(1));
+		delete f;
+	}
+	TGraph *gLX = new TGraph();
+	for (i=0; i<5; i++) {
+		sprintf(str, "newroot/phe_side_0_0dist_%d_%d_0.85.root", 20*i, 20*(i+1));
+		f = new TFile(str);
+		if (!f->IsOpen()) return;
+		g = (TGraph *) f->Get("gMedian");
+		if (!g) return;
+		g->Fit("fPol", "", "", from, to);
+		gLX->AddPoint(20*i+10, fPol->GetParameter(1));
+		delete f;
+	}
+	TGraph *gLY = new TGraph();
+	for (i=0; i<5; i++) {
+		sprintf(str, "newroot/phe_side_1_1dist_%d_%d_0.85.root", 20*i, 20*(i+1));
+		f = new TFile(str);
+		if (!f->IsOpen()) return;
+		g = (TGraph *) f->Get("gMedian");
+		if (!g) return;
+		g->Fit("fPol", "", "", from, to);
+		gLY->AddPoint(20*i+10, fPol->GetParameter(1));
+		delete f;
+	}
+	hL->Draw();
+	gL->SetMarkerColor(kRed);
+	gL->SetMarkerStyle(kFullCircle);
+	gL->SetMarkerSize(2.5);
+	gLX->SetMarkerColor(kGreen);
+	gLX->SetMarkerStyle(kFullTriangleUp);
+	gLX->SetMarkerSize(2.5);
+	gLY->SetMarkerColor(kBlue);
+	gLY->SetMarkerStyle(kFullTriangleDown);
+	gLY->SetMarkerSize(2.5);
+	gL->Draw("p");
+	gL->Fit("pol1", "", "", 20, 100);
+//	gLX->Draw("p");
+//	gLY->Draw("p");
 }
