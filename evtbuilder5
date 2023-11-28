@@ -25,7 +25,7 @@ TCALIB=tcalib_sorted.txt
 TMP=${FN//[0-9]/}
 if [ x${TMP}  != x ] ; then
 	RUN=$FN
-	LISTFILE=".mc.list"
+	LISTFILE=`basename $RUN`".list"
 	echo $RUN > $LISTFILE
 	OUTFILE=$ROOT_DIR/`basename $RUN`
 	OUTFILE=${OUTFILE/.bz2/}

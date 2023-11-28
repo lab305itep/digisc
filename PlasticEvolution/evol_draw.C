@@ -310,12 +310,16 @@ void draw_LY(double from, double to)
 	int i, j, k;
 	
 	gStyle->SetOptStat(1100);
-	gStyle->SetOptFit(1);
+	gStyle->SetOptFit(0);
 	gPad->SetRightMargin(0.02);
 	gPad->SetLeftMargin(0.05);
+	gPad->SetTopMargin(0.07);
+	gPad->SetBottomMargin(0.12);
 	TF1 *fPol = new TF1("fPol", "[0]*(1-[1]*x/100.0)", 0, 10);
 	
-	TH1D *hLY = new TH1D("hLY", ";#frac{-dLY}{dt}, %", 15, 0.4, 0.7);
+	TH1D *hLY = new TH1D("hLY", ";#frac{-dLY}{dt}, %/year", 15, 0.4, 0.7);
+	hLY->GetXaxis()->SetTitleOffset(1.5);
+	hLY->SetLineWidth(2);
 	for (i=0; i<2; i++) for (j=0; j<5; j++) for (k=0; k<5; k++) {
 		sprintf(str, "newroot/phe_side_%d_%dxy_%d_%dz_%d_%d_0.85.root", i, i, 5*j, 5*j+4, 10*k, 10*k+9);
 		f = new TFile(str);
@@ -337,16 +341,17 @@ void draw_dist(double from, double to)
 	int i;
 	
 	gStyle->SetOptStat(0);
-	gStyle->SetOptFit(10);
-	gPad->SetRightMargin(0.02);
-	gPad->SetLeftMargin(0.12);
+	gStyle->SetOptFit(0);
+	TCanvas *cv = new TCanvas("CV", "CV", 1000, 1000);
+	gPad->SetRightMargin(0.03);
+	gPad->SetLeftMargin(0.15);
 	TF1 *fPol = new TF1("fPol", "[0]*(1-[1]*x/100.0)", 0, 10);
 	
-	TH1D *hL = new TH1D("hL", ";l, cm;#frac{-dLY}{dt}, %", 100, 0, 100);
-	hL->SetMinimum(0.5);
-	hL->SetMaximum(0.65);
-	hL->GetYaxis()->SetTitleOffset(1.3);
-	TGraph *gL = new TGraph();
+	TH1D *hL = new TH1D("hL", ";l, cm;#frac{-dLY}{dt}, %/year", 100, 0, 100);
+	hL->SetMinimum(0.52);
+	hL->SetMaximum(0.62);
+	hL->GetYaxis()->SetTitleOffset(1.7);
+	TGraphErrors *gL = new TGraphErrors();
 	for (i=0; i<5; i++) {
 		sprintf(str, "newroot/phe_dist_%d_%d_0.85.root", 20*i, 20*(i+1));
 		f = new TFile(str);
@@ -355,6 +360,7 @@ void draw_dist(double from, double to)
 		if (!g) return;
 		g->Fit("fPol", "", "", from, to);
 		gL->AddPoint(20*i+10, fPol->GetParameter(1));
+		gL->SetPointError(i, 0, 7*fPol->GetParError(1));
 		delete f;
 	}
 	TGraph *gLX = new TGraph();
@@ -389,8 +395,13 @@ void draw_dist(double from, double to)
 	gLY->SetMarkerColor(kBlue);
 	gLY->SetMarkerStyle(kFullTriangleDown);
 	gLY->SetMarkerSize(2.5);
-	gL->Draw("p");
-	gL->Fit("pol1", "", "", 20, 100);
+	gL->Draw("pe");
+	TF1 *fp1 = new TF1("fp1", "pol1", 0, 100);
+	gL->Fit(fp1, "", "", 20, 100);
+	sprintf(str, "slope = (%7.5f #pm %7.5f) %%/year/cm", fp1->GetParameter(1), fp1->GetParError(1));
+	TLatex lt;
+	lt.SetTextSize(0.04);
+	lt.DrawLatex(10, 0.6, str);
 //	gLX->Draw("p");
 //	gLY->Draw("p");
 }

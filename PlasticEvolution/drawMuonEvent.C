@@ -31,6 +31,10 @@ void drawMuonEvent(const char *fname, int num)
 	
 	TH2F *hxz = new TH2F("hxz", "ZX-plane;x, cm;z, cm;E, MeV", 25, 0, 100, 50, 0, 100);
 	TH2F *hyz = new TH2F("hyz", "ZY-plane;y, cm;z, cm;E, MeV", 25, 0, 100, 50, 0, 100);
+	hxz->SetMinimum(0);
+	hyz->SetMinimum(0);
+	hxz->SetMaximum(6.0);
+	hyz->SetMaximum(6.0);
 	t->GetEntry(num);
 	
 	for (i=0; i<50; i++) for (j=0; j<25; j++) {

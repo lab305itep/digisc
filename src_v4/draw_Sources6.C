@@ -565,11 +565,11 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "v10/22Na_MCF_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
-	case 1021:	// Na MC, center, full model, Akagi
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/RadSources/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
+	case 1021:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/22Na
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "Akagi/22Na_MCF_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "Akagi/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1101:	// Co MC, center
@@ -586,11 +586,11 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "v10/60Co_MC_edge_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 90;
 		break;
-	case 1121:	// Co MC, center, Akagi
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/RadSources/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
+	case 1121:	// Co MC, center, Akagi, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/60Co
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Akagi/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "Akagi/60Co_MC_center_%s_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "Akagi/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	default:
@@ -610,7 +610,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("2  - edge (50, 90, 50) position\n");
 		printf("11 - center (50, 50, 50) position, full decay\n");
 		printf("12 - edge (50, 90, 50) position, full decay\n");
-		printf("21 - center (50, 50, 50) position, Akagi\n");
+		printf("21 - center (50, 50, 50) position, Akagi. Use rootdir to set suffix\n");
 		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 1001 1002 1011 1012 1021 1101 1102 1121\n");
 		code = -1;
 		break;
