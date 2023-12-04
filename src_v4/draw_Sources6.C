@@ -711,12 +711,12 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 	RMAX - maximum distance from the source ()
 	mcsuffix - "MC" or "MCF"
 */
-void draw_scale_scan(const char *what, const char *when = "jun22", const char *where = "center", const char *version = "root8n2", 
-	double RMAX = 30, const char *mcsuffix = "MC")
+void draw_scale_scan(const char *what, const char *when, const char *where, const char *version, 
+	double RMAX = 30)
 {
-	const char *exppattern = "%s_%s_%s_%s_R%4.1f.root"; 		// what, when, where, version, RMAX
+	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
 //	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
-	const char *MCpattern = "Akagi/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
+	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
 	const int binMin = 11;
 	const int binMax = 26;
 	char expname[1024];
@@ -746,7 +746,7 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	hScanSiPM->SetMarkerSize(1.5);
 	hScanPMT->SetMarkerSize(1.5);
 
-	sprintf(expname, exppattern, what, when, where, version, RMAX);
+	sprintf(expname, exppattern, what, when, where, RMAX);
 	TFile *fExp = new TFile(expname);
 	if (!fExp->IsOpen()) return;
 	TH1D *hExp = (TH1D *) fExp->Get("hExpC");
@@ -773,7 +773,7 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	
 	for (i=0; i<41; i++) {
 		scale = 0.9 + 0.005*i;
-		sprintf(MCname, MCpattern, what, mcsuffix, whereMC, version, scale, RMAX);
+		sprintf(MCname, MCpattern, what, version, whereMC, scale, RMAX);
 		fMC = new TFile(MCname);
 		if (!fMC->IsOpen()) return;
 		hMC = (TH1D *) fMC->Get("hMc");
@@ -835,7 +835,7 @@ void draw_scale_scan(const char *what, const char *when = "jun22", const char *w
 	if (i < 0) i = 0;
 	if (i > 41) i = 41;
 	scale = 0.9 + 0.005*i;
-	sprintf(MCname, MCpattern, what, mcsuffix, whereMC, version, scale, RMAX);
+	sprintf(MCname, MCpattern, what, version, whereMC, scale, RMAX);
 	fMC = new TFile(MCname);
 	if (!fMC->IsOpen()) return;
 	hMC = (TH1D *) fMC->Get("hMc");
