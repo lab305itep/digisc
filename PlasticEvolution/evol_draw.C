@@ -347,7 +347,7 @@ void draw_dist(double from, double to)
 	gPad->SetLeftMargin(0.15);
 	TF1 *fPol = new TF1("fPol", "[0]*(1-[1]*x/100.0)", 0, 10);
 	
-	TH1D *hL = new TH1D("hL", ";l, cm;#frac{-dLY}{dt}, %/year", 100, 0, 100);
+	TH1D *hL = new TH1D("hL", ";l, cm;#frac{-dLY}{LY dt}, %/year", 100, 0, 100);
 	hL->SetMinimum(0.52);
 	hL->SetMaximum(0.62);
 	hL->GetYaxis()->SetTitleOffset(1.7);

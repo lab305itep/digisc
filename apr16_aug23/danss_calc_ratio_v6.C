@@ -79,7 +79,8 @@ const struct PeriodsStruct PeriodList[] = {
 	{"Latest", "Mar 23 - Aug 23", 1, {{142816, 149802}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Spring17", "Strange period April-July 17 (Spring17)", 1, {{17849, 24775}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
 	{"Summer21", "Strange period June-September 21 (Summer21)", 1, {{105608, 110847}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
-	{"WithLead", "Apr - Sep 21 - new data before lead removed", 1, {{102857, 110847}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}}
+	{"WithLead", "Apr - Sep 21 - new data before lead removed", 1, {{102857, 110847}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}},
+	{"2023", "Jan - Aug 23 - year 2023", 1, {{138741, 149082}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}}
 };
 
 TFile *fData;

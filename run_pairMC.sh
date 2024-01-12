@@ -45,16 +45,16 @@ do_IBD()
 
 do_neutrons()
 {
-	RDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC/Neutron_background
-	PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Neutron_background
-	MDIR=/home/clusters/rrcmpi/danss/MC_RAW/Neutron_background/Ready/
-	mkdir -p /home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Neutron_background
-	for ((i=0;$i<5;i=$i+1)) ; do
-		for ((j=1;$j<=16;j=$j+1)) ; do
-			rname=`printf "${RDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim%d_%d.root" $i $j`
-			pname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_pair%d_%d.root" $i $j`
-			iname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_info%d_%d.root" $i $j`
-			mname=`printf "${MDIR}/DANSS%d_%d.root" $i $j`
+	RDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC/Akagi/Neutron_background
+	PDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Akagi/Neutron_background
+	MDIR=/home/clusters/rrcmpi/danss/MC_RAW/Akagi/Neutron_background/
+	mkdir -p /home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC/Akagi/Neutron_background
+	for ((i=1;$i<17;i=$i+1)) ; do
+		for ((j=0;$j<=10;j=$j+1)) ; do 
+			rname=`printf "${RDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim0_%dp%d.root" $i $j`
+			pname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_pair0_%dp%d.root" $i $j`
+			iname=`printf "${PDIR}/mc_NeutronBgr_indLY_transcode_rawProc_pedSim_info0_%dp%d.root" $i $j`
+			mname=`printf "${MDIR}/DANSS0_%dp%d.root" $i $j`
 			./pairbuilder8 $rname $pname
 			./getMCinfo $pname $mname $iname
 		done
@@ -78,7 +78,7 @@ do_gamma()
 }
 
 date
-do_gamma
+do_neutrons
 date
 
 exit 0
