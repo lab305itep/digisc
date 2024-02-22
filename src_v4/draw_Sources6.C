@@ -707,9 +707,8 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 	what = "22Na" or "60Co"
 	when = "feb17", "nov18" or "jun22"
 	where = "center", "centerUP" or "edge"
-	version = "root8n2"
+	version = "Full_decay_center_Akagi" etc.
 	RMAX - maximum distance from the source ()
-	mcsuffix - "MC" or "MCF"
 */
 void draw_scale_scan(const char *what, const char *when, const char *where, const char *version, 
 	double RMAX = 30)

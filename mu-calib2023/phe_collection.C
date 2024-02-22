@@ -19,7 +19,8 @@
 #define MAXCHI2		5000.0
 #define MINMEDIAN	13.0		// consider channel as dead and produce no MC calibration for it
 #define MINMDN		28.0		// don't use for average median and cumulutive hit distribution
-#define UGLY_MC_SIPM_CORR	1.08
+//#define UGLY_MC_SIPM_CORR	1.08
+#define UGLY_MC_SIPM_CORR	1.00
 
 /* MC nominal values */
 // const double pheSiPM = 20.4 / UGLY_MC_SIPM_CORR;
@@ -712,6 +713,8 @@ void draw_mc2exp(const char *fname)
  * Calculate per channel calibration in ph.c./MeV in format sutable for MC
  * fname - Calibration filename.bin
  * pheSiPM0, phePMT - new values for MC ph.c./MeV
+ * 27.01.2024: 20.78 and 14.63
+ * 22.01.2024: 20.78 and 15.71
  * 01.05.2023: 20.94 and 15.61
  * 13.07.2023: 20.19 and 15.07 - new Birks and Cherenkov
  * 06.08.2023: 20.04 and 15.15 - next iteration
@@ -723,6 +726,9 @@ void draw_mc2exp(const char *fname)
  *	const double phePMT = 15.2;
  *	MedMCSiPM = 35.63  MedMCPMT = 282.0
  *	MedSiPM = 35.58 and MedPMT = 281.73 - from the experiment analysis - see draw_exp_hist()
+ * USED in the experimental data calibration:
+ *	pheSiPM = 20.38; phePMT = 15.3
+ *	MedSiPM = 35.56; MedPMT = 283.65
  */
 void calib4sasha(const char *fname, double pheSiPM0, double phePMT)
 {
