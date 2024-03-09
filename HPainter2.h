@@ -22,7 +22,7 @@ public:
 	inline int IsOpen(void) { return tSig && tRand; };
 	inline void SetFile(TFile *f) { fRes = f; };
 	void OpenFile(const char *name);
-	void Project(TH1 *hist, const char *what, TCut cut);
+	void Project(TH1 *hist, const char *what, TCut cut, int iZeroErrCorr = 1);
 //	void Project(TH2 *hist, const char *what, TCut cut);
 //	void Project(TH3 *hist, const char *what, TCut cut);
 	inline unsigned int GetBeginTime(void) { return tBegin; };

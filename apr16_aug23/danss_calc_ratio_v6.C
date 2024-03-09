@@ -435,6 +435,135 @@ void sum_of_raw(TH1D *hSumSig, TH1D *hSumBgnd, const char *posmask, const struct
 	hSumBgnd->Scale(86.4 / tSum);
 }
 
+
+//	Calculate raw summs of events for signal and backgrounds
+//	Return time in seconds
+double get_raw_sums(TH1D *hSumSig, TH1D *hSumSigRand, TH1D *hSumCosm, const char *posmask, const struct PeriodsStruct *period)
+{
+	int N;
+	TH1D *hSig;
+	TH1D *hSigRand;
+	TH1D *hCosm;
+	TH1D *hCosmMuRand;
+	TH1D *hConst;
+	int i;
+	char str[1024];
+	double tSum;
+	double dt;
+	char *ptr;
+
+	N = sizeof(positions) / sizeof(positions[0]);
+	hSumSig->Reset();
+	hSumSigRand->Reset();
+	hSumCosm->Reset();
+	tSum = 0;
+	for (i=0; i<N; i++) {
+		ptr = strchr(posmask, positions[i].name[0]);
+		if (!(ptr && is_position_in_period(&positions[i], period))) continue;
+		sprintf(str, "%s_hSig-sig", positions[i].name);
+		hSig = (TH1D*) fData->Get(str);
+		sprintf(str, "%s_hSig-rand", positions[i].name);
+		hSigRand = (TH1D*) fData->Get(str);
+		sprintf(str, "%s_hCosm-diff", positions[i].name);
+		hCosm = (TH1D*) fData->Get(str);
+		sprintf(str, "%s_hCosm-murand", positions[i].name);
+		hCosmMuRand = (TH1D*) fData->Get(str);
+		sprintf(str, "%s_hConst", positions[i].name);
+		hConst = (TH1D*) fData->Get(str);
+		if (!(hSig && hSigRand && hConst && hCosm && hCosmMuRand)) {
+			printf("Some hist not found for %s\n", positions[i].name);
+			continue;
+		}
+		dt = hConst->GetBinContent(1);	// seconds
+		tSum += dt;
+		hSumSig->Add(hSig);
+		hSumSigRand->Add(hSigRand);
+		hSumCosm->Add(hCosm,  1);
+		hSumCosm->Add(hCosmMuRand, -1);
+	}
+	return tSum;
+}
+
+void draw_raw_sums_page(TCanvas *cv, const char *chOn, const char *chOff, const char *posmask)
+{
+	char strs[128];
+	char strl[1024];
+	const struct PeriodsStruct *pOn;
+	const struct PeriodsStruct *pOff;
+	double tOn, tOff;
+	TLatex txt;
+	
+	pOn = period_by_name(chOn);
+	pOff = period_by_name(chOff);
+	
+	sprintf(strs, "h%s_%s-sig", chOn, posmask);
+	sprintf(strl, "Positron spectrum %s_%s, signal;Positron energy, MeV;Events", chOn, posmask);
+	TH1D *hSigOn = new TH1D(strs, strl, NEBINS, 0, 16);
+	sprintf(strs, "h%s_%s-rand", chOn, posmask);
+	sprintf(strl, "Positron spectrum %s_%s, random;Positron energy, MeV;Events", chOn, posmask);
+	TH1D *hRandOn = new TH1D(strs, strl, NEBINS, 0, 16);
+	sprintf(strs, "h%s_%s-cosm", chOn, posmask);
+	sprintf(strl, "Positron spectrum %s_%s, muon background;Positron energy, MeV;Events", chOn, posmask);
+	TH1D *hCosmOn = new TH1D(strs, strl, NEBINS, 0, 16);
+	tOn = get_raw_sums(hSigOn, hRandOn, hCosmOn, posmask, pOn);
+	hSigOn->SetLineColor(kGreen);
+	hSigOn->SetLineWidth(2);
+	hRandOn->SetLineColor(kRed);
+	hRandOn->SetLineWidth(2);
+	hCosmOn->SetLineColor(kBlue);
+	hCosmOn->SetLineWidth(2);
+	hSigOn->Write();
+	hRandOn->Write();
+	hCosmOn->Write();
+
+	sprintf(strs, "h%s_%s-sig", chOff, posmask);
+	sprintf(strl, "Positron spectrum %s_%s, signal;Positron energy, MeV;Events", chOff, posmask);
+	TH1D *hSigOff = new TH1D(strs, strl, NEBINS, 0, 16);
+	sprintf(strs, "h%s_%s-rand", chOff, posmask);
+	sprintf(strl, "Positron spectrum %s_%s, random;Positron energy, MeV;Events", chOff, posmask);
+	TH1D *hRandOff = new TH1D(strs, strl, NEBINS, 0, 16);
+	sprintf(strs, "h%s_%s-cosm", chOff, posmask);
+	sprintf(strl, "Positron spectrum %s_%s, muon background;Positron energy, MeV;Events", chOff, posmask);
+	TH1D *hCosmOff = new TH1D(strs, strl, NEBINS, 0, 16);
+	tOff = get_raw_sums(hSigOff, hRandOff, hCosmOff, posmask, pOff);
+	hSigOff->SetLineColor(kGreen);
+	hSigOff->SetLineWidth(2);
+	hRandOff->SetLineColor(kRed);
+	hRandOff->SetLineWidth(2);
+	hCosmOff->SetLineColor(kBlue);
+	hCosmOff->SetLineWidth(2);
+	hSigOff->Write();
+	hRandOff->Write();
+	hCosmOff->Write();
+	
+	cv->Clear();
+	cv->Divide(2, 1);
+
+	cv->cd(1);
+	hSigOn->GetXaxis()->SetRange(49, 128);
+	hSigOn->Draw();
+	hRandOn->Draw("same");
+	hCosmOn->Draw("same");
+	sprintf(strs, "%6.1f days", tOn / 86400);
+	txt.DrawLatexNDC(0.6, 0.83, strs);
+	TLegend *lg = new TLegend(0.6, 0.65, 0.9, 0.82);
+	lg->AddEntry(hSigOn, "Signal", "l");
+	lg->AddEntry(hRandOn, "Random", "l");
+	lg->AddEntry(hCosmOn, "Cosmics", "l");
+	lg->Draw();
+	
+	cv->cd(2);
+	hCosmOff->GetXaxis()->SetRange(49, 128);
+	hCosmOff->Draw();
+	hRandOff->Draw("same");
+	hSigOff->Draw("same");
+	sprintf(strs, "%6.1f days", tOff / 86400);
+	txt.DrawLatexNDC(0.6, 0.83, strs);
+	lg->Draw();
+	
+	cv->Update();
+}
+
 void draw_spectra_page(TCanvas *cv, const struct PeriodsStruct *period, double bgScale, double Nscale = 1.0)
 {
 	TLegend *lg;
@@ -1725,7 +1854,15 @@ void danss_calc_ratio_v6(const char *fname, double bgScale = 5.6/2.5, double Nsc
 	draw_off_ratio("Off_d", "Neutrino to visible cosmics ratio DOWN, reactor off;MeV;R");
 	cv->Update();
 	cv->Print(pname);
-
+//		Tails for high energy neutrino analysis
+	draw_raw_sums_page(cv, "Main", "Off", "u");
+	cv->Print(pname);
+	draw_raw_sums_page(cv, "Main", "Off", "m");
+	cv->Print(pname);
+	draw_raw_sums_page(cv, "Main", "Off", "d");
+	cv->Print(pname);
+	draw_raw_sums_page(cv, "Main", "Off", "umd");
+	cv->Print(pname);
 	printf("Accidental background\n");
 //		Accidental background
 	for (i = 0; i < sizeof(PeriodList) / sizeof(PeriodList[0]); i++) {

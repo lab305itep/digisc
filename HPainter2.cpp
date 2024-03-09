@@ -165,7 +165,7 @@ int HPainter2::Make_file_list(int *list, int size, int mask, int run_from, int r
 }
 
 /*	Project histogram doing random background subtraction	*/
-void HPainter2::Project(TH1 *hist, const char *what, TCut cut)
+void HPainter2::Project(TH1 *hist, const char *what, TCut cut, int iZeroErrCorr)
 {
 	TH1 *hSig;	// Signal hist
 	TH1 *hRand;	// Accidental background (e+ - n)
@@ -207,9 +207,11 @@ void HPainter2::Project(TH1 *hist, const char *what, TCut cut)
 	hSig->Sumw2();
 	hRand->Sumw2();
 	hMuRand->Sumw2();
-	MakeNonZeroErrors(hSig);
-	MakeNonZeroErrors(hRand);
-	MakeNonZeroErrors(hMuRand);
+	if (iZeroErrCorr) {		// No zero error correction for absolute counts
+		MakeNonZeroErrors(hSig);
+		MakeNonZeroErrors(hRand);
+		MakeNonZeroErrors(hMuRand);
+	}
 	hRand->Scale(1.0/NRANDOM);
 	hMuRand->Scale(1.0/NRANDOM);
 	

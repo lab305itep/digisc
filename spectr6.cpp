@@ -40,6 +40,7 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 	const char *outdir  = "/home/clusters/rrcmpi/alekseev/igor/period7n/";
 	const char *what = "PositronEnergy";
 	const char *mucut = "gtFromVeto > 60";
+	int iZeroErrCorr = 1;
 	int i;
 	
 //	Environment
@@ -58,6 +59,9 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 
 	ptr = getenv("SPECTR_MUCUT");
 	if (ptr) mucut =  ptr;
+	
+	ptr = getenv("ZERO_ERROR_CORRECTION");
+	if (ptr) iZeroErrCorr = strtol(ptr, NULL, 10);
 
 	Cuts = (TCut)"";
 	for (i=0; i<100; i++) {
@@ -85,8 +89,8 @@ void spectr(const char *name, int mask, int run_from, int run_to, double bgnd)
 	
 	HPainter2 *ptr2 = new HPainter2(mask, run_from, run_to, pairdir);
 	ptr2->SetFile(fRoot);
-	ptr2->Project(hSig,  what, cSig);
-	ptr2->Project(hBgnd, what, cBgnd);
+	ptr2->Project(hSig,  what, cSig, iZeroErrCorr);
+	ptr2->Project(hBgnd, what, cBgnd, iZeroErrCorr);
 	hRBgnd = (TH1D*) gROOT->FindObject("hCosm-murand");
 	hConst->Fill("UpTime", ptr2->GetUpTime());
 	hConst->Fill("StartTime", ptr2->GetBeginTime());
