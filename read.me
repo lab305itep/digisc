@@ -16,6 +16,8 @@ statistics. Cat files into a single file and strip text lines:
 8. Run deadtimes_v2/merge2stat to insert dead times inot stat file:
     ./merge2stat input_stat.txt input_dead.txt output_stat.txt
 9. Add effeciency information using deadchan/eff2stat_v1 as described in deadchan/read.me
+*** Adding fixed efficiency at the end of line:
+    sed -e "s/$/ 0.34904/" stat_149083_155082_d.txt > stat_149083_155082_de.txt
 Now stat file is ready for manual analysis and adding the reactor power information.
 10. Run pairbuilder:
 danss_submit run_pair_mpi run_first run_last mpi 500 "SRC_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2 TGT_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n2"

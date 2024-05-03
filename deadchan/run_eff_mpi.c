@@ -57,12 +57,14 @@ int main(int argc, char *argv[])
 	
 	setenv("DANSSRAWREC_HOME", "../lib_v3.2", 1);
 //			Run digi
-	sprintf(str, "../digi_evtbuilder6_v3 -no_hit_tables -file %s -output %s/var_%d_fuel.root -flag 0x860000 -mcdata -deadlist %s/%d.list", 
-		fuellist, rootdir, serial, vardir, serial);
-	irc = system(str);
-	if (irc) {
-		printf("DIGI Run %d: error %d returned: %m\n", serial, irc);
-		goto fin;
+	if (strcmp(fuellist, "none")) {
+		sprintf(str, "../digi_evtbuilder6_v3 -no_hit_tables -file %s -output %s/var_%d_fuel.root -flag 0x860000 -mcdata -deadlist %s/%d.list", 
+			fuellist, rootdir, serial, vardir, serial);
+		irc = system(str);
+		if (irc) {
+			printf("DIGI Run %d: error %d returned: %m\n", serial, irc);
+			goto fin;
+		}
 	}
 //			Run pair
 	sprintf(str, "../pairbuilder8 %s/var_%d_fuel.root %s/var_%d_fuel.root",

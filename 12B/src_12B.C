@@ -434,9 +434,12 @@ void scan_12B(const char *expname, const char *mcname)
 	double xmin;
 	TLatex txt;
 	
-	TH2D *hScan = new TH2D("hScan12B", "#chi^{2} difference between MC and data, ^{12}B, SiPM+PMT;Scale;Shift;#chi^{2}", 41, 0.9, 1.1, 13, -0.15, 0.15);
-	TH2D *hScanSiPM = new TH2D("hScan12BSiPM", "#chi^{2} difference between MC and data, ^{12}B, SiPM;Scale;Shift;#chi^{2}", 41, 0.9, 1.1, 13, -0.15, 0.15);
-	TH2D *hScanPMT = new TH2D("hScan12BPMT", "#chi^{2} difference between MC and data, ^{12}B, PMT;Scale;Shift;#chi^{2}", 41, 0.9, 1.1, 13, -0.15, 0.15);
+	TH2D *hScan = new TH2D("hScan12B", "#chi^{2} difference between MC and data, ^{12}B, SiPM+PMT;Scale;Shift;#chi^{2}", 
+		41, 0.9 - 0.0025, 1.1 + 0.0025, 13, -0.15 - 0.0125, 0.15 + 0.0125);
+	TH2D *hScanSiPM = new TH2D("hScan12BSiPM", "#chi^{2} difference between MC and data, ^{12}B, SiPM;Scale;Shift;#chi^{2}", 
+		41, 0.9 - 0.0025, 1.1 + 0.0025, 13, -0.15 - 0.0125, 0.15 + 0.0125);
+	TH2D *hScanPMT = new TH2D("hScan12BPMT", "#chi^{2} difference between MC and data, ^{12}B, PMT;Scale;Shift;#chi^{2}", 
+		41, 0.9 - 0.0025, 1.1 + 0.0025, 13, -0.15 - 0.0125, 0.15 + 0.0125);
 	
 	TFile *fExp = new TFile(expname);
 	TFile *fMC  = new TFile(mcname);
@@ -557,6 +560,145 @@ void scan_12B(const char *expname, const char *mcname)
 	hScan->Write();
 	hScanSiPM->Write();
 	hScanPMT->Write();
+	fOut->Close();
+	fExp->Close();
+	fMC->Close();
+}
+
+/*
+	Scan the difference between the experimental and MC histgrams in several energy bins
+	expname - file with experimental histograms
+	mcname - file with MC histograms
+*/
+void scanm_12B(const char *expname, const char *mcname, int nBins = 4)
+{
+	const int firstBin = 13;	// 3 Mev
+//	const int iWidth = 8;		// 2 MeV
+//	const int nBins = 4;		// 3 - 11 MeV
+//	const int iWidth = 6;		// 1.5 MeV
+//	const int nBins = 6;		// 3 - 12 MeV
+	const int iShift = 6;		// no shift
+	char str[256], strl[1024];
+	TH1D *hMC[41];
+	int iMinX, iLeft, iRight;
+	int i, j, k;
+	double xmin, diff, err, err2;
+	TLatex txt;
+	TLine ln;
+	TString pname(mcname);
+	TH1D *hScan[nBins];
+	int iWidth;
+	
+	pname.ReplaceAll(".root", "");
+	pname += "-scan";
+	if (nBins == 4) {
+		iWidth = 8;
+		pname += "4";
+	} else if (nBins == 6) {
+		iWidth = 6;
+		pname += "6";
+	} else {
+		printf("Bad nBins: only 4 and 6 are supported\n");
+		return;
+	}
+	
+	for (i = 0; i < nBins; i++) {
+		sprintf(str, "hScan12B%d", i);
+//		sprintf(strl, "#chi^{2} difference between MC and data, ^{12}B, SiPM+PMT for E = [%4.1f - %4.4f] MeV;Scale;#chi^{2}",
+		sprintf(strl, "SiPM+PMT, E = [%4.1f - %4.4f] MeV;Scale;#chi^{2}",
+			(firstBin + i * iWidth - 1) * 0.25, (firstBin + (i + 1) * iWidth - 1) * 0.25);
+		hScan[i] = new TH1D(str, strl, 41, 0.9 - 0.0025, 1.1 + 0.0025);
+	}
+	TFile *fExp = new TFile(expname);
+	TFile *fMC  = new TFile(mcname);
+	if (!fExp->IsOpen() || !fMC->IsOpen()) return;
+	
+	TH1D *hExp = (TH1D *) fExp->Get("hDiff12B");
+	if (!hExp) {
+		printf("Not all histograms found in %s.\n", expname);
+		return;
+	}
+	for (i=0; i<41; i++) {
+		sprintf(str, "hMC12B_%2.2d_%2.2d", i, iShift);
+		hMC[i] = (TH1D *) fMC->Get(str);
+		if (!hMC[i]) {
+			printf("Not all histograms found in %s.\n", mcname);
+			return;
+		}
+		hMC[i]->Scale(hExp->Integral(13, 80) / hMC[i]->Integral(13, 80));
+		for (j = 0; j < nBins; j++) hScan[j]->SetBinContent(i + 1, chi2Diff(hExp, hMC[i], firstBin + j * iWidth, firstBin + (j + 1) * iWidth - 1));
+	}
+	
+	TF1 *fpol2 = new TF1("fpol2", "pol2", -10, 10);
+	TH1D *hMCScaled = (TH1D*) hExp->Clone("hMCScaled");	// MC with different scale in bins
+	hMCScaled->Reset();
+	hMCScaled->SetLineWidth(2);
+	hMCScaled->SetLineColor(kBlue);
+	TH1D *hPulls = (TH1D*) hExp->Clone("hPulls");	// Pulls
+	hPulls->Reset();
+	hPulls->SetLineWidth(2);
+	hPulls->SetLineColor(kBlue);
+	hPulls->SetTitle("Pulls;MeV;(#Delta/#sigma)^{2}");
+	
+	gStyle->SetOptStat(0);
+	gStyle->SetOptFit(0);
+	TCanvas *cv = (TCanvas *) gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1400, 1000);
+	cv->Clear();
+	cv->Divide((nBins + 1) / 2, 2);
+	for (i = 0; i < nBins; i++) {
+		cv->cd(i + 1);
+		iMinX = hScan[i]->GetMinimumBin();
+		iLeft = iMinX - 10;
+		if (iLeft < 1) iLeft = 1;
+		iRight = iMinX + 10;
+		if (iRight > 41) iRight = 41;
+		hScan[i]->Fit(fpol2, "", "", hScan[i]->GetBinCenter(iLeft), hScan[i]->GetBinCenter(iRight));
+		xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+		err = 1 / sqrt(fpol2->GetParameter(2));
+		sprintf(str, "Scale=%5.3f #pm %5.3f", xmin, err);
+		txt.DrawLatexNDC(0.2, 0.8, str);
+		sprintf(str, "#Chi^{2}_{min} / n.d.f.=%6.1f / %d", fpol2->Eval(xmin), iWidth - 1);
+		txt.DrawLatexNDC(0.2, 0.72, str);
+		// Get chunk-scaled histogram
+		k = (xmin - 0.9 + 0.0025) / 0.005;
+		if (k < 0) k = 0;
+		if (k > 40) k = 40;
+		printf("xmin = %f ==> k = %d\n", xmin, k);
+		for (j = firstBin + i * iWidth; j < firstBin + (i + 1) * iWidth; j++) {
+			hMCScaled->SetBinContent(j, hMC[k]->GetBinContent(j));
+			hMCScaled->SetBinError(j, hMC[k]->GetBinError(j));
+		}
+	}
+	cv->SaveAs((pname + ".pdf[").Data());
+	cv->SaveAs((pname + ".pdf").Data());
+	cv->Clear();
+	cv->Divide(1, 2);
+	cv->cd(1);
+	hExp->SetLineColor(kRed);
+	hExp->SetMarkerColor(kRed);
+	hExp->Draw();
+	hMCScaled->Draw("same,hist");
+	ln.SetLineColor(kMagenta);
+//	ln.SetLineWidth(2);
+	for (i = 0; i <= nBins; i++) ln.DrawLine((firstBin + i * iWidth - 1) * 0.25, 0, (firstBin + i * iWidth - 1) * 0.25, 1.1 * hExp->GetMaximum());
+	cv->cd(2);
+	//	Calculate and draw pulls
+	for (i = firstBin; i < firstBin + nBins * iWidth; i++) {
+		diff = hExp->GetBinContent(i) - hMCScaled->GetBinContent(i);
+		diff *= fabs(diff);
+		err2 = hExp->GetBinError(i) * hExp->GetBinError(i) + hMCScaled->GetBinError(i) * hMCScaled->GetBinError(i);
+		hPulls->SetBinContent(i, diff / err2);
+	}
+	hPulls->Draw();
+	for (i = 0; i <= nBins; i++) ln.DrawLine((firstBin + i * iWidth - 1) * 0.25, -4, (firstBin + i * iWidth - 1) * 0.25, 4);
+	cv->SaveAs((pname + ".pdf").Data());
+	cv->SaveAs((pname + ".pdf]").Data());
+	TFile *fOut = new TFile((pname+".root").Data(), "RECREATE");
+	if (!fOut->IsOpen()) return;
+	for (i = 0; i < nBins; i++) hScan[i]->Write();
+	hMCScaled->Write();
+	hPulls->Write();
 	fOut->Close();
 	fExp->Close();
 	fMC->Close();

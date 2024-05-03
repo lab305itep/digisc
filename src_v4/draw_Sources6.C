@@ -572,6 +572,13 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "Akagi/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
+	case 1031:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "22Na";
+		sprintf(fname, "Chikuma/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
 	case 1101:	// Co MC, center
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
@@ -591,6 +598,13 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "Akagi/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
+	case 1131:	// Co MC, center, chikuma, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "60Co";
+		sprintf(fname, "Chikuma/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	default:
@@ -715,7 +729,8 @@ void draw_scale_scan(const char *what, const char *when, const char *where, cons
 {
 	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
 //	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
-	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
+//	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
+	const char *MCpattern = "Chikuma/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
 	const int binMin = 11;
 	const int binMax = 26;
 	char expname[1024];
