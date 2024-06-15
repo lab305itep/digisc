@@ -12,11 +12,12 @@
 
 int main(int argc, char **argv)
 {
-	const double ENuMin = 1.81;
+//	const double ENuMin = 1.81;
+	const double ENuMin = 1.75;
 	const double deltaM = 0.5109989461 + 939.5654133 - 938.2720813;
 	const double BinWidth = 0.125;
-	const int BinsNu = 64;
-	const int BinsE = 96;
+	const int BinsNu = 98;
+	const int BinsE = 128;
 	char str[1024];
 	char *ptr;
 	const char *shift;

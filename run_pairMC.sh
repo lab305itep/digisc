@@ -19,12 +19,13 @@ do_IBDdir()
 	name=$1
 	nser=$2
 	ninser=$3
-	mkdir -p $PAIRDIR/IBD/$name
+	fuel=$4
+	mkdir -p $PAIRDIR/$name
 	for ((i=0;$i<nser;i=$i+1)) ; do
 		for ((j=1;$j<=ninser;j=$j+1)) ; do
-			namein=$ROOTDIR/IBD/$name/`printf "mc_IBD_indLY_transcode_rawProc_pedSim_%s_%2.2d_%2.2d.root" $name $i $j`
-			nameraw=$RAWDIR/IBD/$name/`printf "DANSS%d_%d.root" $i $j`
-			nameout=$PAIRDIR/IBD/$name/`basename $namein`
+			namein=$ROOTDIR/$name/`printf "mc_IBD_indLY_transcode_rawProc_pedSim_%s_%2.2d_%2.2d.root" $fuel $i $j`
+			nameraw=$RAWDIR/$name/Ready/`printf "DANSS%d_%d.root" $i $j`
+			nameout=$PAIRDIR/$name/`basename $namein`
 			nameinfo=${nameout/.root/_info.root}
 			if [ -f $namein ] ; then
 				./pairbuilder8 $namein $nameout
@@ -36,11 +37,11 @@ do_IBDdir()
 
 do_IBD()
 {
-	do_IBDdir "235U"   3  4
-	do_IBDdir "238U"   1  4
-	do_IBDdir "239Pu"  3  4
-	do_IBDdir "241Pu"  1  4
-	do_IBDdir "FS"    10 16
+	do_IBDdir "235U"   3  4 "235U" 
+	do_IBDdir "238U"   1  4 "238U" 
+	do_IBDdir "239Pu"  3  4 "239Pu"
+	do_IBDdir "241Pu"  1  4 "241Pu"
+	do_IBDdir "FS"    10 16 "FS"   
 }
 
 do_neutrons()
@@ -78,7 +79,8 @@ do_gamma()
 }
 
 date
-do_neutrons
+do_IBDdir "Chikuma/IBD/235U_fuel_Chikuma_Cher_coeff_0_233" 6 16 "235U"
+do_IBDdir "Chikuma/IBD/235U_fuel_Chikuma_FIFRELIN2" 6 16 "235U"
 date
 
 exit 0

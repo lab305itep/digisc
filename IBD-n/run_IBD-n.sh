@@ -7,6 +7,6 @@
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/IBD-n.err
 cd /home/itep/alekseev/igor/IBD-n
 date
-./IBD-n ibd_list.txt mc_ibd_n.root
+./IBD-n Chikuma_FIFRELIN2.txt mc_ibd_n_FIFRELIN2.root
 date
 exit 0
