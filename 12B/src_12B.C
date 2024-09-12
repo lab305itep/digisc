@@ -2,6 +2,8 @@
     A collection of functions for 12B calibration
 */
 
+const int Nbins = 80;
+
 /*
 	Calculate chi2 of two histograms difference
 */
@@ -251,8 +253,6 @@ void src_12BMC(const char *mcname, const char *mchist)
 	mclist = strdup(mcname);
 	ptr = strtok(mclist, " \t,");
 	TChain *tMC = new TChain("DanssEvent", "DanssEvent");
-	mclist = strdup(mcname);
-	ptr = strtok(mclist, " \t,");
 	for(;;) {
 		if (!ptr || !strlen(ptr)) break;
 		tMC->AddFile(ptr);
@@ -553,9 +553,12 @@ void scan_12B(const char *expname, const char *mcname)
 	txt.DrawLatexNDC(0.4, 0.8, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
 	txt.DrawLatexNDC(0.4, 0.72, str);
-	cv->SaveAs("12B_82_scan.png");
+	TString resname(mcname);
+	resname.ReplaceAll(".root", "");
 	
-	TFile *fOut = new TFile("12B_82_scan.root", "RECREATE");
+	cv->SaveAs((resname + "-scan.png").Data());
+	
+	TFile *fOut = new TFile((resname + "-scan.root").Data(), "RECREATE");
 	if (!fOut->IsOpen()) return;
 	hScan->Write();
 	hScanSiPM->Write();
@@ -702,4 +705,178 @@ void scanm_12B(const char *expname, const char *mcname, int nBins = 4)
 	fOut->Close();
 	fExp->Close();
 	fMC->Close();
+}
+
+/********************************************************************************
+ *	Calculate MC matrix converting from true to MC energy			*
+ *	mcname - path to processed MC root file or space separated files	*
+ *	what - variable name in the processed file				*
+ *	cuts - cuts to be applied						*
+ *	mcorig - path to original MC file(s)					*
+ *	MC response matrix is returned						*
+ ********************************************************************************/
+TMatrixD *MCmatrix(const char *mcname, const char *what, const char *cuts, const char *mcorig)
+{
+	char *ptr;
+	char *mclist;
+	char str[1024];
+	int i, j;
+	double sum;
+
+	printf("\t=======\t\n%s\n%s\n ==> %s [%s]\n", mcname, mcorig, what, cuts);
+
+	mclist = strdup(mcname);
+	ptr = strtok(mclist, " \t,");
+	TChain *tMC = new TChain("DanssEvent", "DanssEvent");
+	for(;;) {
+		if (!ptr || !strlen(ptr)) break;
+		tMC->AddFile(ptr);
+		ptr = strtok(NULL, " \t,");
+	}
+	if (!tMC->GetEntries()) {
+		printf("Bad file(s) %s\n", mcname);
+		return NULL;
+	}
+	free(mclist);
+	
+	mclist = strdup(mcorig);
+	ptr = strtok(mclist, " \t,");
+	TChain *tMCorig = new TChain("DANSSEvent", "DANSSEvent");
+	for(;;) {
+		if (!ptr || !strlen(ptr)) break;
+		tMCorig->AddFile(ptr);
+		ptr = strtok(NULL, " \t,");
+	}
+	if (!tMCorig->GetEntries()) {
+		printf("Bad file(s) %s\n", mcorig);
+		return NULL;
+	}
+	free(mclist);
+	
+	// Project
+	TH1D *h1 = new TH1D("__htmp1", "", Nbins, 0, 20);
+	TH2D *h2 = new TH2D("__htmp2", "", Nbins, 0, 20, Nbins, 0, 20);
+	sprintf(str, "%s:ParticleEnergy", what);
+	tMC->Project(h2->GetName(), str, cuts);
+	tMCorig->Project(h1->GetName(), "ParticleEnergy");
+	
+	// Extract to matrix
+	TMatrixD *M = new TMatrixD(Nbins, Nbins);
+	for (i=0; i<Nbins; i++) for (j=0; j<Nbins; j++) (*M)[j][i] = h2->GetBinContent(i+1, j+1);
+	
+	// Normalize
+	for (i=0; i<Nbins; i++) {
+		sum = h1->GetBinContent(i+1);
+		if (sum > 0) for (j=0; j<Nbins; j++) (*M)[j][i] /= sum;
+	}
+	
+	delete tMC;
+	delete tMCorig;
+	delete h2;
+	delete h1;
+	
+	return M;
+}
+
+/************************************************
+ *	Get vector of the original MC spectrum	*
+ *	mcorig - path to original MC file(s)	*
+ *	spectrum vector is returned		*
+ ************************************************/
+TVectorD *MCvector(const char *mcorig)
+{
+	char *ptr;
+	char *mclist;
+	int i;
+
+	mclist = strdup(mcorig);
+	ptr = strtok(mclist, " \t,");
+	TChain *tMCorig = new TChain("DANSSEvent", "DANSSEvent");
+	for(;;) {
+		if (!ptr || !strlen(ptr)) break;
+		tMCorig->AddFile(ptr);
+		ptr = strtok(NULL, " \t,");
+	}
+	if (!tMCorig->GetEntries()) {
+		printf("Bad file(s) %s\n", mcorig);
+		return NULL;
+	}
+	free(mclist);
+	
+	// Project
+	TH1D *h1 = new TH1D("__htmp1", "", Nbins, 0, 20);
+	tMCorig->Project(h1->GetName(), "ParticleEnergy");
+	// Extract to vector
+	TVectorD *S = new TVectorD(Nbins);
+	for (i=0; i<Nbins; i++) (*S)[i] = h1->GetBinContent(i+1);
+
+	delete tMCorig;
+	delete h1;
+	
+	return S;
+}
+
+/****************************************
+ *	Make matrixes for Chikuma	*
+ ****************************************/
+void MakeChikumaMatrixes(void)
+{
+	const char *ChikumaDir = "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/12B";
+	const char *MCRawDir = "/home/clusters/rrcmpi/danss/MC_RAW/Chikuma/12B";
+	const char *mcnames[] = {
+		"DB_spectrum_Chikuma", 
+		"DB_spectrum_Chikuma_Birks_el_0_0108", 
+		"DB_spectrum_Chikuma_Birks_el_0_0308", 
+		"DB_spectrum_Chikuma_Cher_coeff_0_033",
+		"DB_spectrum_Chikuma_Cher_coeff_0_233",
+		"DB_spectrum_Chikuma_main_Birks_0_0108", 
+		"DB_spectrum_Chikuma_main_Birks_0_0308"};
+	const char *filelist[] = {"mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root", "mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root"};
+	const char *rawlist[] = {"DANSSmod0_1.root", "DANSSmod0_2.root"};
+	const char *varlist[] = {"PositronEnergy", "PositronSiPmEnergy", "PositronPmtEnergy"};
+	const char *mixname[] = {"Birks_el", "Cher_coeff", "main_Birks"};
+	int i, j;
+	char str[4096];
+	char raw[4096];
+	char name[256];
+	TMatrixD *M[13][3];
+	
+	TFile *fOut = new TFile("12B_Chikuma_matrixes.root", "RECREATE");
+	if (!fOut->IsOpen()) return;
+	
+	for (i = 0; i < sizeof(mcnames) / sizeof(mcnames[0]); i++) {
+		str[0] = '\0';
+		for (j = 0; j < sizeof(filelist) / sizeof(filelist[0]); j++) sprintf(&str[strlen(str)], "%s/%s/%s ", ChikumaDir, mcnames[i], filelist[j]);
+		raw[0] = '\0';
+		for (j = 0; j < sizeof(rawlist) / sizeof(rawlist[0]); j++) sprintf(&raw[strlen(raw)], "%s/%s/Ready/%s ", MCRawDir, mcnames[i], rawlist[j]);
+		for (j = 0; j < sizeof(varlist) / sizeof(varlist[0]); j++) {
+			M[i][j] = MCmatrix(str, varlist[j], "AnnihilationEnergy < 0.06", raw);
+			if (!M[i][j]) continue;
+			sprintf(name, "m12B_%s_%s", mcnames[i], varlist[j]);
+			fOut->cd();
+			M[i][j]->Write(name);
+		}
+	}
+	for (j = 0; j < sizeof(varlist) / sizeof(varlist[0]); j++) {
+		for (i=7; i<13; i++) M[i][j] = new TMatrixD(Nbins, Nbins);
+		*(M[7][j]) = (*(M[2][j]) - *(M[1][j])) * 0.5;
+		*(M[8][j]) = (*(M[2][j]) + *(M[1][j])) * 0.5 - *(M[0][j]);
+		*(M[9][j]) = (*(M[4][j]) - *(M[3][j])) * 0.5;
+		*(M[10][j]) = (*(M[4][j]) + *(M[3][j])) * 0.5 - *(M[0][j]);
+		*(M[11][j]) = (*(M[6][j]) - *(M[5][j])) * 0.5;
+		*(M[12][j]) = (*(M[6][j]) + *(M[5][j])) * 0.5 - *(M[0][j]);
+		for (i=0; i<6; i++) {
+			sprintf(name, "m12B_%s_%s_%s", (i & 1) ? "Residual" : "Delta", mixname[i/2], varlist[j]);
+			fOut->cd();
+			M[7+i][j]->Write(name);
+		}
+	}
+	
+	raw[0] = '\0';
+	for (j = 0; j < sizeof(rawlist) / sizeof(rawlist[0]); j++) sprintf(&raw[strlen(raw)], "%s/%s/Ready/%s ", MCRawDir, mcnames[0], rawlist[j]);
+	auto S = MCvector(raw);
+	fOut->cd();
+	S->Write("v12B_ParticleEnergy");
+
+	fOut->Close();
 }

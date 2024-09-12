@@ -79,8 +79,7 @@ do_gamma()
 }
 
 date
-do_IBDdir "Chikuma/IBD/235U_fuel_Chikuma_Cher_coeff_0_233" 6 16 "235U"
-do_IBDdir "Chikuma/IBD/235U_fuel_Chikuma_FIFRELIN2" 6 16 "235U"
+do_IBDdir "Chikuma/IBD/235U_fuel_Chikuma_main_Birks_0_0308" 6 16 "235U"
 date
 
 exit 0
