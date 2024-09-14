@@ -1,7 +1,7 @@
 /*
     A collection of functions for 12B calibration
 */
-
+#include "../evtbuilder.h"
 const int Nbins = 80;
 
 /*
@@ -881,3 +881,73 @@ void MakeChikumaMatrixes(void)
 	fOut->Close();
 }
 
+/****************************************************************
+ *	To increase speed of calculations an experimental tree	*
+ *	with only three energies is created			*
+ *	from - the first run					*
+ *	to - the last run					*
+ ****************************************************************/
+void MakeShortTree(int from, int to)
+{
+	const char *format = "/home/clusters/rrcmpi/alekseev/igor/muon8n2/%3.3dxxx/muon_%6.6d.root";
+	char str[1024];
+	struct DanssMuonStruct event;
+	const char *LeafList = 
+		"ClusterEnergy/F:"	// Energy sum of the cluster (SiPM)
+		"ClusterSiPmEnergy/F:"	// SiPM energy in the cluster, corrected
+		"ClusterPmtEnergy/F";	// PMT energy in the cluster, corrected
+	long i, N;
+
+	TChain *chA = create_chain("MuonPair", from, to, format);
+	TChain *chR = create_chain("MuonRandom", from, to, format);
+
+	chA->SetBranchAddress("Pair", &event);
+	chR->SetBranchAddress("Pair", &event);
+	
+	sprintf(str, "12B_events_%6.6d_%6.6d.root", from, to);
+	TFile *fOut = new TFile(str, "RECREATE");
+	TTree *tOut = new TTree("MuonEnergy", "MuonEnergy");
+	tOut->Branch("Pair", &event.ClusterEnergy, LeafList);
+	TTree *tOutR = new TTree("MuonEnergy", "MuonEnergy");
+	tOutR->Branch("Pair", &event.ClusterEnergy, LeafList);
+	
+	N = chA->GetEntries();
+	for (i=0; i<N; i++) {
+		chA->GetEntry(i);
+		if (event.dtDiff < 500) continue;	// cut at 500 us
+		if (event.ClusterEnergy < 3) continue;	// cut at 3 MeV
+		tOut->Fill();
+	}
+
+	N = chB->GetEntries();
+	for (i=0; i<N; i++) {
+		chB->GetEntry(i);
+		if (event.dtDiff < 500) continue;	// cut at 500 us
+		if (event.ClusterEnergy < 3) continue;	// cut at 3 MeV
+		tOutR->Fill();
+	}
+	
+	fOut->cd();
+	tOut->Write();
+	tOutR->Write();
+	fOut->Close();
+}
+
+/****************************************************************
+ *	Try to fit MC Kbirks and Kcher to experiment		*
+ *	expname - file with experimental compressed tree	*
+ *	mcmatrixes - file with MC matrixes			*
+ ****************************************************************
+ *	Three free parameters are used:				*
+ *	Kscale - Overall scale					*
+ *	Kbirks - Birks coaefficient for electrons		*
+ *	Kcher - Cherenkov coefficient				*
+ *	The experimental distribution is obtained by scaling	*
+ *	energy with Kscale					*
+ *	MC distribution is obtained using detector respond	*
+ *	matrixes in linear approximation for variables		*
+ *	We use only experimental errors				*
+ ****************************************************************/
+void FitMCparameters(const char *expname, const char *mcmatrixes)
+{
+}
