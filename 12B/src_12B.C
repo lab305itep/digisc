@@ -906,23 +906,23 @@ void MakeShortTree(int from, int to)
 	
 	sprintf(str, "12B_events_%6.6d_%6.6d.root", from, to);
 	TFile *fOut = new TFile(str, "RECREATE");
-	TTree *tOut = new TTree("MuonEnergy", "MuonEnergy");
+	TTree *tOut = new TTree("MuonPair", "MuonPair");
 	tOut->Branch("Pair", &event.ClusterEnergy, LeafList);
-	TTree *tOutR = new TTree("MuonEnergy", "MuonEnergy");
+	TTree *tOutR = new TTree("MuonRandom", "MuonRandom");
 	tOutR->Branch("Pair", &event.ClusterEnergy, LeafList);
 	
 	N = chA->GetEntries();
 	for (i=0; i<N; i++) {
 		chA->GetEntry(i);
-		if (event.dtDiff < 500) continue;	// cut at 500 us
+		if (event.gtDiff < 500) continue;	// cut at 500 us
 		if (event.ClusterEnergy < 3) continue;	// cut at 3 MeV
 		tOut->Fill();
 	}
 
-	N = chB->GetEntries();
+	N = chR->GetEntries();
 	for (i=0; i<N; i++) {
-		chB->GetEntry(i);
-		if (event.dtDiff < 500) continue;	// cut at 500 us
+		chR->GetEntry(i);
+		if (event.gtDiff < 500) continue;	// cut at 500 us
 		if (event.ClusterEnergy < 3) continue;	// cut at 3 MeV
 		tOutR->Fill();
 	}
