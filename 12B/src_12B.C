@@ -850,7 +850,7 @@ void MakeChikumaMatrixes(void)
 		raw[0] = '\0';
 		for (j = 0; j < sizeof(rawlist) / sizeof(rawlist[0]); j++) sprintf(&raw[strlen(raw)], "%s/%s/Ready/%s ", MCRawDir, mcnames[i], rawlist[j]);
 		for (j = 0; j < sizeof(varlist) / sizeof(varlist[0]); j++) {
-			M[i][j] = MCmatrix(str, varlist[j], "AnnihilationEnergy < 0.06", raw);
+			M[i][j] = MCmatrix(str, varlist[j], "AnnihilationEnergy < 0.06 && PositronEnergy > 3", raw);
 			if (!M[i][j]) continue;
 			sprintf(name, "m12B_%s_%s", mcnames[i], varlist[j]);
 			fOut->cd();
@@ -880,3 +880,4 @@ void MakeChikumaMatrixes(void)
 
 	fOut->Close();
 }
+
