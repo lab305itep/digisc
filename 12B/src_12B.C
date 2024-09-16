@@ -3,6 +3,15 @@
 */
 #include "../evtbuilder.h"
 const int Nbins = 80;
+struct FitParametersStruct {
+	TTree *t12BExpSignal;
+	TTree *t12BExpRandom;
+	int iClusterEnergySelection;
+	TMatrixD *CentralMatrix[3];
+	TMatrixD *BirksMatrix[3];
+	TMatrixD *CherMatrix[3];
+	TVectorD *Spectrum;
+} FitPar;
 
 /*
 	Calculate chi2 of two histograms difference
@@ -934,8 +943,82 @@ void MakeShortTree(int from, int to)
 }
 
 /****************************************************************
+ *	Create experimental distribution with given scale	*
+ *	tSignal - signal tree					*
+ *	trandom - accidental background tree (16x events)	*
+ *	what - variable to use: ClusterEnergy,			*
+ *		ClusterSiPmEnergy or ClusterPmtEnergy		*
+ *	Kscale - energy scale					*
+ *	return 1D histogram with Signal - Random/16		*
+ ****************************************************************/
+TH1D *GetExperiment(TTree *tSignal, TTree *tRandom, const char *what, double Kscale)
+{
+	char str[1024];
+	TH1D *hS = new TH1D("__hSignal", "", Nbins, 0, 20);
+	TH1D *hR = new TH1D("__hRandom", "", Nbins, 0, 20);
+	sprintf(str, "%s*%f", what, Kscale);
+	tSignal->Project(hS->GetName(), str);
+	tRandom->Project(hR->GetName(), str);
+	hS->Sumw2();
+	hR->Sumw2();
+	hS->Add(hR, -1.0/16);
+	delete hR;
+	return hS;
+}
+
+/****************************************************************
+ *	Create a MC histogram in linear approximation for	*
+ *	Kbirks and Kcher					*
+ *	Kbirks - difference from central Birks coef / 0.01	*
+ *	Kcher - difference from central Cherenkov coef / 0.1	*
+ *	Mmain - central response matrix				*
+ *	Mbirks - derivative on Kbirks response matrix		*
+ *	Mcher - derivative on Kcher response matrix		*
+ *	S - true electron spectrum				*
+ ****************************************************************/
+TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMatrixD Mcher, TVectorD *S)
+{
+	int i;
+	TVectorD R(Nbins);
+	TMatrixD A(Nbins, Nbins);
+	A = (*Mmain) + Kbirks * (*Mbirks) + Kcher * (*Mcher);
+	R = A * (*S);
+	TH1D *h = new TH1D("__hMC", "", Nbins, 0, 20);
+	for (i=0; i<Nbins; i++) h->SetBinContent(i+1, R[i]);
+	return h;
+}
+
+/****************************************************************
+ *	Fit function as assumed for TMinuit			*
+ *	x[0] - Kscale						*
+ *	x[1] - Kbirks						*
+ *	x[2] - Kcher						*
+ ****************************************************************/
+void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
+{
+	const int binMin = 13;		// 3 MeV
+	const int binMax = 52;		// 13 MeV
+	const char *Estring[] = {"ClusterEnergy", "ClusterSiPmEnergy", "ClusterPmtEnergy"};
+	if (iflag == 1) return;
+	double Kscale = x[0];
+	double Kbirks = x[1];
+	double Kcher = x[2];
+	TH1D *hExp = GetExperiment(FitPar.t12BexpSignal, FitPar.t12BExpRandom, 
+		Estring[FitPar.iClusterEnergySelection], kScale);
+	TH1D *hMC = GetMC(Kbirks, Kcher,
+		FitPar.MainMatrix[FitPar.iClusterEnergySelection],
+		FitPar.BirksMatrix[FitPar.iClusterEnergySelection],
+		FitPar.CherMatrix[FitPar.iClusterEnergySelection],
+		FitPar.Spectrum);
+	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
+	delete hExp;
+	delete hMC;
+	f = chi2diff(hExp, hMC, binMin, binMax);
+}
+
+/****************************************************************
  *	Try to fit MC Kbirks and Kcher to experiment		*
- *	expname - file with experimental compressed tree	*
+ *	expname - file with experimental short tree		*
  *	mcmatrixes - file with MC matrixes			*
  ****************************************************************
  *	Three free parameters are used:				*
@@ -950,4 +1033,5 @@ void MakeShortTree(int from, int to)
  ****************************************************************/
 void FitMCparameters(const char *expname, const char *mcmatrixes)
 {
+	
 }
