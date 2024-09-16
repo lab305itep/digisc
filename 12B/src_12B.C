@@ -976,7 +976,7 @@ TH1D *GetExperiment(TTree *tSignal, TTree *tRandom, const char *what, double Ksc
  *	Mcher - derivative on Kcher response matrix		*
  *	S - true electron spectrum				*
  ****************************************************************/
-TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMatrixD Mcher, TVectorD *S)
+TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMatrixD *Mcher, TVectorD *S)
 {
 	int i;
 	TVectorD R(Nbins);
@@ -1003,23 +1003,27 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 	double Kscale = x[0];
 	double Kbirks = x[1];
 	double Kcher = x[2];
-	TH1D *hExp = GetExperiment(FitPar.t12BexpSignal, FitPar.t12BExpRandom, 
-		Estring[FitPar.iClusterEnergySelection], kScale);
+	TH1D *hExp = GetExperiment(FitPar.t12BExpSignal, FitPar.t12BExpRandom, 
+		Estring[FitPar.iClusterEnergySelection], Kscale);
 	TH1D *hMC = GetMC(Kbirks, Kcher,
-		FitPar.MainMatrix[FitPar.iClusterEnergySelection],
+		FitPar.CentralMatrix[FitPar.iClusterEnergySelection],
 		FitPar.BirksMatrix[FitPar.iClusterEnergySelection],
 		FitPar.CherMatrix[FitPar.iClusterEnergySelection],
 		FitPar.Spectrum);
 	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
 	delete hExp;
 	delete hMC;
-	f = chi2diff(hExp, hMC, binMin, binMax);
+	f = chi2Diff(hExp, hMC, binMin, binMax);
 }
 
 /****************************************************************
  *	Try to fit MC Kbirks and Kcher to experiment		*
  *	expname - file with experimental short tree		*
  *	mcmatrixes - file with MC matrixes			*
+ *	iDet - select energy measurement:			*
+ *		0: SiPM+PMT					*
+ *		1: SiPM only					*
+ *		2: PMT only					*
  ****************************************************************
  *	Three free parameters are used:				*
  *	Kscale - Overall scale					*
@@ -1031,7 +1035,72 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
  *	matrixes in linear approximation for variables		*
  *	We use only experimental errors				*
  ****************************************************************/
-void FitMCparameters(const char *expname, const char *mcmatrixes)
+void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
 {
-	
+	const char *mcnames[3][3] = {{
+			"m12B_DB_spectrum_Chikuma_PositronEnergy", 
+			"m12B_Delta_Birks_el_PositronEnergy", 
+			"m12B_Delta_Cher_coeff_PositronEnergy"
+		}, {
+			"m12B_DB_spectrum_Chikuma_PositronSiPmEnergy", 
+			"m12B_Delta_Birks_el_PositronSiPmEnergy", 
+			"m12B_Delta_Cher_coeff_PositronSiPmEnergy"
+		}, {
+			"m12B_DB_spectrum_Chikuma_PositronPmtEnergy", 
+			"m12B_Delta_Birks_el_PositronPmtEnergy", 
+			"m12B_Delta_Cher_coeff_PositronPmtEnergy"
+		}
+	};
+	int i, j;
+	TMatrixD *M[3][3];
+	double R, eR, Kb, eKb, kkB, Kc, eKc, kkC;
+//	Open files and read matrixes
+	TFile *fExp = new TFile(expname);
+	if (!fExp->IsOpen()) return;
+	FitPar.t12BExpSignal = (TTree *) fExp->Get("MuonPair");
+	FitPar.t12BExpRandom = (TTree *) fExp->Get("MuonRandom");
+	if (!FitPar.t12BExpSignal || !FitPar.t12BExpRandom) {
+		printf("Can not get all trees in %s\n", expname);
+		return;
+	}
+	TFile *fMC = new TFile(mcmatrixes);
+	if (!fMC->IsOpen()) return;
+	for (i=0; i<3; i++) for (j=0; j<3; j++) {
+		M[i][j] = (TMatrixD *) fMC->Get(mcnames[i][j]);
+		if (!M[i][j]) {
+			printf("Can not get all matrixes in %s\n", mcmatrixes);
+			return;
+		}
+	}
+	for (i=0; i<3; i++) {
+		FitPar.CentralMatrix[i] = M[i][0];
+		FitPar.BirksMatrix[i] = M[i][1];
+		FitPar.CherMatrix[i] = M[i][2];
+	}
+	FitPar.Spectrum = (TVectorD *) fMC->Get("v12B_ParticleEnergy");
+	if (!FitPar.Spectrum) {
+		printf("Can not get true specturm in %s\n", mcmatrixes);
+		return;
+	}
+	FitPar.iClusterEnergySelection = iDet;
+//	Do minimization:
+	TMinuit *mn = new TMinuit();
+	mn->mninit(5, 6, 7);
+	mn->SetFCN(FitFunction);
+	mn->DefineParameter(0, "R", 0.96, 0.005, 0.8, 1.3);	// Kscale
+	mn->DefineParameter(1, "Kb", 0, 0.01, -5, 5);		// Kbirks (Delta)
+	mn->DefineParameter(2, "Kc", 0, 0.05, -5, 5);		// Kcher (Delta)
+//********************************
+	mn->Migrad();
+//********************************
+	mn->GetParameter(0, R, eR);
+	mn->GetParameter(1, Kb, eKb);
+	mn->GetParameter(2, Kc, eKc);
+	kkB = 0.0208 + 0.01*Kb;
+	kkC = 0.133 + 0.1*Kc;
+
+	printf("R = %f +- %f;   Kb = %f +- %f;   Kc = %f +- %f\n", R, eR, kkB, eKb / 100, kkC, eKc / 10);
+
+	fExp->Close();
+	fMC->Close();
 }
