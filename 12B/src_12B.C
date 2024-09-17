@@ -997,12 +997,41 @@ TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMat
 void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 {
 	const int binMin = 13;		// 3 MeV
-	const int binMax = 52;		// 13 MeV
+	const int binMax = 50;		// 12.5 MeV
 	const char *Estring[] = {"ClusterEnergy", "ClusterSiPmEnergy", "ClusterPmtEnergy"};
+
 	if (iflag == 1) return;
 	double Kscale = x[0];
 	double Kbirks = x[1];
 	double Kcher = x[2];
+	printf("Call with N=%d F=%d Ks=%f Kb=%f Kc=%f\n", Npar, iflag, Kscale, Kbirks, Kcher);
+	TH1D *hExp = GetExperiment(FitPar.t12BExpSignal, FitPar.t12BExpRandom, 
+		Estring[FitPar.iClusterEnergySelection], Kscale);
+	printf("hExp made\n");
+	TH1D *hMC = GetMC(Kbirks, Kcher,
+		FitPar.CentralMatrix[FitPar.iClusterEnergySelection],
+		FitPar.BirksMatrix[FitPar.iClusterEnergySelection],
+		FitPar.CherMatrix[FitPar.iClusterEnergySelection],
+		FitPar.Spectrum);
+	printf("hMC made\n");
+	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
+	f = chi2Diff(hExp, hMC, binMin, binMax);
+	delete hExp;
+	delete hMC;
+}
+
+/****************************************************************
+ *	Draw fit result						*
+ *	Kscale - the experiment scale				*
+ *	Kbirks - Birks coef					*
+ *	Kcher - Cherenkov coef					*
+ ****************************************************************/
+void DrawFitRes(double Kscale, double Kbirks, double Kcher)
+{
+	const int binMin = 13;		// 3 MeV
+	const int binMax = 50;		// 12.5 MeV
+	const char *Estring[] = {"ClusterEnergy", "ClusterSiPmEnergy", "ClusterPmtEnergy"};
+
 	TH1D *hExp = GetExperiment(FitPar.t12BExpSignal, FitPar.t12BExpRandom, 
 		Estring[FitPar.iClusterEnergySelection], Kscale);
 	TH1D *hMC = GetMC(Kbirks, Kcher,
@@ -1011,9 +1040,8 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 		FitPar.CherMatrix[FitPar.iClusterEnergySelection],
 		FitPar.Spectrum);
 	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
-	delete hExp;
-	delete hMC;
-	f = chi2Diff(hExp, hMC, binMin, binMax);
+	hExp->DrawCopy();
+	hMC->DrawCopy("same hist");
 }
 
 /****************************************************************
@@ -1091,11 +1119,13 @@ void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
 	mn->DefineParameter(1, "Kb", 0, 0.01, -5, 5);		// Kbirks (Delta)
 	mn->DefineParameter(2, "Kc", 0, 0.05, -5, 5);		// Kcher (Delta)
 //********************************
+	printf("Ready for fit !\n");
 	mn->Migrad();
 //********************************
 	mn->GetParameter(0, R, eR);
 	mn->GetParameter(1, Kb, eKb);
 	mn->GetParameter(2, Kc, eKc);
+	DrawFitRes(R, Kb, Kc);
 	kkB = 0.0208 + 0.01*Kb;
 	kkC = 0.133 + 0.1*Kc;
 
