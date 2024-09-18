@@ -1,7 +1,7 @@
 /*
     A collection of functions for 12B calibration
 */
-#include "../evtbuilder.h"
+#include "evtbuilder.h"
 const int Nbins = 80;
 struct FitParametersStruct {
 	double *ExpSignal;
@@ -988,6 +988,36 @@ TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMat
 	return h;
 }
 
+/*
+    SiPM coefficients for other sources
+    Kb - Birks for e+-, coef for 0.01 variation, Kb0 = 0.0208 cm/MeV
+    Kc - Cherenkov, coef for 0.1 variation, Kc0 = 0.133 MeV/cm
+    Kh - Birks for heavy, coef for 0.01 variation, Kh0 = 0.0208 cm/MeV
+	mu    = 0.961 + 0.005*Kb - 0.032*Kc + 0.014*Kh
+	12B   = 0.942 + 0.021*Kb - 0.034*Kc + 0*Kh
+	22Na  = 0.999 + 0.056*Kb - 0.009*Kc + 0*Kh
+	60Co  = 0.982 + 0.046*Kb - 0.012*Kc + 0*Kh
+	248Cm = 0.966 + 0.033*Kb - 0.020*Kc + 0*Kh
+	mudec = 0.934 + 0.016*Kb - 0.027*Kc + 0*Kh
+	Bragg = 0.932 + 0.005*Kb - 0.015*Kc + 0.021*Kh
+*/
+double RFunction(double Kb, double Kc, double Kh, int num)
+{
+		// Kb, Kc, Kh, K0
+	const double A[6][4] = {
+		{0.005, -0.032, 0.014, 0.961},	// mu
+//		{0.021, -0.034, 0, 0.942},	// 12B	- we use different approach to boron
+		{0.056, -0.009, 0, 0.999},	// 22Na
+		{0.046, -0.012, 0, 0.982},	// 60Co
+		{0.033, -0.020, 0, 0.966},	// 248Cm
+		{0.016, -0.027, 0, 0.934},	// mudec
+		{0.005, -0.015, 0.021, 0.932}	// Bragg
+//		{0.005, -0.015, 0.021, 0.982}	// Bragg
+	};
+	return 1.0 / (A[num][0]*Kb + A[num][1]*Kc + A[num][2]*Kh + A[num][3]);
+}
+
+
 /****************************************************************
  *	Fit function as assumed for TMinuit			*
  *	x[0] - Kscale						*
@@ -998,7 +1028,10 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 {
 	const int binMin = 13;		// 3 MeV
 	const int binMax = 50;		// 12.5 MeV
+	const double Rsigma = 0.005;
 	static int Cnt;
+	double chi2B, chi2other, r;
+	int i;
 
 	if (iflag == 1) {
 		Cnt = 0;
@@ -1015,8 +1048,15 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 		FitPar.CherMatrix[FitPar.iClusterEnergySelection],
 		FitPar.Spectrum);
 	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
-	f = chi2Diff(hExp, hMC, binMin, binMax);
-	printf("Call No %d with N=%d F=%d Ks=%f DKb=%f DKc=%f ==> %f\n", Cnt, Npar, iflag, Kscale, Kbirks, Kcher, f);
+	chi2B = chi2Diff(hExp, hMC, binMin, binMax);
+	chi2other = 0;
+	for (i=0; i<5; i++) {
+		r = RFunction(Kbirks, Kcher, Kbirks, i) - Kscale;
+		chi2other += r * r / (Rsigma * Rsigma);
+	}
+	f = chi2B + chi2other;
+	printf("Call No %d with N=%d F=%d Ks=%f DKb=%f DKc=%f ==> %f + %f = %f\n", 
+		Cnt, Npar, iflag, Kscale, Kbirks, Kcher, chi2B, chi2other, f);
 	delete hExp;
 	delete hMC;
 }
@@ -1032,8 +1072,9 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher)
 	const int binMin = 13;		// 3 MeV
 	const int binMax = 50;		// 12.5 MeV
 	char str[128];
+	double chi2, x[3];
+	int n;
 
-	gStyle->SetOptStat(0);
 	TH1D *hExp = GetExperiment(Kscale);
 	TH1D *hMC = GetMC(Kbirks, Kcher,
 		FitPar.CentralMatrix[FitPar.iClusterEnergySelection],
@@ -1052,9 +1093,13 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher)
 	ln.SetLineWidth(2);
 	ln.DrawLine((binMin-1)/4.0, 0, (binMin-1)/4.0, hExp->GetMaximum());
 	ln.DrawLine(binMax/4.0, 0, binMax/4.0, hExp->GetMaximum());
-	double f = chi2Diff(hExp, hMC, binMin, binMax);
+	n = 3;
+	x[0] = Kscale;
+	x[1] = Kbirks;
+	x[2] = Kcher;
+	FitFunction(n, NULL, chi2, x, 0);
 	TLatex txt;
-	sprintf(str, "#chi^{2} = %f / %d ndf", f, binMax - binMin - 3);
+	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, binMax - binMin + 2);
 	txt.DrawLatexNDC(0.3, 0.92, str);
 }
 
@@ -1078,8 +1123,11 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher)
  *	matrixes in linear approximation for variables		*
  *	We use only experimental errors				*
  ****************************************************************/
-void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet, double Rini = 1.04)
+void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
 {
+	const double Rmin = 1.00;
+	const double Rmax = 1.10;
+	const double Rstep = 0.005;
 	const char *mcnames[3][3] = {{
 			"m12B_DB_spectrum_Chikuma_PositronEnergy", 
 			"m12B_Delta_Birks_el_PositronEnergy", 
@@ -1094,10 +1142,15 @@ void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet, doub
 			"m12B_Delta_Cher_coeff_PositronPmtEnergy"
 		}
 	};
-	int i, j;
+	int i, j, N;
 	TMatrixD *M[3][3];
 	double R, eR, Kb, eKb, kkB, Kc, eKc, kkC;
 	float PositronEnergy[3];
+	double x[3];
+	double chi2;
+	int np;
+	double A, B;
+	double Kscale_min;
 //	Open files and read matrixes
 	TFile *fExp = new TFile(expname);
 	if (!fExp->IsOpen()) return;
@@ -1143,23 +1196,55 @@ void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet, doub
 	FitPar.iClusterEnergySelection = iDet;
 	printf("Found %d events = %d signal - %d/16 random\n", 
 		(int)(FitPar.NExpSignal - FitPar.NExpRandom / 16.0), FitPar.NExpSignal, FitPar.NExpRandom);
-//	Do minimization:
+//	Prepare minimization:
 	TMinuit *mn = new TMinuit();
 	mn->mninit(5, 6, 7);
 	mn->SetFCN(FitFunction);
-	mn->DefineParameter(0, "R", Rini, 0.05, 0.7, 1.5);	// Kscale
+	mn->DefineParameter(0, "R", 1.0, 0.05, 0.7, 1.5);	// Kscale
 	mn->DefineParameter(1, "Kb", 0, 0.005, -5, 5);		// Kbirks (Delta)
 	mn->DefineParameter(2, "Kc", 0, 0.05, -5, 5);		// Kcher (Delta)
 	FitFunction(i, NULL, R, NULL, 1);			// Reset counter
+	N = (Rmax-Rmin)/Rstep + 1;
+	gROOT->cd();
+	TH1D *hPar = new TH1D("hPar", "Scale scan;Scale;#chi^{2}", N, Rmin - Rstep/2, Rmax + Rstep/2);
 //********************************
 	printf("Ready for fit !\n");
-	mn->Migrad();
-//	mn->mnsimp();
-	mn->mnseek();
+	for (i=0; i<N; i++) {
+		mn->DefineParameter(0, "R", Rmin + i*Rstep, 0.05, 0.7, 1.5);	// Kscale
+		mn->FixParameter(0);
+		mn->Migrad();
+		mn->GetParameter(1, Kb, eKb);
+		mn->GetParameter(2, Kc, eKc);
+		x[0] = Rmin + i*Rstep;
+		x[1] = Kb;
+		x[2] = Kc;
+		np = 3;
+		FitFunction(np, NULL, chi2, x, 0);		// get function in the minimum found
+		hPar->SetBinContent(i+1, chi2);
+	}
+	gStyle->SetOptStat(0);
+	auto cv = (TCanvas *)gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1600, 800);
+	cv->Divide(2, 1);
+	cv->cd(1);
+	hPar->Fit("pol2", "W");
+	cv->Update();
+	A = hPar->GetFunction("pol2")->GetParameter(2);
+	B = hPar->GetFunction("pol2")->GetParameter(1);
+	R = -0.5 * B / A;
+	if (R < Rmin || R > Rmax) {
+		printf("R = %f is beyond the range!\n", R);
+		return;
+	}
+	eR = 1 / sqrt(hPar->GetFunction("pol2")->GetParameter(0));
 //********************************
-	mn->GetParameter(0, R, eR);
+	mn->DefineParameter(0, "R", R, 0.05, 0.7, 1.5);	// Kscale
+	mn->FixParameter(0);
+	mn->Migrad();
 	mn->GetParameter(1, Kb, eKb);
 	mn->GetParameter(2, Kc, eKc);
+	
+	cv->cd(2);
 	DrawFitRes(R, Kb, Kc);
 	kkB = 0.0208 + 0.01*Kb;
 	kkC = 0.133 + 0.1*Kc;
