@@ -4,8 +4,10 @@
 #include "../evtbuilder.h"
 const int Nbins = 80;
 struct FitParametersStruct {
-	TTree *t12BExpSignal;
-	TTree *t12BExpRandom;
+	double *ExpSignal;
+	double *ExpRandom;
+	int NExpSignal;
+	int NExpRandom;
 	int iClusterEnergySelection;
 	TMatrixD *CentralMatrix[3];
 	TMatrixD *BirksMatrix[3];
@@ -944,21 +946,16 @@ void MakeShortTree(int from, int to)
 
 /****************************************************************
  *	Create experimental distribution with given scale	*
- *	tSignal - signal tree					*
- *	trandom - accidental background tree (16x events)	*
- *	what - variable to use: ClusterEnergy,			*
- *		ClusterSiPmEnergy or ClusterPmtEnergy		*
  *	Kscale - energy scale					*
  *	return 1D histogram with Signal - Random/16		*
  ****************************************************************/
-TH1D *GetExperiment(TTree *tSignal, TTree *tRandom, const char *what, double Kscale)
+TH1D *GetExperiment(double Kscale)
 {
-	char str[1024];
+	int i;
 	TH1D *hS = new TH1D("__hSignal", "", Nbins, 0, 20);
 	TH1D *hR = new TH1D("__hRandom", "", Nbins, 0, 20);
-	sprintf(str, "%s*%f", what, Kscale);
-	tSignal->Project(hS->GetName(), str);
-	tRandom->Project(hR->GetName(), str);
+	for(i=0; i<FitPar.NExpSignal; i++) hS->Fill(Kscale * FitPar.ExpSignal[i]);
+	for(i=0; i<FitPar.NExpRandom; i++) hR->Fill(Kscale * FitPar.ExpRandom[i]);
 	hS->Sumw2();
 	hR->Sumw2();
 	hS->Add(hR, -1.0/16);
@@ -984,7 +981,10 @@ TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMat
 	A = (*Mmain) + Kbirks * (*Mbirks) + Kcher * (*Mcher);
 	R = A * (*S);
 	TH1D *h = new TH1D("__hMC", "", Nbins, 0, 20);
-	for (i=0; i<Nbins; i++) h->SetBinContent(i+1, R[i]);
+	for (i=0; i<Nbins; i++) {
+		h->SetBinContent(i+1, R[i]);
+		h->SetBinError(i+1, 0);
+	}
 	return h;
 }
 
@@ -998,24 +998,25 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 {
 	const int binMin = 13;		// 3 MeV
 	const int binMax = 50;		// 12.5 MeV
-	const char *Estring[] = {"ClusterEnergy", "ClusterSiPmEnergy", "ClusterPmtEnergy"};
+	static int Cnt;
 
-	if (iflag == 1) return;
+	if (iflag == 1) {
+		Cnt = 0;
+		return;
+	}
 	double Kscale = x[0];
 	double Kbirks = x[1];
 	double Kcher = x[2];
-	printf("Call with N=%d F=%d Ks=%f Kb=%f Kc=%f\n", Npar, iflag, Kscale, Kbirks, Kcher);
-	TH1D *hExp = GetExperiment(FitPar.t12BExpSignal, FitPar.t12BExpRandom, 
-		Estring[FitPar.iClusterEnergySelection], Kscale);
-	printf("hExp made\n");
+	Cnt++;
+	TH1D *hExp = GetExperiment(Kscale);
 	TH1D *hMC = GetMC(Kbirks, Kcher,
 		FitPar.CentralMatrix[FitPar.iClusterEnergySelection],
 		FitPar.BirksMatrix[FitPar.iClusterEnergySelection],
 		FitPar.CherMatrix[FitPar.iClusterEnergySelection],
 		FitPar.Spectrum);
-	printf("hMC made\n");
 	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
 	f = chi2Diff(hExp, hMC, binMin, binMax);
+	printf("Call No %d with N=%d F=%d Ks=%f DKb=%f DKc=%f ==> %f\n", Cnt, Npar, iflag, Kscale, Kbirks, Kcher, f);
 	delete hExp;
 	delete hMC;
 }
@@ -1030,18 +1031,31 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher)
 {
 	const int binMin = 13;		// 3 MeV
 	const int binMax = 50;		// 12.5 MeV
-	const char *Estring[] = {"ClusterEnergy", "ClusterSiPmEnergy", "ClusterPmtEnergy"};
+	char str[128];
 
-	TH1D *hExp = GetExperiment(FitPar.t12BExpSignal, FitPar.t12BExpRandom, 
-		Estring[FitPar.iClusterEnergySelection], Kscale);
+	gStyle->SetOptStat(0);
+	TH1D *hExp = GetExperiment(Kscale);
 	TH1D *hMC = GetMC(Kbirks, Kcher,
 		FitPar.CentralMatrix[FitPar.iClusterEnergySelection],
 		FitPar.BirksMatrix[FitPar.iClusterEnergySelection],
 		FitPar.CherMatrix[FitPar.iClusterEnergySelection],
 		FitPar.Spectrum);
 	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
+	hExp->SetLineColor(kRed);
+	hExp->SetLineWidth(2);
+	hMC->SetLineColor(kBlue);
+	hMC->SetLineWidth(2);
 	hExp->DrawCopy();
 	hMC->DrawCopy("same hist");
+	TLine ln;
+	ln.SetLineColor(kGreen);
+	ln.SetLineWidth(2);
+	ln.DrawLine((binMin-1)/4.0, 0, (binMin-1)/4.0, hExp->GetMaximum());
+	ln.DrawLine(binMax/4.0, 0, binMax/4.0, hExp->GetMaximum());
+	double f = chi2Diff(hExp, hMC, binMin, binMax);
+	TLatex txt;
+	sprintf(str, "#chi^{2} = %f / %d ndf", f, binMax - binMin - 3);
+	txt.DrawLatexNDC(0.3, 0.92, str);
 }
 
 /****************************************************************
@@ -1052,6 +1066,7 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher)
  *		0: SiPM+PMT					*
  *		1: SiPM only					*
  *		2: PMT only					*
+ *	Rini - initial value for Kscale				*
  ****************************************************************
  *	Three free parameters are used:				*
  *	Kscale - Overall scale					*
@@ -1063,7 +1078,7 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher)
  *	matrixes in linear approximation for variables		*
  *	We use only experimental errors				*
  ****************************************************************/
-void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
+void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet, double Rini = 1.04)
 {
 	const char *mcnames[3][3] = {{
 			"m12B_DB_spectrum_Chikuma_PositronEnergy", 
@@ -1082,14 +1097,29 @@ void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
 	int i, j;
 	TMatrixD *M[3][3];
 	double R, eR, Kb, eKb, kkB, Kc, eKc, kkC;
+	float PositronEnergy[3];
 //	Open files and read matrixes
 	TFile *fExp = new TFile(expname);
 	if (!fExp->IsOpen()) return;
-	FitPar.t12BExpSignal = (TTree *) fExp->Get("MuonPair");
-	FitPar.t12BExpRandom = (TTree *) fExp->Get("MuonRandom");
-	if (!FitPar.t12BExpSignal || !FitPar.t12BExpRandom) {
+	auto t12BExpSignal = (TTree *) fExp->Get("MuonPair");
+	auto t12BExpRandom = (TTree *) fExp->Get("MuonRandom");
+	if (!t12BExpSignal || !t12BExpRandom) {
 		printf("Can not get all trees in %s\n", expname);
 		return;
+	}
+	FitPar.NExpSignal = t12BExpSignal->GetEntries();
+	FitPar.NExpRandom = t12BExpRandom->GetEntries();
+	FitPar.ExpSignal = (double *) malloc(FitPar.NExpSignal * sizeof(double));
+	FitPar.ExpRandom = (double *) malloc(FitPar.NExpRandom * sizeof(double));
+	t12BExpSignal->SetBranchAddress("Pair", PositronEnergy);
+	t12BExpRandom->SetBranchAddress("Pair", PositronEnergy);
+	for (i=0; i<FitPar.NExpRandom; i++) {
+		t12BExpRandom->GetEntry(i);
+		FitPar.ExpRandom[i] = PositronEnergy[iDet];
+	}
+	for (i=0; i<FitPar.NExpSignal; i++) {
+		t12BExpSignal->GetEntry(i);
+		FitPar.ExpSignal[i] = PositronEnergy[iDet];
 	}
 	TFile *fMC = new TFile(mcmatrixes);
 	if (!fMC->IsOpen()) return;
@@ -1111,16 +1141,21 @@ void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
 		return;
 	}
 	FitPar.iClusterEnergySelection = iDet;
+	printf("Found %d events = %d signal - %d/16 random\n", 
+		(int)(FitPar.NExpSignal - FitPar.NExpRandom / 16.0), FitPar.NExpSignal, FitPar.NExpRandom);
 //	Do minimization:
 	TMinuit *mn = new TMinuit();
 	mn->mninit(5, 6, 7);
 	mn->SetFCN(FitFunction);
-	mn->DefineParameter(0, "R", 0.96, 0.005, 0.8, 1.3);	// Kscale
-	mn->DefineParameter(1, "Kb", 0, 0.01, -5, 5);		// Kbirks (Delta)
+	mn->DefineParameter(0, "R", Rini, 0.05, 0.7, 1.5);	// Kscale
+	mn->DefineParameter(1, "Kb", 0, 0.005, -5, 5);		// Kbirks (Delta)
 	mn->DefineParameter(2, "Kc", 0, 0.05, -5, 5);		// Kcher (Delta)
+	FitFunction(i, NULL, R, NULL, 1);			// Reset counter
 //********************************
 	printf("Ready for fit !\n");
 	mn->Migrad();
+//	mn->mnsimp();
+	mn->mnseek();
 //********************************
 	mn->GetParameter(0, R, eR);
 	mn->GetParameter(1, Kb, eKb);
