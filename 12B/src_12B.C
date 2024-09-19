@@ -13,6 +13,7 @@ struct FitParametersStruct {
 	TMatrixD *BirksMatrix[3];
 	TMatrixD *CherMatrix[3];
 	TVectorD *Spectrum;
+	double FunMap[7][7][7];
 } FitPar;
 
 /*
@@ -1050,7 +1051,7 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
 	chi2B = chi2Diff(hExp, hMC, binMin, binMax);
 	chi2other = 0;
-	for (i=0; i<5; i++) {
+	for (i=0; i<5; i++) {	// i < 5 ==> ignore Bragg
 		r = RFunction(Kbirks, Kcher, Kbirks, i) - Kscale;
 		chi2other += r * r / (Rsigma * Rsigma);
 	}
@@ -1101,6 +1102,156 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher)
 	TLatex txt;
 	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, binMax - binMin + 2);
 	txt.DrawLatexNDC(0.3, 0.92, str);
+}
+
+/****************************************************************
+ *	Fit function as assumed for TMinuit to fit chi2 map	*
+ *	x[0] - b00						*
+ *	x[1] - b11						*
+ *	x[2] - b22						*
+ *	x[3] - b01						*
+ *	x[4] - b02						*
+ *	x[5] - b12						*
+ *	x[6] - const.						*
+ ****************************************************************/
+void MapFunction(int &Npar, double *gin, double &f, double *x, int iflag)
+{
+	double sum, y;
+	int i, j, k;
+	const int Nsteps = 7;
+	double a, b, c;
+
+	if (iflag == 1) return;
+	sum = 0;
+	for (i=0; i<Nsteps; i++) for (j=0; j<Nsteps; j++) for (k=0; k<Nsteps; k++) {
+		a = i - 0.5 * (Nsteps - 1);
+		b = j - 0.5 * (Nsteps - 1);
+		c = k - 0.5 * (Nsteps - 1);
+		y = x[0] * a * a + x[1] * b * b + x[2] * c * c + 
+			2 * x[3] * a * b + 2 * x[4] * a * c + 2 * x[5] *b * c + x[6];
+		sum += (FitPar.FunMap[i][j][k] - y) * (FitPar.FunMap[i][j][k] - y);
+	}
+	f = sum;
+}
+
+/****************************************************************
+ *	Draw correlations					*
+ *	Kscale - the experiment scale				*
+ *	Kbirks - Birks coef					*
+ *	Kcher - Cherenkov coef					*
+ ****************************************************************
+ *	Calculate chi^2 in 7^3 points and fit with sqaure	*
+ *	function						*
+ ****************************************************************/
+void DrawCorrelations(double Kscale, double Kbirks, double Kcher)
+{
+	const double Scale_step = 0.005;
+	const double Birks_step = 0.1;
+	const double Cher_step = 0.1;
+	const int Nsteps = 7;
+	int i, j, k;
+	double x[3];
+	int n;
+	double B[3][3];
+	double eB[3][3];
+	double C, eC;
+	
+	for (i=0; i<Nsteps; i++) for (j=0; j<Nsteps; j++) for (k=0; k<Nsteps; k++) {
+		n = 3;
+		x[0] = Kscale + (i - 0.5 * (Nsteps - 1)) * Scale_step;
+		x[1] = Kbirks + (j - 0.5 * (Nsteps - 1)) * Birks_step;
+		x[2] = Kcher  + (k - 0.5 * (Nsteps - 1)) * Cher_step;
+		FitFunction(n, NULL, FitPar.FunMap[i][j][k], x, 0);
+	}
+	
+	TMinuit *mn = new TMinuit();
+	mn->mninit(5, 6, 7);
+	mn->SetFCN(MapFunction);
+	mn->DefineParameter(0, "B00", 1.0, 0.05, 0., 10000.);	// B00
+	mn->DefineParameter(1, "B11", 1.0, 0.05, 0., 10000.);	// B11
+	mn->DefineParameter(2, "B22", 1.0, 0.05, 0., 10000.);	// B22
+	mn->DefineParameter(3, "B01", 0, 0.05, -10000., 10000.);	// B01
+	mn->DefineParameter(4, "B02", 0, 0.05, -10000., 10000.);	// B02
+	mn->DefineParameter(5, "B12", 0, 0.05, -10000., 10000.);	// B12
+	mn->DefineParameter(6, "Const.", FitPar.FunMap[(Nsteps - 1) / 2][(Nsteps - 1) / 2][(Nsteps - 1) / 2], 
+		0.05, 0., 10000.);	// Const
+	
+	mn->Migrad();
+	
+	mn->GetParameter(0, B[0][0], eB[0][0]);
+	mn->GetParameter(1, B[1][1], eB[1][1]);
+	mn->GetParameter(2, B[2][2], eB[2][2]);
+	mn->GetParameter(3, B[0][1], eB[0][1]);
+	mn->GetParameter(4, B[0][2], eB[0][2]);
+	mn->GetParameter(5, B[1][2], eB[1][2]);
+	mn->GetParameter(6, C, eC);
+	B[1][0] = B[0][1];
+	B[2][0] = B[0][2];
+	B[2][1] = B[1][2];
+	eB[1][0] = eB[0][1];
+	eB[2][0] = eB[0][2];
+	eB[2][1] = eB[1][2];
+	printf("Fit quad matrix:\n");
+	for (i=0; i<3; i++) {
+		for (j=0; j<3; j++) printf("%10f +- %7f   ", B[i][j], eB[i][j]);
+		printf("\n");
+	}
+	printf("Correlation matrix:\n");
+	for (i=0; i<3; i++) {
+		for (j=0; j<3; j++) printf("%10f  ", B[i][j] / sqrt(B[i][i]*B[j][j]));
+		printf("\n");
+	}
+	printf("Errors: %f   %f   %f\n", 
+		Scale_step / sqrt(B[0][0]), 0.01 * Birks_step / sqrt(B[1][1]), 0.1 * Cher_step / sqrt(B[2][2])); 
+	
+	TH1D *hScalePar = new TH1D("hScalePar", "Central slices;;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
+	TH1D *hBirksPar = new TH1D("hBirksPar", "Central slices;;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
+	TH1D *hCherPar = new TH1D("hCherPar", "Central slices;;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
+	hScalePar->SetLineWidth(2);
+	hScalePar->SetLineColor(kRed);
+	hScalePar->SetMarkerColor(kRed);
+	hScalePar->SetMarkerSize(1.3);
+	hScalePar->SetMarkerStyle(kFullCircle);
+	hBirksPar->SetLineWidth(2);
+	hBirksPar->SetLineColor(kGreen);
+	hBirksPar->SetMarkerColor(kGreen);
+	hBirksPar->SetMarkerSize(1.3);
+	hBirksPar->SetMarkerStyle(kFullSquare);
+	hCherPar->SetLineWidth(2);
+	hCherPar->SetLineColor(kBlue);
+	hCherPar->SetMarkerColor(kBlue);
+	hCherPar->SetMarkerSize(1.3);
+	hCherPar->SetMarkerStyle(kFullDiamond);
+	for (i=0; i<Nsteps; i++) {
+		hScalePar->SetBinContent(i+1, FitPar.FunMap[i][(Nsteps - 1) / 2][(Nsteps - 1) / 2]);
+		hBirksPar->SetBinContent(i+1, FitPar.FunMap[(Nsteps - 1) / 2][i][(Nsteps - 1) / 2]);
+		hCherPar->SetBinContent(i+1, FitPar.FunMap[(Nsteps - 1) / 2][(Nsteps - 1) / 2][i]);
+	}
+	TF1 *fScalePar = new TF1("fScalePar", "pol2", -0.5*Nsteps, 0.5*Nsteps);
+	fScalePar->SetParameters(C, 0, B[0][0]);
+	fScalePar->SetLineWidth(2);
+	fScalePar->SetLineColor(kRed);
+	TF1 *fBirksPar = new TF1("fBirksPar", "pol2", -0.5*Nsteps, 0.5*Nsteps);
+	fBirksPar->SetParameters(C, 0, B[1][1]);
+	fBirksPar->SetLineWidth(2);
+	fBirksPar->SetLineColor(kGreen);
+	TF1 *fCherPar = new TF1("fCherPar", "pol2", -0.5*Nsteps, 0.5*Nsteps);
+	fCherPar->SetParameters(C, 0, B[2][2]);
+	fCherPar->SetLineWidth(2);
+	fCherPar->SetLineColor(kBlue);
+	
+	hScalePar->Draw("p");
+	hBirksPar->Draw("p same");
+	hCherPar->Draw("p same");
+	fScalePar->Draw("same");
+	fBirksPar->Draw("same");
+	fCherPar->Draw("same");
+	
+	TLegend *lg = new TLegend(0.35, 0.65, 0.7, 0.85);
+	lg->AddEntry(hScalePar, "Scale scan", "P");
+	lg->AddEntry(hBirksPar, "Birks scan", "P");
+	lg->AddEntry(hCherPar, "Cherenkov scan", "P");
+	lg->Draw();
 }
 
 /****************************************************************
@@ -1224,8 +1375,8 @@ void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
 	}
 	gStyle->SetOptStat(0);
 	auto cv = (TCanvas *)gROOT->FindObject("CV");
-	if (!cv) cv = new TCanvas("CV", "CV", 1600, 800);
-	cv->Divide(2, 1);
+	if (!cv) cv = new TCanvas("CV", "CV", 1200, 1200);
+	cv->Divide(2, 2);
 	cv->cd(1);
 	hPar->Fit("pol2", "W");
 	cv->Update();
@@ -1246,6 +1397,8 @@ void FitMCparameters(const char *expname, const char *mcmatrixes, int iDet)
 	
 	cv->cd(2);
 	DrawFitRes(R, Kb, Kc);
+	cv->cd(3);
+	DrawCorrelations(R, Kb, Kc);
 	kkB = 0.0208 + 0.01*Kb;
 	kkC = 0.133 + 0.1*Kc;
 
