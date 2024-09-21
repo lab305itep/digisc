@@ -830,8 +830,10 @@ TVectorD *MCvector(const char *mcorig)
 
 /****************************************
  *	Make matrixes for Chikuma	*
+ *	fname - output file name	*
+ *	cuts - event selection cuts	*
  ****************************************/
-void MakeChikumaMatrixes(void)
+void MakeChikumaMatrixes(const char *fname, const char *cuts)
 {
 	const char *ChikumaDir = "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/12B";
 	const char *MCRawDir = "/home/clusters/rrcmpi/danss/MC_RAW/Chikuma/12B";
@@ -853,7 +855,7 @@ void MakeChikumaMatrixes(void)
 	char name[256];
 	TMatrixD *M[13][3];
 	
-	TFile *fOut = new TFile("12B_Chikuma_matrixes.root", "RECREATE");
+	TFile *fOut = new TFile(fname, "RECREATE");
 	if (!fOut->IsOpen()) return;
 	
 	for (i = 0; i < sizeof(mcnames) / sizeof(mcnames[0]); i++) {
@@ -862,7 +864,7 @@ void MakeChikumaMatrixes(void)
 		raw[0] = '\0';
 		for (j = 0; j < sizeof(rawlist) / sizeof(rawlist[0]); j++) sprintf(&raw[strlen(raw)], "%s/%s/Ready/%s ", MCRawDir, mcnames[i], rawlist[j]);
 		for (j = 0; j < sizeof(varlist) / sizeof(varlist[0]); j++) {
-			M[i][j] = MCmatrix(str, varlist[j], "AnnihilationEnergy < 0.06 && PositronEnergy > 3", raw);
+			M[i][j] = MCmatrix(str, varlist[j], cuts, raw);
 			if (!M[i][j]) continue;
 			sprintf(name, "m12B_%s_%s", mcnames[i], varlist[j]);
 			fOut->cd();
@@ -891,6 +893,94 @@ void MakeChikumaMatrixes(void)
 	S->Write("v12B_ParticleEnergy");
 
 	fOut->Close();
+}
+
+/********************************************************
+ *	Make matrixes for Chikuma: both analyses	*
+ ********************************************************/
+void MakeAllChikumaMatrixes(void)
+{
+	MakeChikumaMatrixes("12B_Chikuma_matrixes_IA.root", "AnnihilationEnergy < 0.06 && PositronEnergy > 3");
+	MakeChikumaMatrixes("12B_Chikuma_matrixes_AY.root", "AnnihilationEnergy < 0.06 && "
+		"((PositronX[0] > 10 && PositronX[0] < 86) || PositronX[0] < 0) && "
+		"((PositronX[1] > 10 && PositronX[1] < 86) || PositronX[1] < 0) && "
+		"PositronX[2] > 11.5 && PositronX[2] < 87.5");
+}
+
+/****************************************************************
+ *	Compare Delta and Residual - check for linearity	*
+ *	fname - file name with matrixes				*
+ *	suffix - the Delta  matrix name after m12B_Delta_	*
+ ****************************************************************/
+void DrawMatrixLinearity(const char *fname, const char *suffix)
+{
+	char str[1024];
+	int i, j;
+
+	TFile *fIn = new TFile(fname);
+	if (!fIn->IsOpen()) return;
+	
+	sprintf(str, "m12B_Delta_%s", suffix);
+	auto mD = (TMatrixD *) fIn->Get(str);
+	sprintf(str, "m12B_Residual_%s", suffix);
+	auto mR = (TMatrixD *) fIn->Get(str);
+	if (!mD || !mR) {
+		printf("Suffix %s not found in %s\n", suffix, fname);
+		fIn->Close();
+		return;
+	}
+	gROOT->cd();
+	TVectorD *sD = new TVectorD(Nbins);
+	TVectorD *sR = new TVectorD(Nbins);
+	
+	for (i=0; i<Nbins; i++) {
+		(*sD)[i] = 0;
+		(*sR)[i] = 0;
+		for (j=0; j<Nbins; j++) {
+			(*sD)[i] += fabs((*mD)[j][i]);
+			(*sR)[i] += fabs((*mR)[j][i]);
+		}
+	}
+	sD->Draw();
+	sR->Draw("same");
+	
+	TLatex txt;
+	txt.SetFontSize(0.05);
+	sprintf(str, "File %s", fname);
+	txt.DrawLatexNDC(0.12, 0.83, str);
+	sprintf(str, "Matrix %s", suffix);
+	txt.DrawLatexNDC(0.12, 0.76, str);
+	
+	fIn->Close();
+}
+
+/****************************************************************
+ *	Compare Delta and Residual - check for linearity	*
+ *	for all possible matrixes				*
+ *	pdfname - pdf file name					*
+ ****************************************************************/
+void DrawMatrixLinearityAll(const char *pdfname)
+{
+	const char *fnames[] = {"12B_Chikuma_matrixes_IA.root", "12B_Chikuma_matrixes_AY.root"};
+	const char *varlist[] = {"PositronEnergy", "PositronSiPmEnergy", "PositronPmtEnergy"};
+	const char *mixname[] = {"Birks_el", "Cher_coeff", "main_Birks"};
+	char str[1024];
+	int i, j, k;
+	
+	gStyle->SetOptStat(0);
+	TCanvas *cv = new TCanvas("CV", "CV", 800, 800);
+	TString tstr(pdfname);
+	cv->SaveAs((tstr + "[").Data());
+	
+	for (i = 0; i < sizeof(fnames) / sizeof(fnames[0]); i++) 
+		for (j = 0; j < sizeof(mixname) / sizeof(mixname[0]); j++) 
+		for (k = 0; k < sizeof(varlist) / sizeof(varlist[0]); k++) {
+		sprintf(str, "%s_%s", mixname[j], varlist[k]);
+		DrawMatrixLinearity(fnames[i], str);
+		cv->SaveAs(tstr.Data());
+	}
+	cv->SaveAs((tstr + "]").Data());
+	delete cv;
 }
 
 /****************************************************************
