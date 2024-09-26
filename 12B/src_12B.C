@@ -16,6 +16,120 @@ struct FitParametersStruct {
 	double FunMap[7][7][7];
 } FitPar;
 
+//	Signal tree
+	/*****************************************************************************
+	*	Tree from Sasha Yakovleva					     *
+	*        :SummaryBranch : event_id/L:muon_event_id/L:time/D:sipm_energy/D:   *
+	*         | sipm_energy_xz/D:sipm_energy_yz/D:sipm_energy_attn/D:            *
+	*         | sipm_energy_attn_xz/D:sipm_energy_attn_yz/D:pmt_energy/D:        *
+	*         | pmt_energy_xz/D:pmt_energy_yz/D:pmt_energy_attn/D:               *
+	*         | pmt_energy_attn_xz/D:pmt_energy_attn_yz/D:mix_energy/D:          *
+	*         | mix_energy_attn/D:max_sipm_energy/D:max_pmt_energy/D:            *
+	*         | total_hits/L:closest_strip_energy/D:cluster_energy/D:            *
+	*         | cluster_energy_attn/D:pmt_cluster_energy/D:                      *
+	*         | pmt_cluster_energy_attn/D:birth_coord_x/D:birth_coord_y/D:       *
+	*         | birth_coord_z/D:prev_event_sipm_energy/D:prev_event_pmt_energy/D:*
+	*         | prev_event_time/D:next_event_sipm_energy/D:                      *
+	*         | next_event_pmt_energy/D:next_event_time/D:veto_sipm_energy/D:    *
+	*         | veto_pmt_energy/D:veto_signal/D:time_from_veto/D:                *
+	*         | has_nearest_strip/I:was_decay/I                                  *
+	******************************************************************************/
+struct BorumInfo {
+	Long64_t event_id;
+	Long64_t muon_event_id;
+	Double_t time;
+	Double_t sipm_energy;
+	Double_t sipm_energy_xz;
+	Double_t sipm_energy_yz;
+	Double_t sipm_energy_attn;
+	Double_t sipm_energy_attn_xz;
+	Double_t sipm_energy_attn_yz;
+	Double_t pmt_energy;
+	Double_t pmt_energy_xz;
+	Double_t pmt_energy_yz;
+	Double_t pmt_energy_attn;
+	Double_t pmt_energy_attn_xz;
+	Double_t pmt_energy_attn_yz;
+	Double_t mix_energy;
+	Double_t mix_energy_attn;
+	Double_t max_sipm_energy;
+	Double_t max_pmt_energy;
+	Long64_t total_hits;
+	Double_t closest_strip_energy;
+	Double_t cluster_energy;
+	Double_t cluster_energy_attn;
+	Double_t pmt_cluster_energy;
+	Double_t pmt_cluster_energy_attn;
+//	Double_t mix_cluster_energy;
+//	Double_t mix_cluster_energy_attn;
+	Double_t birth_coord_x;
+	Double_t birth_coord_y;
+	Double_t birth_coord_z;
+//	Double_t total_hits_in_cluster;
+//	Double_t max_energy_hit_in_cluster;
+	Double_t prev_event_sipm_energy;
+	Double_t prev_event_pmt_energy;
+	Double_t prev_event_time;
+	Double_t next_event_sipm_energy;
+	Double_t next_event_pmt_energy;
+	Double_t next_event_time;
+	Double_t veto_sipm_energy;
+	Double_t veto_pmt_energy;
+	Double_t veto_signal;
+	Double_t time_from_veto;
+	Int_t has_nearest_strip;
+	Int_t was_decay;
+};
+//	Background tree
+	/*****************************************************************************
+	*Br    0 :SummaryBranch : event_id/L:muon_event_id/L:time/D:sipm_energy/D:   *
+	*         | sipm_energy_attn/D:pmt_energy/D:pmt_energy_attn/D:mix_energy/D:  *
+	*         | mix_energy_attn/D:max_sipm_energy/D:max_pmt_energy/D:            *
+	*         | total_hits/L:closest_strip_energy/D:cluster_energy/D:            *
+	*         | cluster_energy_attn/D:pmt_cluster_energy/D:                      *
+	*         | pmt_cluster_energy_attn/D:birth_coord_x/D:birth_coord_y/D:       *
+	*         | birth_coord_z/D:prev_event_sipm_energy/D:prev_event_pmt_energy/D:*
+	*         | prev_event_time/D:next_event_sipm_energy/D:                      *
+	*         | next_event_pmt_energy/D:next_event_time/D:veto_sipm_energy/D:    *
+	*         | veto_pmt_energy/D:veto_signal/D:time_from_veto/D:                *
+	*         | has_nearest_strip/I:was_decay/I                                  *
+	******************************************************************************/
+struct BorumInfoBgnd {
+	Long64_t event_id;
+	Long64_t muon_event_id;
+	Double_t time;
+	Double_t sipm_energy;
+	Double_t sipm_energy_attn;
+	Double_t pmt_energy;
+	Double_t pmt_energy_attn;
+	Double_t mix_energy;
+	Double_t mix_energy_attn;
+	Double_t max_sipm_energy;
+	Double_t max_pmt_energy;
+	Long64_t total_hits;
+	Double_t closest_strip_energy;
+	Double_t cluster_energy;
+	Double_t cluster_energy_attn;
+	Double_t pmt_cluster_energy;
+	Double_t pmt_cluster_energy_attn;
+	Double_t birth_coord_x;
+	Double_t birth_coord_y;
+	Double_t birth_coord_z;
+	Double_t prev_event_sipm_energy;
+	Double_t prev_event_pmt_energy;
+	Double_t prev_event_time;
+	Double_t next_event_sipm_energy;
+	Double_t next_event_pmt_energy;
+	Double_t next_event_time;
+	Double_t veto_sipm_energy;
+	Double_t veto_pmt_energy;
+	Double_t veto_signal;
+	Double_t time_from_veto;
+	Int_t has_nearest_strip;
+	Int_t was_decay;
+};
+
+
 /*
 	Calculate chi2 of two histograms difference
 */
@@ -945,7 +1059,7 @@ void DrawMatrixLinearity(const char *fname, const char *suffix)
 	sR->Draw("same");
 	
 	TLatex txt;
-	txt.SetFontSize(0.05);
+	txt.SetTextSize(0.05);
 	sprintf(str, "File %s", fname);
 	txt.DrawLatexNDC(0.12, 0.83, str);
 	sprintf(str, "Matrix %s", suffix);
@@ -1026,6 +1140,135 @@ void MakeShortTree(int from, int to)
 		chR->GetEntry(i);
 		if (event.gtDiff < 500) continue;	// cut at 500 us
 		if (event.ClusterEnergy < 3) continue;	// cut at 3 MeV
+		tOutR->Fill();
+	}
+	
+	fOut->cd();
+	tOut->Write();
+	tOutR->Write();
+	fOut->Close();
+}
+
+/****************************************************************
+ *	Add files from directory to chain of Sasha's data	*
+ *	chain - chain to add files				*
+ *	dir - directory to add					*
+ ****************************************************************/
+void add_to_chainAY(TChain *chain, const char *dir)
+{
+	TSystemDirectory *d = new TSystemDirectory("dir", dir);
+	for (auto f : *d->GetListOfFiles()) {
+		TString fname(f->GetName());
+		if (fname.EndsWith(".root")) {
+			TString path(d->GetTitle());
+			path += "/";
+			path += fname;
+			chain->AddFile(path);
+		}
+	}
+	delete d;
+}
+
+/****************************************************************
+ *	Apply Sasha's cuts					*
+ *	info - event information				*
+ *	Return true if event is OK				*
+ ****************************************************************/
+int AY_cuts(struct BorumInfo *info)
+{
+//	Geometry cut: 12 cm from the edges
+	if (!(info->birth_coord_x > 12 && info->birth_coord_x < 88 &&
+		info->birth_coord_y > 12 && info->birth_coord_y < 88 &&
+		info->birth_coord_z > 12 && info->birth_coord_z < 92)) return 0;
+//	Energy beyond cluster 60 keV
+	if (info->sipm_energy_attn - info->cluster_energy_attn > 0.06) return 0;
+//	??
+	if (info->has_nearest_strip > 0) return 0;
+//	Time from Veto (300 us)
+	if (info->time_from_veto < 300 * 125) return 0;
+//	Decay cut
+	if (info->was_decay) return 0;
+	return 1;
+}
+
+/****************************************************************
+ *	Apply Sasha's cuts to random background			*
+ *	info - event information				*
+ *	Return true if event is OK				*
+ ****************************************************************/
+int AY_cuts(struct BorumInfoBgnd *info)
+{
+//	Geometry cut: 12 cm from the edges
+	if (!(info->birth_coord_x > 12 && info->birth_coord_x < 88 &&
+		info->birth_coord_y > 12 && info->birth_coord_y < 88 &&
+		info->birth_coord_z > 12 && info->birth_coord_z < 92)) return 0;
+//	Energy beyond cluster 60 keV
+	if (info->sipm_energy_attn - info->cluster_energy_attn > 0.06) return 0;
+//	??
+	if (info->has_nearest_strip > 0) return 0;
+//	Time from Veto (300 us)
+	if (info->time_from_veto < 300 * 125) return 0;
+//	Decay cut
+	if (info->was_decay) return 0;
+	return 1;
+}
+
+/****************************************************************
+ *	To increase speed of calculations an experimental tree	*
+ *	with only three energies is created. AY version		*
+ ****************************************************************/
+void MakeShortTreeAY(void)
+{
+	const char *datadir = "/home/clusters/02/n_skrobova/yakovleva/calibration/boron_decays/fit/data_storage";
+	const char *bgnd_1 = "/home/clusters/02/n_skrobova/yakovleva/calibration/boron_decays/fit/bg_1";
+	const char *bgnd_2 = "/home/clusters/02/n_skrobova/yakovleva/calibration/boron_decays/fit/bg_2";
+	char str[1024];
+	struct {
+		double mix_energy;
+		double SiPm_energy;
+		double Pmt_energy;
+	} event;
+	const char *LeafList = 
+		"ClusterEnergy/F:"	// Energy sum of the cluster (SiPM)
+		"ClusterSiPmEnergy/F:"	// SiPM energy in the cluster, corrected
+		"ClusterPmtEnergy/F";	// PMT energy in the cluster, corrected
+	long i, N;
+	struct BorumInfo info;
+	struct BorumInfoBgnd bgnd;
+
+	TChain *chA = new TChain("BorumTree", "BorumPair");
+	TChain *chR = new TChain("BorumTree", "BorumRandom");
+	add_to_chainAY(chA, datadir);
+	add_to_chainAY(chR, bgnd_1);
+	add_to_chainAY(chR, bgnd_2);
+	chA->SetBranchAddress("SummaryBranch", &info);
+	chR->SetBranchAddress("SummaryBranch", &bgnd);
+	
+	TFile *fOut = new TFile("12B_events_AY.root", "RECREATE");
+	TTree *tOut = new TTree("MuonPair", "MuonPair");
+	tOut->Branch("Pair", &event, LeafList);
+	TTree *tOutR = new TTree("MuonRandom", "MuonRandom");
+	tOutR->Branch("Pair", &event, LeafList);
+	
+	N = chA->GetEntries();
+	printf("%ld entries in signal chain\n", N);
+	for (i=0; i<N; i++) {
+		chA->GetEntry(i);
+		if (!AY_cuts(&info)) continue;
+		event.SiPm_energy = info.cluster_energy_attn;
+		event.Pmt_energy = info.pmt_cluster_energy_attn;
+		event.mix_energy = (event.SiPm_energy + event.Pmt_energy) / 2;
+		tOut->Fill();
+	}
+
+	N = chR->GetEntries();
+	printf("%ld entries in background chain\n", N);
+	for (i=0; i<N; i++) {
+		chR->GetEntry(i);
+		if (!AY_cuts(&bgnd)) continue;
+		event.SiPm_energy = bgnd.cluster_energy_attn;
+		event.Pmt_energy = bgnd.pmt_cluster_energy_attn;
+		event.mix_energy = (event.SiPm_energy + event.Pmt_energy) / 2;
 		tOutR->Fill();
 	}
 	
