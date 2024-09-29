@@ -147,6 +147,14 @@ struct BorumInfoBgnd {
 	Int_t was_decay;
 };
 
+/*
+	Delete object by name if exists
+*/
+void delete_if_exist(const char *name)
+{
+	auto tmp = gROOT->FindObject(name);
+	if (tmp) delete tmp;
+}
 
 /*
 	Calculate chi2 of two histograms difference
@@ -901,6 +909,7 @@ TMatrixD *MCmatrix(const char *mcname, const char *what, const char *cuts, const
 	TH1D *h1 = new TH1D("__htmp1", "", Nbins, 0, 20);
 	TH2D *h2 = new TH2D("__htmp2", "", Nbins, 0, 20, Nbins, 0, 20);
 	sprintf(str, "%s:ParticleEnergy", what);
+	printf("Input trees of %lld and %lld events\n", tMC->GetEntries(), tMCorig->GetEntries());
 	tMC->Project(h2->GetName(), str, cuts);
 	tMCorig->Project(h1->GetName(), "ParticleEnergy");
 	
@@ -977,7 +986,8 @@ void MakeChikumaMatrixes(const char *fname, const char *cuts)
 		"DB_spectrum_Chikuma_Cher_coeff_0_233",
 		"DB_spectrum_Chikuma_main_Birks_0_0108", 
 		"DB_spectrum_Chikuma_main_Birks_0_0308"};
-	const char *filelist[] = {"mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root", "mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root"};
+	const char *filelist[] = {"mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root", 
+		"mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root"};
 	const char *rawlist[] = {"DANSSmod0_1.root", "DANSSmod0_2.root"};
 	const char *varlist[] = {"PositronEnergy", "PositronSiPmEnergy", "PositronPmtEnergy"};
 	const char *mixname[] = {"Birks_el", "Cher_coeff", "main_Birks"};
@@ -1306,6 +1316,7 @@ void MakeShortTreeAY(void)
 TH1D *GetExperiment(double Kscale, struct ExpDataStruct *data, const char *name, const double r_fraction)
 {
 	int i;
+	delete_if_exist(name);
 	TH1D *hS = new TH1D(name, "", Nbins, 0, 20);
 	TH1D *hR = new TH1D("__hRandom", "", Nbins, 0, 20);
 	for(i=0; i<data->NExpSignal; i++) hS->Fill(Kscale * data->ExpSignal[i]);
@@ -1326,15 +1337,17 @@ TH1D *GetExperiment(double Kscale, struct ExpDataStruct *data, const char *name,
  *	Mbirks - derivative on Kbirks response matrix		*
  *	Mcher - derivative on Kcher response matrix		*
  *	S - true electron spectrum				*
+ *	name - name of the histogram				*
  ****************************************************************/
-TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMatrixD *Mcher, TVectorD *S)
+TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMatrixD *Mcher, TVectorD *S, const char *name)
 {
 	int i;
 	TVectorD R(Nbins);
 	TMatrixD A(Nbins, Nbins);
 	A = (*Mmain) + Kbirks * (*Mbirks) + Kcher * (*Mcher);
 	R = A * (*S);
-	TH1D *h = new TH1D("__hMC", "", Nbins, 0, 20);
+	delete_if_exist(name);
+	TH1D *h = new TH1D(name, "", Nbins, 0, 20);
 	for (i=0; i<Nbins; i++) {
 		h->SetBinContent(i+1, R[i]);
 		h->SetBinError(i+1, 0);
@@ -1394,18 +1407,18 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 	double Kbirks = x[1];
 	double Kcher = x[2];
 	Cnt++;
-	TH1D *hExpIA = GetExperiment(Kscale, FitPar.ExpIA, "__ExpIA", 1.0/16);
-	TH1D *hExpAY = GetExperiment(Kscale, FitPar.ExpAY, "__ExpAY", 1.0/2);
+	TH1D *hExpIA = GetExperiment(Kscale, &FitPar.ExpIA, "__hExpIA", 1.0/16);
+	TH1D *hExpAY = GetExperiment(Kscale, &FitPar.ExpAY, "__hExpAY", 1.0/2);
 	TH1D *hMCIA = GetMC(Kbirks, Kcher,
-		FitPar.MCIA->CentralMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCIA->BirksMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCIA->CherMatrix[FitPar.iClusterEnergySelection],
-		FitPar.Spectrum);
+		FitPar.MCIA.CentralMatrix[FitPar.iClusterEnergySelection],
+		FitPar.MCIA.BirksMatrix[FitPar.iClusterEnergySelection],
+		FitPar.MCIA.CherMatrix[FitPar.iClusterEnergySelection],
+		FitPar.Spectrum, "__hMCIA");
 	TH1D *hMCAY = GetMC(Kbirks, Kcher,
-		FitPar.MCAY->CentralMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCAY->BirksMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCAY->CherMatrix[FitPar.iClusterEnergySelection],
-		FitPar.Spectrum);
+		FitPar.MCAY.CentralMatrix[FitPar.iClusterEnergySelection],
+		FitPar.MCAY.BirksMatrix[FitPar.iClusterEnergySelection],
+		FitPar.MCAY.CherMatrix[FitPar.iClusterEnergySelection],
+		FitPar.Spectrum, "__hMCAY");
 	hMCIA->Scale(hExpIA->Integral(binMin, binMax) / hMCIA->Integral(binMin, binMax));
 	hMCAY->Scale(hExpAY->Integral(binMin, binMax) / hMCAY->Integral(binMin, binMax));
 	chi2BIA = chi2Diff(hExpIA, hMCIA, binMin, binMax);
@@ -1439,22 +1452,22 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher, int which)
 	double chi2, x[3];
 	int n;
 	TH1D *hExp;
-	TH1D
+	TH1D *hMC;
 
 	if (which) {
-		TH1D *hExp = GetExperiment(Kscale, FitPar.ExpAY, "__ExpAY", 1.0/2);
-		TH1D *hMC = GetMC(Kbirks, Kcher,
-			FitPar.MCAY->CentralMatrix[FitPar.iClusterEnergySelection],
-			FitPar.MCAY->BirksMatrix[FitPar.iClusterEnergySelection],
-			FitPar.MCAY->CherMatrix[FitPar.iClusterEnergySelection],
-			FitPar.Spectrum);
+		hExp = GetExperiment(Kscale, &FitPar.ExpAY, "__hExpAY", 1.0/2);
+		hMC = GetMC(Kbirks, Kcher,
+			FitPar.MCAY.CentralMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCAY.BirksMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCAY.CherMatrix[FitPar.iClusterEnergySelection],
+			FitPar.Spectrum, "__hMCAY");
 	} else {
-		TH1D *hExp = GetExperiment(Kscale, FitPar.ExpIA, "__ExpIA", 1.0/16);
-		TH1D *hMC = GetMC(Kbirks, Kcher,
-			FitPar.MCIA->CentralMatrix[FitPar.iClusterEnergySelection],
-			FitPar.MCIA->BirksMatrix[FitPar.iClusterEnergySelection],
-			FitPar.MCIA->CherMatrix[FitPar.iClusterEnergySelection],
-			FitPar.Spectrum);
+		hExp = GetExperiment(Kscale, &FitPar.ExpIA, "__hExpIA", 1.0/16);
+		hMC = GetMC(Kbirks, Kcher,
+			FitPar.MCIA.CentralMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCIA.BirksMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCIA.CherMatrix[FitPar.iClusterEnergySelection],
+			FitPar.Spectrum, "__hMCIA");
 	}
 	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
 
@@ -1475,7 +1488,7 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher, int which)
 	x[2] = Kcher;
 	FitFunction(n, NULL, chi2, x, 0);
 	TLatex txt;
-	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, binMax - binMin + 2);
+	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, 2*binMax - 2*binMin + 2);
 	txt.DrawLatexNDC(0.3, 0.92, str);
 }
 
@@ -1630,29 +1643,12 @@ void DrawCorrelations(double Kscale, double Kbirks, double Kcher)
 }
 
 /****************************************************************
- *	Try to fit MC Kbirks and Kcher to experiment		*
+ *	Load short experimental trees and matrixes		*
  *	iDet - select energy measurement:			*
- *		0: SiPM+PMT					*
- *		1: SiPM only					*
- *		2: PMT only					*
- *	Rini - initial value for Kscale				*
- ****************************************************************
- *	Three free parameters are used:				*
- *	Kscale - Overall scale					*
- *	Kbirks - Birks coaefficient for electrons		*
- *	Kcher - Cherenkov coefficient				*
- *	The experimental distribution is obtained by scaling	*
- *	energy with Kscale					*
- *	MC distribution is obtained using detector respond	*
- *	matrixes in linear approximation for variables		*
- *	We use only experimental errors				*
- *	Both 12B reactions are used and other sources added	*
+ *	Return 0 on success, 1 on error				*
  ****************************************************************/
-void FitMCparameters(int iDet)
+int LoadFitFiles(int iDet)
 {
-	const double Rmin = 1.00;
-	const double Rmax = 1.10;
-	const double Rstep = 0.005;
 	const char *expFileIA = "12B_events_002210_154797.root";
 	const char *expFileAY = "12B_events_AY.root";
 	const char *MCFileIA = "12B_Chikuma_matrixes_IA.root";
@@ -1674,66 +1670,126 @@ void FitMCparameters(int iDet)
 	};
 	int i, j, N;
 	TMatrixD *M[3][3];
-	double R, eR, Kb, eKb, kkB, Kc, eKc, kkC;
 	float PositronEnergy[3];
-	double x[3];
-	double chi2;
-	int np;
-	double A, B;
-	double Kscale_min;
+
 //	Open files and read matrixes
 	TFile *fExpIA = new TFile(expFileIA);
 	TFile *fExpAY = new TFile(expFileAY);
-	if (!fExpIA->IsOpen() || !fExpAY->IsOpen()) return;
+	if (!fExpIA->IsOpen() || !fExpAY->IsOpen()) return 1;
 	auto t12BExpSignalIA = (TTree *) fExpIA->Get("MuonPair");
 	auto t12BExpRandomIA = (TTree *) fExpIA->Get("MuonRandom");
 	auto t12BExpSignalAY = (TTree *) fExpAY->Get("MuonPair");
 	auto t12BExpRandomAY = (TTree *) fExpAY->Get("MuonRandom");
 	if (!t12BExpSignalIA || !t12BExpRandomIA || !t12BExpSignalAY || !t12BExpRandomAY) {
 		printf("Can not get all trees\n");
-		return;
+		return 1;
 	}
-	FitPar.ExpIA->NExpSignal = t12BExpSignalIA->GetEntries();
-	FitPar.ExpIA->NExpRandom = t12BExpRandomIA->GetEntries();
-	FitPar.ExpAY->NExpSignal = t12BExpSignalAY->GetEntries();
-	FitPar.ExpAY->NExpRandom = t12BExpRandomAY->GetEntries();
-	FitPar.ExpIA->ExpSignal = (double *) malloc(FitPar.ExpIA->NExpSignal * sizeof(double));
-	FitPar.ExpIA->ExpRandom = (double *) malloc(FitPar.ExpIA->NExpRandom * sizeof(double));
-	FitPar.ExpAY->ExpSignal = (double *) malloc(FitPar.ExpAY->NExpSignal * sizeof(double));
-	FitPar.ExpAY->ExpRandom = (double *) malloc(FitPar.ExpAY->NExpRandom * sizeof(double));
-//?????????????
-	t12BExpSignal->SetBranchAddress("Pair", PositronEnergy);
-	t12BExpRandom->SetBranchAddress("Pair", PositronEnergy);
-	for (i=0; i<FitPar.NExpRandom; i++) {
-		t12BExpRandom->GetEntry(i);
-		FitPar.ExpRandom[i] = PositronEnergy[iDet];
+	FitPar.ExpIA.NExpSignal = t12BExpSignalIA->GetEntries();
+	FitPar.ExpIA.NExpRandom = t12BExpRandomIA->GetEntries();
+	FitPar.ExpAY.NExpSignal = t12BExpSignalAY->GetEntries();
+	FitPar.ExpAY.NExpRandom = t12BExpRandomAY->GetEntries();
+	FitPar.ExpIA.ExpSignal = (double *) malloc(FitPar.ExpIA.NExpSignal * sizeof(double));
+	FitPar.ExpIA.ExpRandom = (double *) malloc(FitPar.ExpIA.NExpRandom * sizeof(double));
+	FitPar.ExpAY.ExpSignal = (double *) malloc(FitPar.ExpAY.NExpSignal * sizeof(double));
+	FitPar.ExpAY.ExpRandom = (double *) malloc(FitPar.ExpAY.NExpRandom * sizeof(double));
+	t12BExpSignalIA->SetBranchAddress("Pair", PositronEnergy);
+	t12BExpRandomIA->SetBranchAddress("Pair", PositronEnergy);
+	t12BExpSignalAY->SetBranchAddress("Pair", PositronEnergy);
+	t12BExpRandomAY->SetBranchAddress("Pair", PositronEnergy);
+	for (i=0; i<FitPar.ExpIA.NExpSignal; i++) {
+		t12BExpSignalIA->GetEntry(i);
+		FitPar.ExpIA.ExpSignal[i] = PositronEnergy[iDet];
 	}
-	for (i=0; i<FitPar.NExpSignal; i++) {
-		t12BExpSignal->GetEntry(i);
-		FitPar.ExpSignal[i] = PositronEnergy[iDet];
+	for (i=0; i<FitPar.ExpIA.NExpRandom; i++) {
+		t12BExpRandomIA->GetEntry(i);
+		FitPar.ExpIA.ExpRandom[i] = PositronEnergy[iDet];
 	}
-	TFile *fMC = new TFile(mcmatrixes);
-	if (!fMC->IsOpen()) return;
+	for (i=0; i<FitPar.ExpAY.NExpSignal; i++) {
+		t12BExpSignalAY->GetEntry(i);
+		FitPar.ExpAY.ExpSignal[i] = PositronEnergy[iDet];
+	}
+	for (i=0; i<FitPar.ExpAY.NExpRandom; i++) {
+		t12BExpRandomAY->GetEntry(i);
+		FitPar.ExpAY.ExpRandom[i] = PositronEnergy[iDet];
+	}
+	TFile *fMCIA = new TFile(MCFileIA);
+	TFile *fMCAY = new TFile(MCFileAY);
+	if (!fMCIA->IsOpen() || !fMCAY->IsOpen()) return 1;
 	for (i=0; i<3; i++) for (j=0; j<3; j++) {
-		M[i][j] = (TMatrixD *) fMC->Get(mcnames[i][j]);
+		M[i][j] = (TMatrixD *) fMCIA->Get(mcnames[i][j]);
 		if (!M[i][j]) {
-			printf("Can not get all matrixes in %s\n", mcmatrixes);
-			return;
+			printf("Can not get all matrixes in %s\n", MCFileIA);
+			return 1;
 		}
 	}
 	for (i=0; i<3; i++) {
-		FitPar.CentralMatrix[i] = M[i][0];
-		FitPar.BirksMatrix[i] = M[i][1];
-		FitPar.CherMatrix[i] = M[i][2];
+		FitPar.MCIA.CentralMatrix[i] = (TMatrixD *) M[i][0]->Clone();
+		FitPar.MCIA.BirksMatrix[i] = (TMatrixD *) M[i][1]->Clone();
+		FitPar.MCIA.CherMatrix[i] = (TMatrixD *) M[i][2]->Clone();
 	}
-	FitPar.Spectrum = (TVectorD *) fMC->Get("v12B_ParticleEnergy");
+	for (i=0; i<3; i++) for (j=0; j<3; j++) {
+		M[i][j] = (TMatrixD *) fMCAY->Get(mcnames[i][j]);
+		if (!M[i][j]) {
+			printf("Can not get all matrixes in %s\n", MCFileAY);
+			return 1;
+		}
+	}
+	for (i=0; i<3; i++) {
+		FitPar.MCAY.CentralMatrix[i] = (TMatrixD *) M[i][0]->Clone();
+		FitPar.MCAY.BirksMatrix[i] = (TMatrixD *) M[i][1]->Clone();
+		FitPar.MCAY.CherMatrix[i] = (TMatrixD *) M[i][2]->Clone();
+	}
+	FitPar.Spectrum = (TVectorD *) ((TVectorD *) fMCIA->Get("v12B_ParticleEnergy"))->Clone();
 	if (!FitPar.Spectrum) {
-		printf("Can not get true specturm in %s\n", mcmatrixes);
-		return;
+		printf("Can not get true specturm in %s\n", MCFileIA);
+		return 1;
 	}
 	FitPar.iClusterEnergySelection = iDet;
-	printf("Found %d events = %d signal - %d/16 random\n", 
-		(int)(FitPar.NExpSignal - FitPar.NExpRandom / 16.0), FitPar.NExpSignal, FitPar.NExpRandom);
+	printf("IA: Found %d events = %d signal - %d/16 random\n", 
+		(int)(FitPar.ExpIA.NExpSignal - FitPar.ExpIA.NExpRandom / 16.0), FitPar.ExpIA.NExpSignal, FitPar.ExpIA.NExpRandom);
+	printf("AY: Found %d events = %d signal - %d/2 random\n", 
+		(int)(FitPar.ExpAY.NExpSignal - FitPar.ExpAY.NExpRandom / 2.0), FitPar.ExpAY.NExpSignal, FitPar.ExpAY.NExpRandom);
+
+	fExpIA->Close();
+	fMCIA->Close();
+	fExpAY->Close();
+	fMCAY->Close();
+	return 0;
+}
+
+/****************************************************************
+ *	Try to fit MC Kbirks and Kcher to experiment		*
+ *	iDet - select energy measurement:			*
+ *		0: SiPM+PMT					*
+ *		1: SiPM only					*
+ *		2: PMT only					*
+ ****************************************************************
+ *	Three free parameters are used:				*
+ *	Kscale - Overall scale					*
+ *	Kbirks - Birks coaefficient for electrons		*
+ *	Kcher - Cherenkov coefficient				*
+ *	The experimental distribution is obtained by scaling	*
+ *	energy with Kscale					*
+ *	MC distribution is obtained using detector respond	*
+ *	matrixes in linear approximation for variables		*
+ *	We use only experimental errors				*
+ *	Both 12B reactions are used and other sources added	*
+ ****************************************************************/
+void FitMCparameters(int iDet)
+{
+	const double Rmin = 1.00;
+	const double Rmax = 1.10;
+	const double Rstep = 0.005;
+	int i, j, N;
+	double R, eR, Kb, eKb, kkB, Kc, eKc, kkC;
+	double x[3];
+	double chi2;
+	int np;
+	double A, B;
+	double Kscale_min;
+	char str[1024];
+
+	if (LoadFitFiles(iDet)) return;
 //	Prepare minimization:
 	TMinuit *mn = new TMinuit();
 	mn->mninit(5, 6, 7);
@@ -1782,15 +1838,18 @@ void FitMCparameters(int iDet)
 	mn->GetParameter(1, Kb, eKb);
 	mn->GetParameter(2, Kc, eKc);
 	
-	cv->cd(2);
-	DrawFitRes(R, Kb, Kc);
 	cv->cd(3);
+	DrawFitRes(R, Kb, Kc, 0);
+	cv->cd(4);
+	DrawFitRes(R, Kb, Kc, 0);
+	cv->cd(2);
 	DrawCorrelations(R, Kb, Kc);
 	kkB = 0.0208 + 0.01*Kb;
 	kkC = 0.133 + 0.1*Kc;
 
-	printf("R = %f +- %f;   Kb = %f +- %f;   Kc = %f +- %f\n", R, eR, kkB, eKb / 100, kkC, eKc / 10);
-
-	fExp->Close();
-	fMC->Close();
+	sprintf(str, "R = %f +- %f;   Kb = %f +- %f;   Kc = %f +- %f", R, eR, kkB, eKb / 100, kkC, eKc / 10);
+	printf("%s\n", str);
+	TLatex lt;
+	lt.DrawLatexNDC(0.05, 0.92, str);
+	cv->SaveAs("Calibration_fit_all.png");
 }
