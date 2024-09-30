@@ -17,6 +17,11 @@ struct MCDataStruct {
 	TMatrixD *CherMatrix[3];
 };
 
+struct BinRangeStruct {
+	int From;
+	int Till;
+};
+
 struct FitParametersStruct {
 //		12C(n,p)12B
 //	Experiment:
@@ -32,6 +37,11 @@ struct FitParametersStruct {
 	TVectorD *Spectrum;
 	int iClusterEnergySelection;
 	double FunMap[7][7][7];
+	int iIA;
+	int iAY;
+	double Sigma[6];
+	struct BinRangeStruct rangeIA;
+	struct BinRangeStruct rangeAY;
 } FitPar;
 
 //	Signal tree
@@ -1851,5 +1861,6 @@ void FitMCparameters(int iDet)
 	printf("%s\n", str);
 	TLatex lt;
 	lt.DrawLatexNDC(0.05, 0.92, str);
-	cv->SaveAs("Calibration_fit_all.png");
+	sprintf(str, "Calibration_fit_all-%d.png", iDet);
+	cv->SaveAs(str);
 }
