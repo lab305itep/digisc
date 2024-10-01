@@ -42,7 +42,10 @@ struct FitParametersStruct {
 	double Sigma[6];
 	struct BinRangeStruct rangeIA;
 	struct BinRangeStruct rangeAY;
-} FitPar;
+} FitPar = {
+	.Spectrum = NULL,
+	.iClusterEnergySelection = -1,
+};
 
 //	Signal tree
 	/*****************************************************************************
@@ -172,11 +175,17 @@ void delete_if_exist(const char *name)
 double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 {
 	double sum;
+	double err;
 	int i;
 	sum = 0;
-	for (i = binMin; i <= binMax; i++) sum += 
-		(hA->GetBinContent(i) - hB->GetBinContent(i)) * (hA->GetBinContent(i) - hB->GetBinContent(i)) /
-		(hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i));
+	for (i = binMin; i <= binMax; i++) {
+		err = hA->GetBinError(i) * hA->GetBinError(i) + hB->GetBinError(i) * hB->GetBinError(i);
+		if (err <= 0) {
+			err += 10000;	// like 100 sigma
+		} else {
+			sum += (hA->GetBinContent(i) - hB->GetBinContent(i)) * (hA->GetBinContent(i) - hB->GetBinContent(i)) / err;
+		}
+	}
 	return sum;
 }
 
@@ -1402,9 +1411,6 @@ double RFunction(double Kb, double Kc, double Kh, int num)
  ****************************************************************/
 void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 {
-	const int binMin = 13;		// 3 MeV
-	const int binMax = 50;		// 12.5 MeV
-	const double Rsigma = 0.005;
 	static int Cnt;
 	double chi2BIA, chi2BAY, chi2other, r;
 	int i;
@@ -1417,34 +1423,40 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 	double Kbirks = x[1];
 	double Kcher = x[2];
 	Cnt++;
-	TH1D *hExpIA = GetExperiment(Kscale, &FitPar.ExpIA, "__hExpIA", 1.0/16);
-	TH1D *hExpAY = GetExperiment(Kscale, &FitPar.ExpAY, "__hExpAY", 1.0/2);
-	TH1D *hMCIA = GetMC(Kbirks, Kcher,
-		FitPar.MCIA.CentralMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCIA.BirksMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCIA.CherMatrix[FitPar.iClusterEnergySelection],
-		FitPar.Spectrum, "__hMCIA");
-	TH1D *hMCAY = GetMC(Kbirks, Kcher,
-		FitPar.MCAY.CentralMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCAY.BirksMatrix[FitPar.iClusterEnergySelection],
-		FitPar.MCAY.CherMatrix[FitPar.iClusterEnergySelection],
-		FitPar.Spectrum, "__hMCAY");
-	hMCIA->Scale(hExpIA->Integral(binMin, binMax) / hMCIA->Integral(binMin, binMax));
-	hMCAY->Scale(hExpAY->Integral(binMin, binMax) / hMCAY->Integral(binMin, binMax));
-	chi2BIA = chi2Diff(hExpIA, hMCIA, binMin, binMax);
-	chi2BAY = chi2Diff(hExpAY, hMCAY, binMin, binMax);
-	chi2other = 0;
-	for (i=0; i<5; i++) {	// i < 5 ==> ignore Bragg
+	chi2BIA = chi2BAY = chi2other = 0;
+	if (FitPar.rangeIA.From < FitPar.rangeIA.Till) {
+		TH1D *hExpIA = GetExperiment(Kscale, &FitPar.ExpIA, "__hExpIA", 1.0/16);
+		TH1D *hMCIA = GetMC(Kbirks, Kcher,
+			FitPar.MCIA.CentralMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCIA.BirksMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCIA.CherMatrix[FitPar.iClusterEnergySelection],
+			FitPar.Spectrum, "__hMCIA");
+		hMCIA->Scale(hExpIA->Integral(FitPar.rangeIA.From, FitPar.rangeIA.Till) / 
+			hMCIA->Integral(FitPar.rangeIA.From, FitPar.rangeIA.Till));
+		chi2BIA = chi2Diff(hExpIA, hMCIA, FitPar.rangeIA.From, FitPar.rangeIA.Till);
+		delete hExpIA;
+		delete hMCIA;
+	}
+	if (FitPar.rangeAY.From < FitPar.rangeAY.Till) {
+		TH1D *hExpAY = GetExperiment(Kscale, &FitPar.ExpAY, "__hExpAY", 1.0/2);
+		TH1D *hMCAY = GetMC(Kbirks, Kcher,
+			FitPar.MCAY.CentralMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCAY.BirksMatrix[FitPar.iClusterEnergySelection],
+			FitPar.MCAY.CherMatrix[FitPar.iClusterEnergySelection],
+			FitPar.Spectrum, "__hMCAY");
+		hMCAY->Scale(hExpAY->Integral(FitPar.rangeAY.From, FitPar.rangeAY.Till) / 
+			hMCAY->Integral(FitPar.rangeAY.From, FitPar.rangeAY.Till));
+		chi2BAY = chi2Diff(hExpAY, hMCAY, FitPar.rangeAY.From, FitPar.rangeAY.Till);
+		delete hExpAY;
+		delete hMCAY;
+	}
+	for (i=0; i<6; i++) if (FitPar.Sigma[i] > 0) {
 		r = RFunction(Kbirks, Kcher, Kbirks, i) - Kscale;
-		chi2other += r * r / (Rsigma * Rsigma);
+		chi2other += r * r / (FitPar.Sigma[i] * FitPar.Sigma[i]);
 	}
 	f = chi2BIA + chi2BAY + chi2other;
 	printf("Call No %d with N=%d F=%d Ks=%f DKb=%f DKc=%f ==> %f + %f + %f = %f\n", 
 		Cnt, Npar, iflag, Kscale, Kbirks, Kcher, chi2BIA, chi2BAY, chi2other, f);
-	delete hExpIA;
-	delete hMCIA;
-	delete hExpAY;
-	delete hMCAY;
 }
 
 /****************************************************************
@@ -1456,30 +1468,39 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
  ****************************************************************/
 void DrawFitRes(double Kscale, double Kbirks, double Kcher, int which)
 {
-	const int binMin = 13;		// 3 MeV
-	const int binMax = 50;		// 12.5 MeV
 	char str[128];
-	double chi2, x[3];
-	int n;
+	double chi2;
 	TH1D *hExp;
 	TH1D *hMC;
+	int binMin, binMax;
 
 	if (which) {
+		if (FitPar.rangeAY.From >= FitPar.rangeAY.Till) return;
 		hExp = GetExperiment(Kscale, &FitPar.ExpAY, "__hExpAY", 1.0/2);
+		hExp->SetTitle("^{12}B decays from #mu-capture;MeV;events");
 		hMC = GetMC(Kbirks, Kcher,
 			FitPar.MCAY.CentralMatrix[FitPar.iClusterEnergySelection],
 			FitPar.MCAY.BirksMatrix[FitPar.iClusterEnergySelection],
 			FitPar.MCAY.CherMatrix[FitPar.iClusterEnergySelection],
 			FitPar.Spectrum, "__hMCAY");
+		hMC->Scale(hExp->Integral(FitPar.rangeAY.From, FitPar.rangeAY.Till) / 
+			hMC->Integral(FitPar.rangeAY.From, FitPar.rangeAY.Till));
+		binMin = FitPar.rangeAY.From;
+		binMax = FitPar.rangeAY.Till;
 	} else {
+		if (FitPar.rangeIA.From >= FitPar.rangeIA.Till) return;
 		hExp = GetExperiment(Kscale, &FitPar.ExpIA, "__hExpIA", 1.0/16);
+		hExp->SetTitle("^{12}B decays from charge exchange;MeV;events");
 		hMC = GetMC(Kbirks, Kcher,
 			FitPar.MCIA.CentralMatrix[FitPar.iClusterEnergySelection],
 			FitPar.MCIA.BirksMatrix[FitPar.iClusterEnergySelection],
 			FitPar.MCIA.CherMatrix[FitPar.iClusterEnergySelection],
 			FitPar.Spectrum, "__hMCIA");
+		hMC->Scale(hExp->Integral(FitPar.rangeIA.From, FitPar.rangeIA.Till) / 
+			hMC->Integral(FitPar.rangeIA.From, FitPar.rangeIA.Till));
+		binMin = FitPar.rangeIA.From;
+		binMax = FitPar.rangeIA.Till;
 	}
-	hMC->Scale(hExp->Integral(binMin, binMax) / hMC->Integral(binMin, binMax));
 
 	hExp->SetLineColor(kRed);
 	hExp->SetLineWidth(2);
@@ -1487,19 +1508,17 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher, int which)
 	hMC->SetLineWidth(2);
 	hExp->DrawCopy();
 	hMC->DrawCopy("same hist");
+	
 	TLine ln;
 	ln.SetLineColor(kGreen);
 	ln.SetLineWidth(2);
 	ln.DrawLine((binMin-1)/4.0, 0, (binMin-1)/4.0, hExp->GetMaximum());
 	ln.DrawLine(binMax/4.0, 0, binMax/4.0, hExp->GetMaximum());
-	n = 3;
-	x[0] = Kscale;
-	x[1] = Kbirks;
-	x[2] = Kcher;
-	FitFunction(n, NULL, chi2, x, 0);
-	TLatex txt;
-	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, 2*binMax - 2*binMin + 2);
-	txt.DrawLatexNDC(0.3, 0.92, str);
+	
+	TLatex lt;
+	chi2 = chi2Diff(hExp, hMC, binMin, binMax);
+	sprintf(str, "#chi^{2} / ndf = %f / %d", chi2, binMax - binMin);
+	lt.DrawLatexNDC(0.6, 0.7, str);
 }
 
 /****************************************************************
@@ -1602,9 +1621,9 @@ void DrawCorrelations(double Kscale, double Kbirks, double Kcher)
 	printf("Errors: %f   %f   %f\n", 
 		Scale_step / sqrt(B[0][0]), 0.01 * Birks_step / sqrt(B[1][1]), 0.1 * Cher_step / sqrt(B[2][2])); 
 	
-	TH1D *hScalePar = new TH1D("hScalePar", "Central slices;;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
-	TH1D *hBirksPar = new TH1D("hBirksPar", "Central slices;;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
-	TH1D *hCherPar = new TH1D("hCherPar", "Central slices;;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
+	TH1D *hScalePar = new TH1D("hScalePar", ";;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
+	TH1D *hBirksPar = new TH1D("hBirksPar", ";;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
+	TH1D *hCherPar = new TH1D("hCherPar", ";;#chi^{2}", Nsteps, -0.5*Nsteps, 0.5*Nsteps);
 	hScalePar->SetLineWidth(2);
 	hScalePar->SetLineColor(kRed);
 	hScalePar->SetMarkerColor(kRed);
@@ -1638,6 +1657,7 @@ void DrawCorrelations(double Kscale, double Kbirks, double Kcher)
 	fCherPar->SetLineWidth(2);
 	fCherPar->SetLineColor(kBlue);
 	
+	hScalePar->SetMinimum(0);
 	hScalePar->Draw("p");
 	hBirksPar->Draw("p same");
 	hCherPar->Draw("p same");
@@ -1764,6 +1784,21 @@ int LoadFitFiles(int iDet)
 	fMCIA->Close();
 	fExpAY->Close();
 	fMCAY->Close();
+
+//	Set default parameters: 
+//		sigmas for mu, 22Na, 60co, 248Cm, mudec, Bragg
+	FitPar.Sigma[0] = 0.005;	// vertical muons
+	FitPar.Sigma[1] = 0.005;	// 22Na decay
+	FitPar.Sigma[2] = 0.005;	// 60Co decay
+	FitPar.Sigma[3] = 0.005;	// 248Cm neutrons and IBD neutrons
+	FitPar.Sigma[4] = 0.005;	// Electrons from mu-decay
+	FitPar.Sigma[5] = 0;		// Bragg peak
+//		Fit ranges
+	FitPar.rangeIA.From = 13;	// 3 MeV
+	FitPar.rangeIA.Till = 50;	// 12.5 MeV
+	FitPar.rangeAY.From = 3;	// 0.5 MeV
+	FitPar.rangeAY.Till = 50;	// 12.5 MeV
+	
 	return 0;
 }
 
@@ -1785,12 +1820,12 @@ int LoadFitFiles(int iDet)
  *	We use only experimental errors				*
  *	Both 12B reactions are used and other sources added	*
  ****************************************************************/
-void FitMCparameters(int iDet)
+void FitMCparameters(int iDet, const char *oname)
 {
 	const double Rmin = 1.00;
 	const double Rmax = 1.10;
 	const double Rstep = 0.005;
-	int i, j, N;
+	int i, N;
 	double R, eR, Kb, eKb, kkB, Kc, eKc, kkC;
 	double x[3];
 	double chi2;
@@ -1798,9 +1833,11 @@ void FitMCparameters(int iDet)
 	double A, B;
 	double Kscale_min;
 	char str[1024];
+	const int binMin = 13;		// 3 MeV
+	const int binMax = 50;		// 12.5 MeV
 
-	if (LoadFitFiles(iDet)) return;
 //	Prepare minimization:
+	if (FitPar.iClusterEnergySelection != iDet && LoadFitFiles(iDet)) return;
 	TMinuit *mn = new TMinuit();
 	mn->mninit(5, 6, 7);
 	mn->SetFCN(FitFunction);
@@ -1829,6 +1866,7 @@ void FitMCparameters(int iDet)
 	gStyle->SetOptStat(0);
 	auto cv = (TCanvas *)gROOT->FindObject("CV");
 	if (!cv) cv = new TCanvas("CV", "CV", 1200, 1200);
+	cv->Clear();
 	cv->Divide(2, 2);
 	cv->cd(1);
 	hPar->Fit("pol2", "W");
@@ -1851,7 +1889,7 @@ void FitMCparameters(int iDet)
 	cv->cd(3);
 	DrawFitRes(R, Kb, Kc, 0);
 	cv->cd(4);
-	DrawFitRes(R, Kb, Kc, 0);
+	DrawFitRes(R, Kb, Kc, 1);
 	cv->cd(2);
 	DrawCorrelations(R, Kb, Kc);
 	kkB = 0.0208 + 0.01*Kb;
@@ -1860,7 +1898,20 @@ void FitMCparameters(int iDet)
 	sprintf(str, "R = %f +- %f;   Kb = %f +- %f;   Kc = %f +- %f", R, eR, kkB, eKb / 100, kkC, eKc / 10);
 	printf("%s\n", str);
 	TLatex lt;
-	lt.DrawLatexNDC(0.05, 0.92, str);
-	sprintf(str, "Calibration_fit_all-%d.png", iDet);
-	cv->SaveAs(str);
+	lt.SetTextSize(0.022);
+	lt.DrawLatexNDC(0.05, 0.97, str);
+	x[0] = R;
+	x[1] = Kb;
+	x[2] = Kc;
+	np = 3;
+	FitFunction(np, NULL, chi2, x, 0);		// get function in the minimum found
+	np = -3;	// Kscale, Kbirks, Kcher
+	if (FitPar.rangeIA.From < FitPar.rangeIA.Till) np += FitPar.rangeIA.Till - FitPar.rangeIA.From;
+	if (FitPar.rangeAY.From < FitPar.rangeAY.Till) np += FitPar.rangeAY.Till - FitPar.rangeAY.From;
+	for (i=0; i<6; i++) if (FitPar.Sigma[i] > 0) np++;
+	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, np);
+	lt.DrawLatexNDC(0.05, 0.94, str);
+
+	cv->Update();
+	cv->SaveAs(oname);
 }
