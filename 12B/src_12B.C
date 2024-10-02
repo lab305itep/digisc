@@ -1517,8 +1517,8 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher, int which)
 	
 	TLatex lt;
 	chi2 = chi2Diff(hExp, hMC, binMin, binMax);
-	sprintf(str, "#chi^{2} / ndf = %f / %d", chi2, binMax - binMin);
-	lt.DrawLatexNDC(0.6, 0.7, str);
+	sprintf(str, "#chi^{2} = %5.1f", chi2);
+	lt.DrawLatexNDC(0.4, 0.82, str);
 }
 
 /****************************************************************
@@ -1833,8 +1833,8 @@ void FitMCparameters(int iDet, const char *oname)
 	double A, B;
 	double Kscale_min;
 	char str[1024];
-	const int binMin = 13;		// 3 MeV
-	const int binMax = 50;		// 12.5 MeV
+	double Rres[6];
+	const char *rnames[6] = {"Rmu", "RNa", "RCo", "RCm", "Rmu-dec", "RBragg"};
 
 //	Prepare minimization:
 	if (FitPar.iClusterEnergySelection != iDet && LoadFitFiles(iDet)) return;
@@ -1911,7 +1911,10 @@ void FitMCparameters(int iDet, const char *oname)
 	for (i=0; i<6; i++) if (FitPar.Sigma[i] > 0) np++;
 	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, np);
 	lt.DrawLatexNDC(0.05, 0.94, str);
-
+	
+	for (i=0; i<6; i++) printf("%s = %6.3f  ", rnames[i], RFunction(Kb, Kc, Kb, i));
+	printf("\n");
+	
 	cv->Update();
 	cv->SaveAs(oname);
 }
