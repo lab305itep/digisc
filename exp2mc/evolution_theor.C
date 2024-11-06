@@ -4,7 +4,8 @@
 #define EFISS 200.0		// nominal fission energy
 #define CROSSAVR	6.5	// average IBD yield
 #define CMPDIV 5		// number of campaign divisions
-#define EVTTOT 400000		// 100 days * 4000 events/day
+//#define EVTTOT 400000		// 100 days * 4000 events/day
+#define EVTTOT 1000000
 
 void add_IBD2chain(TChain *ch, const char *what, int nser, int ninser)
 {
@@ -64,7 +65,7 @@ TCut *IBDcuts(void)
 }
 
 //	make theoretical spectrum for a given fuel mixture and total number of events N
-TH1D *theorSpectrum(const char *name, const double fuel_fract[4], int N)
+TH1D *theorSpectrum(const char *name, const double fuel_fract[4], int N, int part)
 {
 	const int a_fuel[4] = {235, 238, 239, 241};
 	const char *name_fuel[4] = {"235U", "238U", "239Pu", "241Pu"};
@@ -74,7 +75,7 @@ TH1D *theorSpectrum(const char *name, const double fuel_fract[4], int N)
 	TChain *tFuel[4];
 	int i;
 	char str[1024];
-	int Ncorr, Nmax, Nget, Ntot;
+	int Ncorr, Nmax, Nget, Ntot, Nbegin;
 
 	TCut *cut = IBDcuts();
 	Ncorr = N * EFISS * 100.0 / 
@@ -87,11 +88,12 @@ TH1D *theorSpectrum(const char *name, const double fuel_fract[4], int N)
 		sprintf(str, "hMC%s", name_fuel[i]);
 		hFuel[i] = new TH1D(str, ";MeV", 32, 0, 8);
 		Nmax = Ncorr * fuel_fract[i] * cross_fuel[i] / (100 * EFF0 * CROSSAVR);
-		if (Nmax > tFuel[i]->GetEntries()) {
-			printf("Not enough events for %s: %d required\n", name_fuel[i], Nmax);
+		Nbegin = part * tFuel[i]->GetEntries() / CMPDIV;
+		if (Nmax + Nbegin > tFuel[i]->GetEntries()) {
+			printf("Not enough events for %s: %d+%d required\n", name_fuel[i], Nbegin, Nmax);
 			return NULL;
 		}
-		Nget = tFuel[i]->Project(hFuel[i]->GetName(), "PositronEnergy", *cut, "", Nmax);
+		Nget = tFuel[i]->Project(hFuel[i]->GetName(), "PositronEnergy", *cut, "", Nmax, Nbegin);
 		printf("%s: %d events processed; %d got\n", name_fuel[i], Nmax, Nget);
 		hFuel[i]->Sumw2();
 		Ntot += Nget;
@@ -110,10 +112,14 @@ TH1D *theorSpectrum(const char *name, const double fuel_fract[4], int N)
 //	Draw theoretical spectrum eveolution along a campaign
 void evolution_theor(void)
 {
-//	Campaign 9, eff. day 24, 71, 118, 165, 212
-	const double fract[][4] = {{70.39, 6.85, 19.56, 3.20}, {66.96, 6.93, 22.56, 3.56},
-		{63.98, 7.00, 25.07, 3.95}, {61.28, 7.06, 27.25, 4.40}, {58.79, 7.13, 29.19, 4.89}};
-
+//	Campaign 5, day 50, 150, 250, 350, 450
+	const double fract[CMPDIV][4] = {
+		/* 10/12/2017 */	{68.96, 6.86, 20.93, 3.25},
+		/* 01/22/2018 */	{62.33, 7.03, 26.48, 4.16},
+		/* 05/02/2018 */	{56.89, 7.16, 30.67, 5.27},
+		/* 08/10/2018 */	{52.23, 7.30, 33.97, 6.50},
+		/* 11/20/2018 */	{47.87, 7.47, 36.83, 7.83}};
+		
 	char str[1024];
 	TLatex *txt;
 	TLegend *lg;
@@ -140,23 +146,24 @@ void evolution_theor(void)
 	
 	for (j=0; j<CMPDIV; j++) {
 		sprintf(str, "hMC_%d", j+1);
-		h[j] = theorSpectrum(str, fract[j], EVTTOT);
+		h[j] = theorSpectrum(str, fract[j], EVTTOT, j);
 		if (!h[j]) return;
 		h[j]->SetLineColor(color[j]);
 		h[j]->SetMarkerColor(color[j]);
 		h[j]->SetMarkerStyle(marker[j]);
 		h[j]->SetMarkerSize(2.5);
-		h[j]->SetTitle("MC spectrum;MeV;Events/bin");
+		h[j]->SetTitle("MC spectra per period;Positron energy, MeV;Events/bin");
+		h[j]->GetXaxis()->SetRangeUser(0, 6);
 		sprintf(str, "hDMC_%d", j+1);
 		hd[j] = (TH1D *) h[j]->Clone(str);
-		hd[j]->SetTitle("MC spectrum difference;MeV;Events/bin");
+		hd[j]->SetTitle("MC, spectra rate and shape difference from the first period;Positron energy, MeV;Events/bin");
 		hd[j]->Add(h[j], h[0], 1, -1);
 		sprintf(str, "hRMC_%d", j+1);
 		hr[j] = (TH1D *) h[j]->Clone(str);
-		hr[j]->SetTitle("MC spectrum ratio;MeV;");
+		hr[j]->SetTitle("MC, spectra ratio to the first period;Positron energy, MeV;");
 		hr[j]->Divide(h[j], h[0]);
-		hr[j]->SetMinimum(0.8);
-		hr[j]->SetMaximum(1.2);
+		hr[j]->SetMinimum(0.83);
+		hr[j]->SetMaximum(1.12);
 		h[j]->Draw((j) ? "same" : "");
 		sprintf(str, "Period %d", j+1);
 		lg->AddEntry(h[j], str, "pl");
