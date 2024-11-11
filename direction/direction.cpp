@@ -75,16 +75,33 @@ void direction(const char *name, int run_from, int run_to, TCut cAux)
 	TH1D *hResZ  = new TH1D("hResZ",  "Shift Z;cm;Events", 64, -32, 32);
 	
 	HPainter2 *ptr2 = new HPainter2(mask, run_from, run_to, pairdir);
+	printf("Running for runs %d-%d with up time %10.0f seconds\n", run_from, run_to, ptr2->GetUpTime());
+	if (ptr2->GetUpTime() < 1) goto fin;
 
 	ptr2->Project(hSigX,  "NeutronX[0] - PositronX[0]", cSig, 0);
 	ptr2->Project(hBgndX, "NeutronX[0] - PositronX[0]", cBgnd, 0);
-	hRBgndX = (TH1D*) gROOT->FindObject("hCosm-murand")->Clone("hRBgndX");
+	printf("Projection X done.\n");
+	hRBgndX = (TH1D*) gROOT->FindObject("hBgndX-murand");
+	if (!hBgndX) {
+		printf("hBgndX-murand not found\n");
+		goto fin;
+	}
 	ptr2->Project(hSigY,  "NeutronX[1] - PositronX[1]", cSig, 0);
 	ptr2->Project(hBgndY, "NeutronX[1] - PositronX[1]", cBgnd, 0);
-	hRBgndY = (TH1D*) gROOT->FindObject("hCosm-murand")->Clone("hRBgndY");
+	printf("Projection Y done.\n");
+	hRBgndY = (TH1D*) gROOT->FindObject("hBgndY-murand");
+	if (!hRBgndY) {
+		printf("hBgndY-murand not found\n");
+		goto fin;
+	}
 	ptr2->Project(hSigZ,  "NeutronX[2] - PositronX[2]", cSig, 0);
 	ptr2->Project(hBgndZ, "NeutronX[2] - PositronX[2]", cBgnd, 0);
-	hRBgndZ = (TH1D*) gROOT->FindObject("hCosm-murand")->Clone("hRBgndZ");
+	printf("Projection Z done.\n");
+	hRBgndZ = (TH1D*) gROOT->FindObject("hBgndZ-murand");
+	if (!hRBgndZ) {
+		printf("hBgndZ-murand not found\n");
+		goto fin;
+	}	
 //	Undo scale
 	hSigX->Scale(ptr2->GetUpTime() / 1000);
 	hSigY->Scale(ptr2->GetUpTime() / 1000);
@@ -101,6 +118,7 @@ void direction(const char *name, int run_from, int run_to, TCut cAux)
 	hResY->Add(hSigY, hBgndY, 1, -bgnd);
 	hResZ->Add(hSigZ, hBgndZ, 1, -bgnd);
 //	Save files
+fin:
 	fRoot->cd();
 	hSigX->Write();
 	hBgndX->Write();

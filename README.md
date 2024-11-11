@@ -1,7 +1,7 @@
 # digisc
 Analysis on super computer
 Igor's data analysis.
-Main analysis flow:
+Main analysis flow - Outdated. See read.me for uptodate description.
 1) digi_evtbuilder - make root files from Ira's digi files
 danss_submit run_digi_mpi <run_from> <run_to> <queue> <number_of_cpus> "OUT_DIR=<path_to_roots>"
 2) run_digiMC.sh - script to run digi_evtbuilder on MC

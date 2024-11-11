@@ -3,7 +3,7 @@ DANSS analysis main flow:
 2. Run digi_evtbuilder using mpi:
 danss_submit run_digi_mpi run_first run_last mpi 500 "OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/"
 3. Find dead channels and calculate efficiencies as in deadchan/read.me (it actually includes point 2.)
-4. Run digi_evtbuilder again. 
+4. Set new dead channels list in main_dead.list and run digi_evtbuilder again. 
 5. Check that all files are OK using check_root.sh. Rerun digi_evtbuilder on missed runs:
 danss_submit run_digi_mpi run_first run_last mpi 500 "OUT_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2/ DIGI_LIST=check_root.list"
 6. Correct file run_stat_mpi.sh and run it in the batch machine for the new data portion to make statisticas files which should be joined together.
