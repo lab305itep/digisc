@@ -1,4 +1,5 @@
-//	Make positions.h file out of stat_all
+//	Make positions.h and positions.txt file out of stat_all and fission fractions
+#include <ctype.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,8 +8,9 @@
 
 char * strptime (const char *S, const char *FMT, struct tm *TP);
 
-#define MAXRUN		200000
-#define MAXTOKEN	25
+#define MAXRUN		300000
+#define MAXDAYS		10000
+#define MAXTOKEN	30
 #define POWER_ZERO	10		// MW
 #define POWER_FULL	2850		// MW
 #define MINTIME		(5*3600)	// 5 hours
@@ -26,6 +28,14 @@ char * strptime (const char *S, const char *FMT, struct tm *TP);
 #define TOK_EFF	21
 #define TOK_PWR	22
 
+#define FTOK_DAY	0
+#define FTOK_DATE	1
+#define FTOK_TIM	2
+#define FTOK_U235	3
+#define FTOK_U238	5
+#define FTOK_PU239	6
+#define FTOK_PU241	8
+
 struct StatAllStruct {
 	int 	type;
 	time_t	start;
@@ -34,6 +44,18 @@ struct StatAllStruct {
 	double	time_dead;
 	double	eff;
 	double	power;
+	double U235;
+	double U238;
+	double Pu239;
+	double Pu241;
+};
+
+struct FissFractStruct {
+	time_t	date;
+	double U235;
+	double U238;
+	double Pu239;
+	double Pu241;
 };
 
 enum PowerType {zero_power = 0, some_power = 1, full_power = 2};
@@ -68,7 +90,11 @@ time_t ConvertTime(const char *date, const char *time)
 	struct tm tm_time;
 	
 	memset(&tm_time, 0, sizeof(tm_time));
-	strptime(date, "%F", &tm_time);
+	if (strstr(date, "-")) {
+		strptime(date, "%F", &tm_time);
+	} else {
+		strptime(date, "%d.%m.%C%y", &tm_time);
+	}
 	strptime(time, "%H:%M", &tm_time);
 	return mktime(&tm_time);
 }
@@ -85,7 +111,55 @@ void PeriodName(char *name, int type, time_t time)
 	sprintf(name, "%s%2.2d_%2.2d.%2.2d.%2.2d", posName[type], tm_time.tm_hour, tm_time.tm_mday, tm_time.tm_mon + 1, tm_time.tm_year % 100);
 }
 
-int ReadStat(const char *name, struct StatAllStruct *Stat)
+int ReadFiss(const char *name, struct FissFractStruct *Fiss)
+{
+	FILE *fFiss;
+	char str[1024];
+	char *ptr;
+	char *token[MAXTOKEN];
+	int irc;
+	int cnt;
+	
+	fFiss = fopen(name, "rt");
+	if (!fFiss) {
+		printf("Can not open Fissions-file %s: %m\n", name);
+		return 10;
+	}
+	memset(Fiss, 0, MAXDAYS * sizeof(struct FissFractStruct));
+	cnt = 0;
+	for (;;) {
+		ptr = fgets(str, sizeof(str), fFiss);
+		if (!ptr) break;	// EOF
+		StrSplit(str, token);
+		//	Getting run number
+		if (!token[FTOK_PU241]) continue;
+		if (!isdigit(token[FTOK_DAY][0])) continue;	// comment
+		Fiss[cnt].date = ConvertTime(token[FTOK_DATE], token[FTOK_TIM]);
+		Fiss[cnt].U235 = strtod(token[FTOK_U235], NULL);
+		Fiss[cnt].U238 = strtod(token[FTOK_U238], NULL);
+		Fiss[cnt].Pu239 = strtod(token[FTOK_PU239], NULL);
+		Fiss[cnt].Pu241 = strtod(token[FTOK_PU241], NULL);
+		cnt++;
+		if (cnt >= MAXDAYS) {
+			printf("No space for fissions data - increase MAXDAYS.\n");
+			return 20;
+		}
+	}
+	
+	fclose(fFiss);
+	return 0;
+}
+
+struct FissFractStruct *findFissions(time_t date, struct FissFractStruct *Fiss)
+{
+	int i;
+	
+	for (i=0; i<MAXDAYS && Fiss[i].date>0; i++) if (Fiss[i].date > date) break;
+	if (i > 0) i--;
+	return (&Fiss[i]);
+}
+
+int ReadStat(const char *name, struct StatAllStruct *Stat, struct FissFractStruct *Fiss)
 {
 	FILE *fStat;
 	char str[1024];
@@ -94,6 +168,7 @@ int ReadStat(const char *name, struct StatAllStruct *Stat)
 	int irc;
 	int type;
 	double d;
+	struct FissFractStruct *FissPtr;
 	
 	fStat = fopen(name, "rt");
 	if (!fStat) {
@@ -123,6 +198,15 @@ int ReadStat(const char *name, struct StatAllStruct *Stat)
 		Stat[irc].time_dead = strtod(token[TOK_DED], NULL);
 		Stat[irc].eff = strtod(token[TOK_EFF], NULL);
 		Stat[irc].power = strtod(token[TOK_PWR], NULL);
+		if (Stat[irc].power >= POWER_ZERO) {
+			FissPtr = findFissions(Stat[irc].start, Fiss);
+			if (FissPtr) {
+				Stat[irc].U235 = FissPtr->U235;
+				Stat[irc].U238 = FissPtr->U238;
+				Stat[irc].Pu239 = FissPtr->Pu239;
+				Stat[irc].Pu241 = FissPtr->Pu241;
+			}
+		}
 	}
 	
 	fclose(fStat);
@@ -151,6 +235,7 @@ void WritePositionsFile(const char *name, struct StatAllStruct *Stat)
 	double acq_time;
 	int period_begin, period_end, period_runs;
 	double period_total, period_dead, period_power, period_no_veto, period_eff;
+	double f235, f238, f239, f241;
 	time_t period_start;
 	time_t run_end_time;
 	char period_name[128];
@@ -172,7 +257,7 @@ void WritePositionsFile(const char *name, struct StatAllStruct *Stat)
 		return;
 	}
 	
-	fprintf(fOut, "  Name              \t  Begin   End   P      Power  NoVeto  Total     Dead    %%       Eff\n");
+	fprintf(fOut, "  Name              \t  Begin   End   P      Power  NoVeto  Total     Dead    %%       Eff     U235  U238  Pu239  Pu241\n");
 	
 	run = 0;
 	memset(Sum, 0, sizeof(Sum));
@@ -210,6 +295,7 @@ void WritePositionsFile(const char *name, struct StatAllStruct *Stat)
 			period_power = 0;
 			period_runs = 0;
 			period_eff = 0;
+			f235 = f238 = f239 = f241 = 0;
 			period_start = Stat[period_begin].start;
 			for(j=period_begin; j<run_end; j++) {
 				if (Stat[j].type <= 0) continue;	// we ignore breaks
@@ -218,6 +304,10 @@ void WritePositionsFile(const char *name, struct StatAllStruct *Stat)
 				period_power += Stat[j].power;
 				period_no_veto += Stat[j].no_veto * Stat[j].time_total;
 				period_eff += Stat[j].eff;
+				f235 += Stat[j].U235;
+				f238 += Stat[j].U238;
+				f239 += Stat[j].Pu239;
+				f241 += Stat[j].Pu241;
 				period_runs++;
 				if (period_total >= acq_time / N) break;
 			}
@@ -225,10 +315,14 @@ void WritePositionsFile(const char *name, struct StatAllStruct *Stat)
 			period_power /= period_runs;
 			period_eff /= period_runs;
 			period_no_veto /= period_total;
+			f235 /= period_runs;
+			f238 /= period_runs;
+			f239 /= period_runs;
+			f241 /= period_runs;
 			PeriodName(period_name, type_begin, period_start);
-			fprintf(fOut, "%20s\t%6d  %6d  %4s  %5.0f   %5.3f  %8.1f  %7.1f  %6.4f  %7.5f\n",
+			fprintf(fOut, "%20s\t%6d  %6d  %4s  %5.0f   %5.3f  %8.1f  %7.1f  %6.4f  %7.5f %5.2f %5.2f %5.2f %5.2f\n",
 				period_name, period_begin, period_end, cpower_type[ptype_begin], period_power,
-				period_no_veto, period_total, period_dead, period_dead / period_total, period_eff);
+				period_no_veto, period_total, period_dead, period_dead / period_total, period_eff, f235, f238, f239, f241);
 			fprintf(fH, "\t\t{ \"%s\",   %5d, %5d, %d, %5.3f},\n",
 				period_name, period_begin, period_end, GlobalPeriod(period_begin, ptype_begin), 
 				1.55 * period_no_veto);
@@ -259,24 +353,30 @@ void WritePositionsFile(const char *name, struct StatAllStruct *Stat)
 int main(int argc, char **argv)
 {
 	struct StatAllStruct *Stat;
+	struct FissFractStruct *Fiss;
 	int irc;
 	
-	if (argc < 3) {
-		printf("Usage: %s stat_all_file positions_file\n", argv[0]);
+	if (argc < 4) {
+		printf("Usage: %s stat_all_file fiss_fract_file positions_file\n", argv[0]);
 		return 10;
 	}
 	
+	Fiss = (struct FissFractStruct *) malloc(MAXDAYS * sizeof(struct FissFractStruct));
 	Stat = (struct StatAllStruct *) malloc(MAXRUN * sizeof(struct StatAllStruct));
-	if (!Stat) {
+	if (!Stat || !Fiss) {
 		printf("No memory: %m\n");
 		return 20;
 	}
-	
-	irc = ReadStat(argv[1], Stat);
+	irc = ReadFiss(argv[2], Fiss);
+	if (irc) {
+		printf("Can not read fissions file\n");
+		return 27;
+	}
+	irc = ReadStat(argv[1], Stat, Fiss);
 	if (irc) {
 		printf("Can not read stat file\n");
 		return 30;
 	}
 	
-	WritePositionsFile(argv[2], Stat);
+	WritePositionsFile(argv[3], Stat);
 }
