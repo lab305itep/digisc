@@ -29,7 +29,9 @@ do_IBDdir()
 			nameinfo=${nameout/.root/_info.root}
 			if [ -f $namein ] ; then
 				./pairbuilder8 $namein $nameout
-				./getMCinfo $nameout $nameraw $nameinfo
+				if [ -f $nameraw ] ; then
+					./getMCinfo $nameout $nameraw $nameinfo
+				fi
 			fi
 		done
 	done
@@ -79,7 +81,10 @@ do_gamma()
 }
 
 date
-do_IBDdir "Chikuma/IBD/235U_fuel_Chikuma_main_Birks_0_0308" 6 16 "235U"
+do_IBDdir IBD_large_fuel/235U 12 8 235U
+do_IBDdir IBD_large_fuel/238U 2 8 238U
+do_IBDdir IBD_large_fuel/239Pu 8 8 239Pu
+do_IBDdir IBD_large_fuel/241Pu 2 8 241Pu
 date
 
 exit 0
