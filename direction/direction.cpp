@@ -67,7 +67,7 @@ void direction(const char *name, int run_from, int run_to, TCut cAux)
 	TH1D *hBgndX  = new TH1D("hBgndX",  "Shift X;cm;Events", 16, -32, 32);		// muon background
 	TH1D *hBgndY  = new TH1D("hBgndY",  "Shift Y;cm;Events", 16, -32, 32);
 	TH1D *hBgndZ  = new TH1D("hBgndZ",  "Shift Z;cm;Events", 64, -32, 32);
-	TH1D *hRBgndX  = new TH1D("hRBgndX",  "Shift X;cm;Events", 16, -32, 32);		// ACB muon background
+	TH1D *hRBgndX  = new TH1D("hRBgndX",  "Shift X;cm;Events", 16, -32, 32);	// ACB muon background
 	TH1D *hRBgndY  = new TH1D("hRBgndY",  "Shift Y;cm;Events", 16, -32, 32);
 	TH1D *hRBgndZ  = new TH1D("hRBgndZ",  "Shift Z;cm;Events", 64, -32, 32);
 	TH1D *hResX  = new TH1D("hResX",  "Shift X;cm;Events", 16, -32, 32);		// signal - background events

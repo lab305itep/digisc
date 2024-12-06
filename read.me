@@ -13,7 +13,7 @@ Strip text lines:
 7. Correct file run_dead_mpi.sh and run it in the batch machine for the new data portion to calculate dead times to include into the
 statistics. Cat files into a single file and strip text lines:
     sed -e "/Run/d" input.txt > output.txt
-8. Run deadtimes_v2/merge2stat to insert dead times inot stat file:
+8. Run deadtimes_v2/merge2stat to insert dead times in to the stat file:
     ./merge2stat input_stat.txt input_dead.txt output_stat.txt
 9. Add effeciency information using deadchan/eff2stat_v1 as described in deadchan/read.me
 *** Adding fixed efficiency at the end of line:
