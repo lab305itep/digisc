@@ -21,11 +21,11 @@ if [ $# -gt 3 ] ; then
 fi
 
 TCALIB=tcalib_sorted.txt
+LISTFILE=${RANDOM}".list"
 
 TMP=${FN//[0-9]/}
 if [ x${TMP}  != x ] ; then
 	RUN=$FN
-	LISTFILE=`basename $RUN`".list"
 	echo $RUN > $LISTFILE
 	OUTFILE=$ROOT_DIR/`basename $RUN`
 	OUTFILE=${OUTFILE/.bz2/}
@@ -58,7 +58,6 @@ else
 		fi
 	fi
 
-	LISTFILE="${RUNNUMBER}.list"
 	echo $RUN > $LISTFILE
 	mkdir -p $ROOT_DIR/${RUNNUMBER:0:3}xxx/
 	$BUILDER -no_hit_tables -file $LISTFILE -tcalib $TCALIB -output ${ROOT_DIR}/${RUNNUMBER:0:3}xxx/danss_${RUNNUMBER}.root -flag $FLAGS $ARGS
