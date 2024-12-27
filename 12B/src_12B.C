@@ -1004,17 +1004,20 @@ void MakeChikumaMatrixes(const char *fname, const char *cuts)
 		"DB_spectrum_Chikuma_Cher_coeff_0_033",
 		"DB_spectrum_Chikuma_Cher_coeff_0_233",
 		"DB_spectrum_Chikuma_main_Birks_0_0108", 
-		"DB_spectrum_Chikuma_main_Birks_0_0308"};
+		"DB_spectrum_Chikuma_main_Birks_0_0308",
+		"DB_spectrum_Chikuma_paint_0_15",
+		"DB_spectrum_Chikuma_paint_0_45"};
 	const char *filelist[] = {"mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root", 
 		"mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root"};
-	const char *rawlist[] = {"DANSSmod0_1.root", "DANSSmod0_2.root"};
+//	const char *rawlist[] = {"DANSSmod0_1.root", "DANSSmod0_2.root"};
+	const char *rawlist[] = {"DANSS0_1.root", "DANSS0_2.root"};
 	const char *varlist[] = {"PositronEnergy", "PositronSiPmEnergy", "PositronPmtEnergy"};
-	const char *mixname[] = {"Birks_el", "Cher_coeff", "main_Birks"};
+	const char *mixname[] = {"Birks_el", "Cher_coeff", "main_Birks", "paint"};
 	int i, j;
 	char str[4096];
 	char raw[4096];
 	char name[256];
-	TMatrixD *M[13][3];
+	TMatrixD *M[17][3];
 	
 	TFile *fOut = new TFile(fname, "RECREATE");
 	if (!fOut->IsOpen()) return;
@@ -1033,17 +1036,19 @@ void MakeChikumaMatrixes(const char *fname, const char *cuts)
 		}
 	}
 	for (j = 0; j < sizeof(varlist) / sizeof(varlist[0]); j++) {
-		for (i=7; i<13; i++) M[i][j] = new TMatrixD(Nbins, Nbins);
-		*(M[7][j]) = (*(M[2][j]) - *(M[1][j])) * 0.5;
-		*(M[8][j]) = (*(M[2][j]) + *(M[1][j])) * 0.5 - *(M[0][j]);
-		*(M[9][j]) = (*(M[4][j]) - *(M[3][j])) * 0.5;
-		*(M[10][j]) = (*(M[4][j]) + *(M[3][j])) * 0.5 - *(M[0][j]);
-		*(M[11][j]) = (*(M[6][j]) - *(M[5][j])) * 0.5;
-		*(M[12][j]) = (*(M[6][j]) + *(M[5][j])) * 0.5 - *(M[0][j]);
-		for (i=0; i<6; i++) {
+		for (i=9; i<17; i++) M[i][j] = new TMatrixD(Nbins, Nbins);
+		*(M[9][j]) = (*(M[2][j]) - *(M[1][j])) * 0.5;
+		*(M[10][j]) = (*(M[2][j]) + *(M[1][j])) * 0.5 - *(M[0][j]);
+		*(M[11][j]) = (*(M[4][j]) - *(M[3][j])) * 0.5;
+		*(M[12][j]) = (*(M[4][j]) + *(M[3][j])) * 0.5 - *(M[0][j]);
+		*(M[13][j]) = (*(M[6][j]) - *(M[5][j])) * 0.5;
+		*(M[14][j]) = (*(M[6][j]) + *(M[5][j])) * 0.5 - *(M[0][j]);
+		*(M[15][j]) = (*(M[8][j]) - *(M[7][j])) * 0.5;
+		*(M[16][j]) = (*(M[8][j]) + *(M[7][j])) * 0.5 - *(M[0][j]);
+		for (i=0; i<8; i++) {
 			sprintf(name, "m12B_%s_%s_%s", (i & 1) ? "Residual" : "Delta", mixname[i/2], varlist[j]);
 			fOut->cd();
-			M[7+i][j]->Write(name);
+			M[9+i][j]->Write(name);
 		}
 	}
 	
@@ -1061,8 +1066,8 @@ void MakeChikumaMatrixes(const char *fname, const char *cuts)
  ********************************************************/
 void MakeAllChikumaMatrixes(void)
 {
-	MakeChikumaMatrixes("12B_Chikuma_matrixes_IA.root", "AnnihilationEnergy < 0.06 && PositronEnergy > 3");
-	MakeChikumaMatrixes("12B_Chikuma_matrixes_AY.root", "AnnihilationEnergy < 0.06 && "
+	MakeChikumaMatrixes("12B_Chikuma_matrixes_IA_v2.root", "AnnihilationEnergy < 0.06 && PositronEnergy > 3");
+	MakeChikumaMatrixes("12B_Chikuma_matrixes_AY_v2.root", "AnnihilationEnergy < 0.06 && "
 		"((PositronX[0] > 10 && PositronX[0] < 86) || PositronX[0] < 0) && "
 		"((PositronX[1] > 10 && PositronX[1] < 86) || PositronX[1] < 0) && "
 		"PositronX[2] > 11.5 && PositronX[2] < 87.5");

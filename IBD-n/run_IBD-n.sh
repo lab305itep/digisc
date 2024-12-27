@@ -7,7 +7,7 @@
 #PBS -e /home/clusters/rrcmpi/alekseev/igor/tmp/IBD-n1.err
 cd /home/itep/alekseev/igor/IBD-n
 date
-#./IBD-n Chikuma_FIFRELIN2.txt mc_ibd_n_Chikuma_FIFRELIN2.root
-./IBD-n Chikuma_main_Birks_0_0308.txt mc_ibd_n_Chikuma_main_Birks_0_0308.root
+./IBD-n Chikuma_paint_0_15.txt mc_ibd_n_Chikuma_paint_0_15.root
+./IBD-n Chikuma_paint_0_45.txt mc_ibd_n_Chikuma_paint_0_45.root
 date
 exit 0
