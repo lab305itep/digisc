@@ -65,10 +65,13 @@
 #define FLAG_VETO	8
 #define FLAG_SHOWER	16
 
+
+#pragma pack(push,1)
 struct TrigArrayStruct {
 	long long globalTime;
 	int flags;
 };
+#pragma pack(pop)
 
 struct HitStruct {
 	float			E[iMaxDataElements];
@@ -440,7 +443,7 @@ int main(int argc, char **argv)
 //			Create trigger arryay to facilitate searches
 	TrigArray = (struct TrigArrayStruct *) malloc(nEvt * sizeof(struct TrigArrayStruct));
 	if (!TrigArray) {
-		printf("TrigArray[%d] memery allocation failed: %m\n", nEvt);
+		printf("TrigArray[%d] memory allocation failed: %m\n", nEvt);
 		goto fin;
 	}
 	for (iEvt =0; iEvt < nEvt; iEvt++) {
