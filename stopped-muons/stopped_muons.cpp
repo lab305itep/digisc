@@ -1,7 +1,8 @@
 /****************************************************************************************
  *	DANSS data analysis - find stopped muons					*
  ****************************************************************************************/
-
+#include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,7 @@
 #define MAXXY	25
 #define iMaxDataElements 3000
 #define masterTrgRandom 2
+#define DEBUG 0
 
 #pragma pack(push,1)
 struct StoppedMuonStruct {
@@ -48,9 +50,9 @@ struct StoppedMuonStruct {
 	long long globalTime;	// global time 125 MHz ticks
 	int Z;			// z of the stopping strip
 	int XY;			// xy of the stopping strip
-	float thetaX;		// angle of the track in ZX
-	float thetaY;		// angle of the track in ZY
-	int NHits;		// number of hits
+	float thetaX;		// angle of the track in ZX, 0 - vertical
+	float thetaY;		// angle of the track in ZY, 0 - vertical
+	int NHits;		// number of hits including empty hits
 	float Ehit[MAXZ];	// hit energy
 };
 #pragma pack(pop)
@@ -163,7 +165,7 @@ int FindTrack(struct PlaneHitStruct *pl, struct TrackProjStruct *tr)
 	if (N < 5) return 1;
 //		Find track parameters
 	sZ = sX = sZ2 = sZX = 0;
-	for (i = tr->Zmin; i <= tr->Zmax; i++) {
+	for (i = tr->Zmin; i <= tr->Zmax; i++) if (pl[i].E > 0) {
 		sZ += i;
 		sX += pl[i].xy;
 		sZ2 += i * i;
@@ -188,22 +190,30 @@ int FindTrack(struct PlaneHitStruct *pl, struct TrackProjStruct *tr)
 /*	Consider that all muons come from the top hemisphere	*/
 /*	and look for the next strip for 3D track given. Check	*/
 /*	that possible strip is availble and not dead. Cut 4	*/
-/*	bottom layers as well as all edge strips. Return 0 if	*/
-/*	OK, 1 on failure.					*/
-int FindEndPoint(struct TrackProjStruct *TX, struct TrackProjStruct *TY, int &iZ, int &iXY)
+/*	bottom layers as well as all edge strips.		*/
+/*	Return 0 if OK, 1 on failure.				*/
+/*	iZ - z of the end point.				*/
+/*	iXY - xy of the end point.				*/
+/*	NHits - number of points on the track including empty	*/
+int FindEndPoint(struct TrackProjStruct *TX, struct TrackProjStruct *TY, int &iZ, int &iXY, int &NHits)
 {
-	int ix, iy;
+	int ix, iy, znext, xynext;
 	
 	ix = 2 * TX->Zmin + 1;
 	iy = 2 * TY->Zmin;
-	iZ = std::min(ix, iy) - 1;			// next Z
-	if (iZ < 4) return 1;
-	ix = 0.5 + TX->A * (iZ - 1) / 2.0 + TX->B;	// next X
-	iy = 0.5 + TY->A * iZ / 2.0 + TY->B;		// next Y
+	znext = std::min(ix, iy) - 1;			// next Z
+	if (znext < 3) return 1;
+	ix = 0.5 + TX->A * (znext - 1) / 2.0 + TX->B;	// next X
+	iy = 0.5 + TY->A * znext / 2.0 + TY->B;		// next Y
 	if (ix < 1 || ix > MAXXY - 2) return 1;
 	if (iy < 1 || iy > MAXXY - 2) return 1;
-	iXY = (iZ & 1) ? ix : iy;
-	if (DeadChannels[iZ][iXY]) return 1;
+	xynext = (znext & 1) ? ix : iy;
+	if (DeadChannels[znext][xynext]) return 1;
+	iZ = znext + 1;
+	iXY = (iZ & 1) ? 0.5 + TX->A * (iZ - 1) / 2.0 + TX->B : 0.5 + TY->A * iZ / 2.0 + TY->B;
+	ix = 2 * TX->Zmax + 1;
+	iy = 2 * TY->Zmax;
+	NHits = std::max(ix, iy) - iZ + 1;
 	return 0;
 }
 
@@ -224,6 +234,8 @@ int main(int argc, char **argv)
 	TTree *tOut = NULL;
 	TFile *fOut = NULL;
 	TFile *fIn = NULL;
+	char filein[1024];
+	char fileout[1024];
 	char str[1024];
 	int RunNumber;
 	int i, j, k, N, irc;
@@ -235,24 +247,37 @@ int main(int argc, char **argv)
 	struct PlaneHitStruct YY[MAXZ/2];
 	struct TrackProjStruct TX;
 	struct TrackProjStruct TY;
-	int iZ, iXY;
+	int Stat[10];
+	const char *StatName[10] = {
+		"Total triggers       ", 
+		"Total energy > 20 MeV", 
+		"Gold planes          ", 
+		"Good track           ", 
+		"Stopped muon         ", 
+		"", "", "", "", ""};
+	int iZ, iXY, NHits;
 //			Check number of arguments
 	if (argc < 2) {
 		printf("Usage: %s runnumber [rootdir [outdir]]\n", argv[0]);
 		printf("Will process run and create root-file with stopped muons\n");
 		return 10;
 	}
-//			Process arguments
-	RunNumber = strtol(argv[1], NULL, 10);
+//			Process arguments & open files
 	if (argc > 2) rootdir = argv[2];
 	if (argc > 3) outdir = argv[3];
-//			Open files
-	sprintf(str, "%s/%3.3dxxx/danss_%6.6d.root", rootdir, RunNumber/1000, RunNumber);
-	fIn = new TFile(str);
+	if (isdigit(argv[1][0])) {
+		RunNumber = strtol(argv[1], NULL, 10);
+		sprintf(filein, "%s/%3.3dxxx/danss_%6.6d.root", rootdir, RunNumber/1000, RunNumber);
+		sprintf(fileout, "%s/%3.3dxxx/stopped_%6.6d.root", outdir, RunNumber/1000, RunNumber);
+	} else {
+		sprintf(filein, "%s/%s", rootdir, argv[1]);
+		sprintf(fileout, "%s/%s", outdir, argv[1]);
+	}
+	fIn = new TFile(filein);
 	if (!fIn->IsOpen()) return 12;
 	EventTree = (TTree *) fIn->Get("DanssEvent");
 	if (!EventTree) {
-		printf("No EventChain in %s\n", str);
+		printf("No EventChain in %s\n", filein);
 		return 13;
 	}
 	EventTree->SetBranchAddress("Data", &DanssEvent);
@@ -260,14 +285,13 @@ int main(int argc, char **argv)
 	EventTree->SetBranchAddress("HitT", &HitData.T);
 	EventTree->SetBranchAddress("HitType", &HitData.type);
 
-	sprintf(str, "mkdir -p %s/%3.3dxxx", outdir, RunNumber/1000);
+	sprintf(str, "mkdir -p `dirname %s`", fileout);
 	i = system(str);
 	if (i) {
-		printf("Can not make the target directory: %s %m\n", str);
+		printf("Can not make the target directory for %s %m\n", fileout);
 		return 15;
 	}
-	sprintf(str, "%s/%3.3dxxx/stopped_%6.6d.root", outdir, RunNumber/1000, RunNumber);
-	fOut = new TFile(str, "RECREATE");
+	fOut = new TFile(fileout, "RECREATE");
 	if (!fOut->IsOpen()) return 16;
 //			Create output Chain
 	tOut = new TTree("StoppedMuons", "Stopped muons");
@@ -276,8 +300,10 @@ int main(int argc, char **argv)
 	CreateDeadMap(EventTree);
 //			Main cycle
 	N = EventTree->GetEntries();
+	memset(Stat, 0, sizeof(Stat));
 	for (i=0; i<N; i++) {
 		EventTree->GetEntry(i);
+		Stat[0]++;
 		if (DanssEvent.TotalEnergy < 20) continue;
 //			Create hit table
 		memset(ZX, 0, sizeof(ZX));
@@ -289,6 +315,7 @@ int main(int argc, char **argv)
 				ZY[HitData.type[j].z / 2][HitData.type[j].xy] = HitData.E[j];
 			}
 		}
+		Stat[1]++;
 //			Create hit planes
 		memset(XX, 0, sizeof(XX));
 		memset(YY, 0, sizeof(YY));
@@ -298,48 +325,55 @@ int main(int argc, char **argv)
 			irc += MergeHits(ZY[j], &YY[j]);
 		}
 		if (irc) continue;		// Use gold tracks only
-//		printf("**************************** ZX *******************************\n");
-//		for (j=0; j<MAXZ/2;j++) {
-//			printf("\t|");
-//			for (k=0; k<MAXXY; k++) printf("%c ", (ZX[j][k] > 0) ? '*' : ' ');
-//			printf("|\t%5.1f  %5.1f MeV\n", XX[j].xy, XX[j].E);
-//		}
-//		printf("**************************** ZY *******************************\n");
-//		for (j=0; j<MAXZ/2;j++) {
-//			printf("\t|");
-//			for (k=0; k<MAXXY; k++) printf("%c ", (ZY[j][k] > 0) ? '*' : ' ');
-//			printf("|\t%5.1f  %5.1f MeV\n", YY[j].xy, YY[j].E);
-//		}
-//		printf("----------------------------------------------------------------\n");
+		Stat[2]++;
+		if (DEBUG & 1) {
+			printf("**************************** ZX *******************************\n");
+			for (j=0; j<MAXZ/2;j++) {
+				printf("\t|");
+				for (k=0; k<MAXXY; k++) printf("%c ", (ZX[j][k] > 0) ? '*' : ' ');
+				printf("|\t%5.1f  %5.1f MeV\n", XX[j].xy, XX[j].E);
+			}
+			printf("**************************** ZY *******************************\n");
+			for (j=0; j<MAXZ/2;j++) {
+				printf("\t|");
+				for (k=0; k<MAXXY; k++) printf("%c ", (ZY[j][k] > 0) ? '*' : ' ');
+				printf("|\t%5.1f  %5.1f MeV\n", YY[j].xy, YY[j].E);
+			}
+		}
 //			Find track
 		irc += FindTrack(XX, &TX);
 		irc += FindTrack(YY, &TY);
 		if (irc) continue;		// no good track
+		Stat[3]++;
 //			Find the end point strip
-		irc = FindEndPoint(&TX, &TY, iZ, iXY);
+		irc = FindEndPoint(&TX, &TY, iZ, iXY, NHits);
 		if (irc) continue;		// bad endpoint
-		
-		printf("**************************** ZX *******************************\n");
-		for (j=MAXZ/2-1; j>=0; j--) {
-			printf("%d\t|", 2*j+1);
-			for (k=0; k<MAXXY; k++) printf("%c ", (ZX[j][k] > 0) ? '*' : ' ');
-			printf("|\t%5.1f  %5.1f MeV\n", XX[j].xy, XX[j].E);
+		Stat[4]++;
+		if (DEBUG & 2) {
+			printf("**************************** PARS *****************************\n");
+			printf("\ttrack X: [%d-%d] %f*z + %f\n", 2*TX.Zmin+1, 2*TX.Zmax+1, TX.A, TX.B);
+			printf("\ttrack Y: [%d-%d] %f*z + %f\n", 2*TY.Zmin, 2*TY.Zmax, TY.A, TY.B);
+			printf("\tStopping point: Z = %2d   XY=%2d   N=%2d\n", iZ, iXY, NHits);
 		}
-		printf("**************************** ZY *******************************\n");
-		for (j=MAXZ/2-1; j>=0; j--) {
-			printf("%d\t|", 2*j);
-			for (k=0; k<MAXXY; k++) printf("%c ", (ZY[j][k] > 0) ? '*' : ' ');
-			printf("|\t%5.1f  %5.1f MeV\n", YY[j].xy, YY[j].E);
-		}
-		printf("**************************** PARS *****************************\n");
-		printf("\tZ = %2d   XY=%2d\n", iZ, iXY);
-		
-		printf("----------------------------------------------------------------\n");
-		
+//			Fill the tree
+		StoppedMuon.index = i;
+		StoppedMuon.globalTime = DanssEvent.globalTime;
+		StoppedMuon.Z = iZ;
+		StoppedMuon.XY = iXY;
+		StoppedMuon.thetaX = atan(2 * TX.A);
+		StoppedMuon.thetaY = atan(2 * TY.A);
+		StoppedMuon.NHits = NHits;
+		for (j=0; j <NHits; j++) 
+			StoppedMuon.Ehit[j] = ((iZ + j) & 1) ? XX[(iZ + j) / 2].E : YY[(iZ + j) / 2].E;
+		tOut->Fill();
+		if (DEBUG) printf("----------------------------------------------------------------\n");
 	}
 
 	tOut->Write();
 	fOut->Close();
 	fIn->Close();
+	printf("\t\tStatics:\n");
+	for (i=0; i<sizeof(Stat) / sizeof(Stat[0]); i++) if (strlen(StatName[i]) > 1) 
+		printf("\t%s :\t%d\n", StatName[i], Stat[i]);
 	return 0;
 }
