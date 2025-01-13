@@ -38,11 +38,12 @@
 #include "../evtbuilder.h"
 
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
+#define VETO	(20 * GFREQ2US)	// 20 us veto 
 #define MAXZ	100
 #define MAXXY	25
 #define iMaxDataElements 3000
 #define masterTrgRandom 2
-#define DEBUG 0
+#define DEBUG 3
 
 #pragma pack(push,1)
 struct StoppedMuonStruct {
@@ -251,11 +252,13 @@ int main(int argc, char **argv)
 	const char *StatName[10] = {
 		"Total triggers       ", 
 		"Total energy > 20 MeV", 
+		"No muon before       ",
 		"Gold planes          ", 
 		"Good track           ", 
 		"Stopped muon         ", 
-		"", "", "", "", ""};
+		"", "", "", ""};
 	int iZ, iXY, NHits;
+	long long gtOld;
 //			Check number of arguments
 	if (argc < 2) {
 		printf("Usage: %s runnumber [rootdir [outdir]]\n", argv[0]);
@@ -301,6 +304,7 @@ int main(int argc, char **argv)
 //			Main cycle
 	N = EventTree->GetEntries();
 	memset(Stat, 0, sizeof(Stat));
+	gtOld = -VETO;
 	for (i=0; i<N; i++) {
 		EventTree->GetEntry(i);
 		Stat[0]++;
@@ -316,6 +320,13 @@ int main(int argc, char **argv)
 			}
 		}
 		Stat[1]++;
+//			Check VETO
+		if (DanssEvent.globalTime - gtOld < VETO) {
+			gtOld = DanssEvent.globalTime;
+			continue;
+		}
+		gtOld = DanssEvent.globalTime;
+		Stat[2]++;
 //			Create hit planes
 		memset(XX, 0, sizeof(XX));
 		memset(YY, 0, sizeof(YY));
@@ -325,17 +336,17 @@ int main(int argc, char **argv)
 			irc += MergeHits(ZY[j], &YY[j]);
 		}
 		if (irc) continue;		// Use gold tracks only
-		Stat[2]++;
+		Stat[3]++;
 		if (DEBUG & 1) {
-			printf("**************************** ZX *******************************\n");
-			for (j=0; j<MAXZ/2;j++) {
-				printf("\t|");
+			printf("**************************** ZX %8d *******************************\n", i);
+			for (j=MAXZ/2-1; j>=0; j--) {
+				printf("%d\t|", 2*j+1);
 				for (k=0; k<MAXXY; k++) printf("%c ", (ZX[j][k] > 0) ? '*' : ' ');
 				printf("|\t%5.1f  %5.1f MeV\n", XX[j].xy, XX[j].E);
 			}
-			printf("**************************** ZY *******************************\n");
-			for (j=0; j<MAXZ/2;j++) {
-				printf("\t|");
+			printf("**************************** ZY %8d *******************************\n", i);
+			for (j=MAXZ/2-1; j>=0; j--) {
+				printf("%dt\t|", 2*j);
 				for (k=0; k<MAXXY; k++) printf("%c ", (ZY[j][k] > 0) ? '*' : ' ');
 				printf("|\t%5.1f  %5.1f MeV\n", YY[j].xy, YY[j].E);
 			}
@@ -344,13 +355,13 @@ int main(int argc, char **argv)
 		irc += FindTrack(XX, &TX);
 		irc += FindTrack(YY, &TY);
 		if (irc) continue;		// no good track
-		Stat[3]++;
+		Stat[4]++;
 //			Find the end point strip
 		irc = FindEndPoint(&TX, &TY, iZ, iXY, NHits);
 		if (irc) continue;		// bad endpoint
-		Stat[4]++;
+		Stat[5]++;
 		if (DEBUG & 2) {
-			printf("**************************** PARS *****************************\n");
+			printf("**************************** Index %8d *****************************\n", i);
 			printf("\ttrack X: [%d-%d] %f*z + %f\n", 2*TX.Zmin+1, 2*TX.Zmax+1, TX.A, TX.B);
 			printf("\ttrack Y: [%d-%d] %f*z + %f\n", 2*TY.Zmin, 2*TY.Zmax, TY.A, TY.B);
 			printf("\tStopping point: Z = %2d   XY=%2d   N=%2d\n", iZ, iXY, NHits);
@@ -364,8 +375,8 @@ int main(int argc, char **argv)
 		StoppedMuon.thetaY = atan(2 * TY.A);
 		StoppedMuon.NHits = NHits;
 		for (j=0; j <NHits; j++) StoppedMuon.Ehit[j] = ((iZ + j) & 1) ? 
-			XX[(iZ + j) / 2].E * SiPMYAverageLightColl(4.0*(0.5*(iZ+j)*TY.A + TY.B)) : 
-			YY[(iZ + j) / 2].E * SiPMYAverageLightColl(4.0*(0.5*(iZ+j-1)*TX.A + TX.B));
+			XX[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j)*TY.A + TY.B)) : 
+			YY[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j-1)*TX.A + TX.B));
 		tOut->Fill();
 		if (DEBUG) printf("----------------------------------------------------------------\n");
 	}
