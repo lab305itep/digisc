@@ -145,7 +145,7 @@ int MergeHits(double *pl, struct PlaneHitStruct *hit)
 
 /*	Look for a track as a continuous set of hit planes	*/
 /*	Require minimum of 5 planes and maximum total breaks	*/
-/*	of 5 planes. Hits must be less than 1 strip aside	*/
+/*	of 5+ planes. Hits must be less than 1 strip aside	*/
 /*	from the track. Return 0 on success.			*/
 
 int FindTrack(struct PlaneHitStruct *pl, struct TrackProjStruct *tr)
@@ -160,7 +160,7 @@ int FindTrack(struct PlaneHitStruct *pl, struct TrackProjStruct *tr)
 	tr->Zmax = i;
 	cnt = 0;
 	for (i = tr->Zmin; i <= tr->Zmax; i++) if (pl[i].E <= 0) cnt++;
-	if (cnt > 5) return 1;
+	if (cnt > 4 + (tr->Zmax - tr->Zmin + 1) / 5) return 1;
 	N = tr->Zmax - tr->Zmin - cnt + 1;
 	if (N < 5) return 1;
 //		Find track parameters
@@ -363,8 +363,9 @@ int main(int argc, char **argv)
 		StoppedMuon.thetaX = atan(2 * TX.A);
 		StoppedMuon.thetaY = atan(2 * TY.A);
 		StoppedMuon.NHits = NHits;
-		for (j=0; j <NHits; j++) 
-			StoppedMuon.Ehit[j] = ((iZ + j) & 1) ? XX[(iZ + j) / 2].E : YY[(iZ + j) / 2].E;
+		for (j=0; j <NHits; j++) StoppedMuon.Ehit[j] = ((iZ + j) & 1) ? 
+			XX[(iZ + j) / 2].E * SiPMYAverageLightColl(4.0*(0.5*(iZ+j)*TY.A + TY.B)) : 
+			YY[(iZ + j) / 2].E * SiPMYAverageLightColl(4.0*(0.5*(iZ+j-1)*TX.A + TX.B));
 		tOut->Fill();
 		if (DEBUG) printf("----------------------------------------------------------------\n");
 	}
