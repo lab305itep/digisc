@@ -7,33 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "Riostream.h"
-#include "TROOT.h"
-#include "TMath.h"
-#include "TFile.h"
-#include "TChain.h"
-#include "TNetFile.h"
-#include "TRandom.h"
-#include "TTree.h"
 #include "TBranch.h"
-#include "TCanvas.h"
-#include "TPostScript.h"
-#include "TStyle.h"
-#include "TClonesArray.h"
-#include "TStopwatch.h"
-#include "TTreeCacheUnzip.h"
-#include "TRandom2.h"
-#include "TDirectory.h"
-#include "TProcessID.h"
-#include "TObject.h"
-#include "TClonesArray.h"
-#include "TRefArray.h"
-#include "TRef.h"
-#include "TKey.h"
-#include "TGraph.h"
-#include "TF1.h"
-#include "TH1.h"
-#include "TH2.h"
+#include "TChain.h"
+#include "TFile.h"
+#include "TLeaf.h"
+#include "TTree.h"
 
 #include "../evtbuilder.h"
 
@@ -43,7 +21,7 @@
 #define MAXXY	25
 #define iMaxDataElements 3000
 #define masterTrgRandom 2
-#define DEBUG 3
+#define DEBUG 0
 
 #pragma pack(push,1)
 struct StoppedMuonStruct {
@@ -231,6 +209,8 @@ int main(int argc, char **argv)
 		"Ehit[NHits]/F";	// hit energy
 	
 	struct StoppedMuonStruct StoppedMuon;
+	int MCEventID;
+	TLeaf *lfEventID;
 	TTree *EventTree = NULL;
 	TTree *tOut = NULL;
 	TFile *fOut = NULL;
@@ -287,7 +267,6 @@ int main(int argc, char **argv)
 	EventTree->SetBranchAddress("HitE", &HitData.E);
 	EventTree->SetBranchAddress("HitT", &HitData.T);
 	EventTree->SetBranchAddress("HitType", &HitData.type);
-
 	sprintf(str, "mkdir -p `dirname %s`", fileout);
 	i = system(str);
 	if (i) {
@@ -299,6 +278,7 @@ int main(int argc, char **argv)
 //			Create output Chain
 	tOut = new TTree("StoppedMuons", "Stopped muons");
 	tOut->Branch("Stopped", &StoppedMuon, LeafList);
+	if (EventTree->GetBranch("MCEvent")) tOut->Branch("MCEventID", &MCEventID, "MCEventID/I");
 
 	CreateDeadMap(EventTree);
 //			Main cycle
@@ -377,6 +357,8 @@ int main(int argc, char **argv)
 		for (j=0; j <NHits; j++) StoppedMuon.Ehit[j] = ((iZ + j) & 1) ? 
 			XX[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j)*TY.A + TY.B)) : 
 			YY[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j-1)*TX.A + TX.B));
+		lfEventID = EventTree->GetLeaf("EventID");
+		if (lfEventID) MCEventID = lfEventID->GetValueLong64();
 		tOut->Fill();
 		if (DEBUG) printf("----------------------------------------------------------------\n");
 	}
