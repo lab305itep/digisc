@@ -55,7 +55,7 @@ void ProjectEL(TH2D* h, const char *fname)
 		h->Fill(L, dedx);
 		for (j = 1; j < Muon.NHits; j++) if (Muon.Ehit[j] > 0) {
 			dedx = Muon.Ehit[j] / scale;
-			L = (j + 0.25) * scale;
+			L = j * scale;
 			h->Fill(L, dedx);
 		}
 	}

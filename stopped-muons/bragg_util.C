@@ -28,8 +28,13 @@ void draw_one(int num, TTree *tIn)
 	k = 0;
 	printf("Scale = %f\n", scale);
 	for (i=0; i<Muon.NHits; i++) if (Muon.Ehit[i] > 0) {
-		L[k] = (0.25 + i) * scale;
-		dedx[k] = (i) ? Muon.Ehit[i] / scale : 2 * Muon.Ehit[i] / scale;
+		if (i) {
+			L[k] = i * scale;
+			dedx[k] = Muon.Ehit[i] / scale;
+		} else {
+			L[k] = 0.25 * scale;
+			dedx[k] = 2 * Muon.Ehit[i] / scale;
+		}
 		printf("%2d  %f MeV => %f cm %f MeV/cm\n",
 			i, Muon.Ehit[i], L[k], dedx[k]);
 		k++;
@@ -128,4 +133,230 @@ void make_deltas(void)
 	hCenter->Write();
 	fOut->Close();
 	for (i=0; i<9; i++) fIn[i]->Close();
+}
+
+//	Fit energy scale for each MC
+//	Use integral ratio, not relly a fit.
+void fit_Escale(void)
+{
+	char str[1024];
+	const char *mcdir = "/home/clusters/rrcmpi/alekseev/igor/stopped8n2/MC/Chikuma/Muons";
+	const char *fnames[] = {
+		"Hit_checker_cutted_Chikuma-bragg.root",
+		"Hit_checker_cutted_Chikuma_Birks_el_0_0108-bragg.root",
+		"Hit_checker_cutted_Chikuma_Birks_el_0_0308-bragg.root",
+		"Hit_checker_cutted_Chikuma_Cher_coeff_0_033-bragg.root",
+		"Hit_checker_cutted_Chikuma_Cher_coeff_0_233-bragg.root",
+		"Hit_checker_cutted_Chikuma_main_Birks_0_0108-bragg.root",
+		"Hit_checker_cutted_Chikuma_main_Birks_0_0308-bragg.root",
+		"Hit_checker_cutted_Chikuma_paint_0_15-bragg.root",
+		"Hit_checker_cutted_Chikuma_paint_0_45-bragg.root"
+	};
+	int i;
+	TFile *fIn[9];
+	TH1D *hIn[9];
+	TH1D *hDiff[9];
+	double scale;
+	
+	TFile *fExp = new TFile("bragg_002210_167308.root");
+	if (!fExp->IsOpen()) return;
+	TH1D *hExp = (TH1D *) fExp->Get("hEL_profX");
+	if (!hExp) {
+		printf("Hist hEL_profX not found in bragg_002210_167308.root\n");
+		return;
+	}
+	hExp->SetLineColor(kRed);
+	hExp->SetMarkerColor(kRed);
+	hExp->SetLineWidth(2);
+	hExp->SetMarkerSize(0.7);
+	hExp->SetMarkerStyle(kFullCircle);
+	hExp->GetYaxis()->SetTitle("MeV/cm");
+	
+	for (i=0; i<9; i++) {
+		sprintf(str, "%s/%s", mcdir, fnames[i]);
+		fIn[i] = new TFile(str);
+		if (!fIn[i]->IsOpen()) return;
+		hIn[i] = (TH1D *) fIn[i]->Get("hEL_profX");
+		if (!hIn[i]) {
+			printf("Hist hEL_profX not found in %s\n", str);
+			return;
+		}
+		hIn[i]->SetLineColor(kBlue);
+		hIn[i]->SetMarkerColor(kBlue);
+		hIn[i]->SetLineWidth(2);
+		hIn[i]->SetMarkerSize(0.7);
+		hIn[i]->SetMarkerStyle(kOpenDiamond);
+		gROOT->cd();
+		sprintf(str, "hDiff_%d", i);
+		hDiff[i] = new TH1D(str, "dE/dx difference;cm;MeV/cm", 600, 0, 60);
+		hDiff[i]->SetLineColor(kBlack);
+		hDiff[i]->SetMarkerColor(kBlack);
+		hDiff[i]->SetLineWidth(2);
+		hDiff[i]->SetMarkerSize(0.7);
+		hDiff[i]->SetMarkerStyle(kFullSquare);
+	}
+	
+	gStyle->SetOptStat(0);
+	TCanvas *cv = new TCanvas("CV", "CV", 1000, 800);
+	cv->SaveAs("bragg_002210_167308-fit.pdf[");
+	
+	TLatex lt;
+	lt.SetTextSize(0.027);
+	TLegend lg(0.7, 0.7, 0.95, 0.82);
+	lg.AddEntry(hExp, "Experiment", "lpe");
+	lg.AddEntry(hIn[0], "MC", "lpe");
+	lg.AddEntry(hDiff[0], "Diff. x5", "lpe");
+	hExp->SetMinimum(-2);
+	TLine ln;
+	for (i=0; i<9; i++) {
+		scale = hExp->Integral() / hIn[i]->Integral();
+		hIn[i]->Scale(scale);
+		hExp->Draw();
+		hIn[i]->Draw("same");
+		hDiff[i]->Add(hExp, hIn[i], 1.0, -1.0);
+		printf("%f %f %f\n", hExp->GetBinContent(30), hIn[i]->GetBinContent(30), hDiff[i]->GetBinContent(30)); 
+		hDiff[i]->Scale(5.0);
+		hDiff[i]->Draw("same");
+		lg.Draw();
+		lt.DrawLatexNDC(0.15, 0.83, fnames[i]);
+		sprintf(str, "scale = %f", scale);
+		lt.DrawLatexNDC(0.15, 0.75, str);
+		ln.DrawLine(0, 0, 60, 0);
+		cv->Update();
+		cv->SaveAs("bragg_002210_167308-fit.pdf");
+	}
+	
+	cv->SaveAs("bragg_002210_167308-fit.pdf]");
+	for (i=0; i<9; i++) fIn[i]->Close();
+	fExp->Close();
+}
+
+struct HistArrayStruct {
+	TH1D *hExp;
+	TH1D *hCenter;
+	TH1D *hDBirks;
+	TH1D *hDCher;
+	TH1D *hDMBirks; 
+	TH1D *hDPaint;
+	TH1D *hSum;
+	int MinBin;
+	int MaxBin;
+} HistArray;
+
+void BraggFitFun(int &Npar, double *gin, double &f, double *x, int iflag)
+{
+	int i;
+	double d, sum;
+	
+	if (iflag == 1) return;
+	HistArray.hSum->Reset();
+	
+	HistArray.hSum->Add(HistArray.hCenter, 1.0);
+	HistArray.hSum->Add(HistArray.hDBirks, x[1]);
+	HistArray.hSum->Add(HistArray.hDCher, x[2]);
+	HistArray.hSum->Add(HistArray.hDMBirks, x[3]);
+	HistArray.hSum->Add(HistArray.hDPaint, x[4]);
+	HistArray.hSum->Scale(x[0]);
+	HistArray.hSum->Add(HistArray.hExp, -1.0);
+	
+	sum = 0;
+	for (i=HistArray.MinBin; i<=HistArray.MaxBin; i++) if (HistArray.hSum->GetBinError(i) > 0) {
+		d = HistArray.hSum->GetBinContent(i) / HistArray.hSum->GetBinError(i);
+		sum += d*d;
+	}
+	f = sum;
+}
+
+void makeMCBragg(TH1D *h, double scale, double kB, double kC, double kH, double kP)
+{
+	h->Reset();
+	h->Add(HistArray.hCenter, 1.0);
+	h->Add(HistArray.hDBirks, kB);
+	h->Add(HistArray.hDCher, kC);
+	h->Add(HistArray.hDMBirks, kH);
+	h->Add(HistArray.hDPaint, kP);
+	h->Scale(scale);
+}
+
+void draw_BraggShape(int from, int to, double kE, double kB, double kC, double kH, double kP)
+{
+	TH1D *hRes = new TH1D("hBraggMC", "MC dE/dx;cm;MeV/cm", 600, 0, 60);
+	makeMCBragg(hRes, kE, kB, kC, kH, kP);
+	HistArray.hExp->SetLineColor(kRed);
+	HistArray.hExp->SetMarkerColor(kRed);
+	HistArray.hExp->SetLineWidth(2);
+	HistArray.hExp->SetMarkerSize(0.7);
+	HistArray.hExp->SetMarkerStyle(kFullCircle);
+	HistArray.hExp->GetYaxis()->SetTitle("MeV/cm");
+	HistArray.hExp->GetXaxis()->SetRange(from, to);
+
+	hRes->SetLineColor(kBlue);
+	hRes->SetMarkerColor(kBlue);
+	hRes->SetLineWidth(2);
+	hRes->SetMarkerSize(0.7);
+	hRes->SetMarkerStyle(kOpenDiamond);
+
+	gStyle->SetOptStat(0);
+
+	HistArray.hExp->DrawCopy();
+	hRes->DrawCopy("same");
+	TLegend *lg = new TLegend(0.65, 0.75, 0.9, 0.9);
+	lg->AddEntry(HistArray.hExp, "Experiment", "lpe");
+	lg->AddEntry(hRes, "MC", "lpe");
+	lg->Draw();
+	gPad->Update();
+}
+
+void fit_BraggShape(int from, int to)
+{
+	double kE, ekE, kB, ekB, kC, ekC, kH, ekH, kP, ekP;
+	
+	gSystem->LoadAllLibraries();
+
+	TFile *fExp = new TFile("bragg_002210_167308.root");
+	if (!fExp->IsOpen()) return;
+	HistArray.hExp = (TH1D *) fExp->Get("hEL_profX");
+	TFile *fIn = new TFile("MC-bragg.root");
+	if (!fIn->IsOpen()) return;
+	HistArray.hCenter = (TH1D *) fIn->Get("hCenter");
+	HistArray.hDBirks = (TH1D *) fIn->Get("hDBirks");
+	HistArray.hDCher = (TH1D *) fIn->Get("hDCher");
+	HistArray.hDMBirks = (TH1D *) fIn->Get("hDMBirks");
+	HistArray.hDPaint = (TH1D *) fIn->Get("hDPaint");
+	if (!HistArray.hCenter || !HistArray.hDBirks || !HistArray.hDCher || 
+		!HistArray.hDMBirks || !HistArray.hDPaint || !HistArray.hExp) {
+		printf("Can not find some histogramms\n");
+		return;
+	}
+	HistArray.hSum = new TH1D("_hSum", "dE/dx difference;cm;MeV/cm", 600, 0, 60);
+	HistArray.MinBin = from;
+	HistArray.MaxBin = to;
+	
+	TMinuit *mn = new TMinuit();
+	mn->mninit(5, 6, 7);
+	mn->SetFCN(BraggFitFun);
+	mn->DefineParameter(0, "Escale", 1.0, 0.05, 0.1, 10.);	// Escale
+	mn->DefineParameter(1, "kBirks", 0, 0.05, -5., 2.);	// kBirks (electrons)
+	mn->FixParameter(1);
+	mn->DefineParameter(2, "kCher", 0, 0.05, -5., 2.);	// kCherenkov
+	mn->FixParameter(2);
+	mn->DefineParameter(3, "kMBirks", 0, 0.05, -5., 2.);	// kBirks (heavy)
+	mn->FixParameter(3);
+	mn->DefineParameter(4, "kPaint", 0, 0.05, -5., 2.);	// kPaint
+	
+	mn->Migrad();
+	
+	mn->GetParameter(0, kE, ekE);
+	mn->GetParameter(1, kB, ekB);
+	mn->GetParameter(2, kC, ekC);
+	mn->GetParameter(3, kH, ekH);
+	mn->GetParameter(4, kP, ekP);
+	
+	printf("Fit: kE=%f+-%f  kB=%f+-%f  kC=%f+-%f  kH=%f+-%f  kP=%f+-%f\n",
+		kE, ekE, kB, ekB, kC, ekC, kH, ekH, kP, ekP);
+	
+	draw_BraggShape(from, to, kE, kB, kC, kH, kP);
+	
+//	fExp->Close();
+//	fIn->Close();
 }
