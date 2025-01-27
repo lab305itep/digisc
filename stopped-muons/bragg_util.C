@@ -1,4 +1,7 @@
 #define MAXZ 100
+#define DEPTHBINS	11	// 0.0-1.1 mm
+#define SCALEBINS	30	// 1.0-4.0
+#define MAXLAYERS	25
 
 #pragma pack(push,1)
 struct StoppedMuonStruct {
@@ -20,13 +23,14 @@ void draw_one(int num, TTree *tIn)
 	double L[MAXZ], dedx[MAXZ];
 	double scale;
 	int i, k;
+	char str[256];
 	
 	tIn->SetBranchAddress("Stopped", &Muon);
 	if (!tIn->GetEntry(num)) return;
 	
 	scale = sqrt(1 + tan(Muon.thetaX)*tan(Muon.thetaX) + tan(Muon.thetaY)*tan(Muon.thetaY));
 	k = 0;
-	printf("Scale = %f\n", scale);
+//	printf("Scale = %f\n", scale);
 	for (i=0; i<Muon.NHits; i++) if (Muon.Ehit[i] > 0) {
 		if (i) {
 			L[k] = i * scale;
@@ -35,15 +39,87 @@ void draw_one(int num, TTree *tIn)
 			L[k] = 0.25 * scale;
 			dedx[k] = 2 * Muon.Ehit[i] / scale;
 		}
-		printf("%2d  %f MeV => %f cm %f MeV/cm\n",
-			i, Muon.Ehit[i], L[k], dedx[k]);
+//		printf("%2d  %f MeV => %f cm %f MeV/cm\n",
+//			i, Muon.Ehit[i], L[k], dedx[k]);
 		k++;
 	}
 	TGraph *gr = new TGraph(k, L, dedx);
 	gr->SetMarkerStyle(kFullSquare);
 	gr->SetMarkerColor(kBlue);
 	gr->SetMarkerSize(0.9);
+	gr->SetMinimum(0);
+	sprintf(str, "Evt No %d, scale = %5.3f;L, cm;dE/dx, MeV/cm", num, scale);
+	gr->SetTitle(str);
 	gr->Draw("AP");
+}
+
+//	Try to fit depth
+void fit_one(int num, TTree *tIn, TFile *fMC)
+{
+	struct StoppedMuonStruct Muon;
+	double L[MAXLAYERS], dedx[MAXLAYERS];
+	double scale;
+	int i, j, k, m;
+	char str[256];
+	TH1D *hMCdE[DEPTHBINS];
+	double chi2[DEPTHBINS];
+	double d;
+	TCanvas *cv;
+	
+	tIn->SetBranchAddress("Stopped", &Muon);
+	if (!tIn->GetEntry(num)) return;
+	
+	scale = sqrt(1 + tan(Muon.thetaX)*tan(Muon.thetaX) + tan(Muon.thetaY)*tan(Muon.thetaY));
+	m = (scale - 1.0) / 0.1;
+	if (m < 0) m = 0;
+	if (m >= SCALEBINS) m = SCALEBINS - 1;
+	for (i=0; i<DEPTHBINS; i++) {
+		sprintf(str, "hdEprof_s%2.2dd%d", m, i);
+		hMCdE[i] = (TH1D*) fMC->Get(str);
+		if (!hMCdE[i]) {
+			printf("No hist %s\n", str);
+			return;
+		}
+	}
+	k = 0;
+	memset(chi2, 0, sizeof(chi2));
+	for (i=0; i<Muon.NHits && i<MAXLAYERS; i++) if (Muon.Ehit[i] > 0) {
+		L[k] = i + 0.5;
+		dedx[k] = Muon.Ehit[i];
+		for (j=0; j<DEPTHBINS; j++) {
+			d = (Muon.Ehit[i] - hMCdE[j]->GetBinContent(i+1));// / hMCdE[j]->GetBinError(i+1);
+			chi2[j] += d * d;
+		}
+		k++;
+	}
+	cv = new TCanvas("CV", "CV", 800, 900);
+	cv->Divide(1, 2);
+	
+	TH1D h("_h", "#chi^{2}", 11, 0, 1.1);
+	for (i=0; i<DEPTHBINS; i++) h.SetBinContent(i+1, chi2[i]);
+	TF1 fpar("fPar", "pol2");
+	cv->cd(1);
+	h.Fit(fpar.GetName(), "", "");
+	h.DrawCopy();
+	d = - 0.5 * fpar.GetParameter(1) / fpar.GetParameter(2);
+	if (d < 0) d = 0;
+	if (d > 1.1) d = 1.1;
+	j = (d+0.05) / 0.1;
+	if (j >= DEPTHBINS) j = DEPTHBINS-1;
+	
+	TGraph *gr = new TGraph(k, L, dedx);
+	gr->SetMarkerStyle(kFullSquare);
+	gr->SetMarkerColor(kRed);
+	gr->SetMarkerSize(1.1);
+	gr->SetMinimum(0);
+	sprintf(str, "Evt No %d, scale = %5.3f, depth = %5.3f [%d];L, cm;dE/dx, MeV/cm", num, scale, d, j);
+	hMCdE[j]->SetTitle(str);
+	hMCdE[j]->SetMinimum(0);
+	hMCdE[j]->SetMaximum(25);
+	cv->cd(2);
+	hMCdE[j]->Draw();
+	gr->Draw("P");
+	cv->Update();
 }
 
 //	sum hEL histogramms
@@ -214,7 +290,7 @@ void fit_Escale(void)
 		hExp->Draw();
 		hIn[i]->Draw("same");
 		hDiff[i]->Add(hExp, hIn[i], 1.0, -1.0);
-		printf("%f %f %f\n", hExp->GetBinContent(30), hIn[i]->GetBinContent(30), hDiff[i]->GetBinContent(30)); 
+//		printf("%f %f %f\n", hExp->GetBinContent(30), hIn[i]->GetBinContent(30), hDiff[i]->GetBinContent(30)); 
 		hDiff[i]->Scale(5.0);
 		hDiff[i]->Draw("same");
 		lg.Draw();
@@ -280,6 +356,11 @@ void makeMCBragg(TH1D *h, double scale, double kB, double kC, double kH, double 
 
 void draw_BraggShape(int from, int to, double kE, double kB, double kC, double kH, double kP)
 {
+	double x[5];
+	double f;
+	int n;
+	char str[256];
+	
 	TH1D *hRes = new TH1D("hBraggMC", "MC dE/dx;cm;MeV/cm", 600, 0, 60);
 	makeMCBragg(hRes, kE, kB, kC, kH, kP);
 	HistArray.hExp->SetLineColor(kRed);
@@ -298,12 +379,24 @@ void draw_BraggShape(int from, int to, double kE, double kB, double kC, double k
 
 	gStyle->SetOptStat(0);
 
+	x[0] = kE;
+	x[1] = kB;
+	x[2] = kC;
+	x[3] = kH;
+	x[4] = kP;
+	n = 5;
+	BraggFitFun(n, NULL, f, x, 0);
+	sprintf(str, "#chi^{2} / NDF = %6.1f / %d", f, to - from - 1);
+
 	HistArray.hExp->DrawCopy();
 	hRes->DrawCopy("same");
 	TLegend *lg = new TLegend(0.65, 0.75, 0.9, 0.9);
 	lg->AddEntry(HistArray.hExp, "Experiment", "lpe");
 	lg->AddEntry(hRes, "MC", "lpe");
 	lg->Draw();
+	TLatex lt;
+	lt.SetTextSize(0.045);
+	lt.DrawLatexNDC(0.45, 0.67, str);
 	gPad->Update();
 }
 
