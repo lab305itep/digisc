@@ -53,23 +53,66 @@ void draw_one(int num, TTree *tIn)
 	gr->Draw("AP");
 }
 
+struct fit_one_struct {
+	TH1D *hMCdE;
+	struct StoppedMuonStruct Muon;
+} FitOneData;
+
+void fit_one_fun(int &Npar, double *gin, double &f, double *x, int iflag)
+{
+	double d, sum;
+	int i;
+	
+	if (iflag == 1) return;
+	
+	sum = 0;
+	for (i=0; i<FitOneData.Muon.NHits && i<MAXLAYERS; i++) if (FitOneData.Muon.Ehit[i] > 0) {
+		d = FitOneData.Muon.Ehit[i] - x[0] * FitOneData.hMCdE->GetBinContent(i+1);
+		sum += d * d;
+	}
+	f = sum;
+}
+
+double FitOneFit(TH1D *hMC, double &escale)
+{
+	double kE, ekE;
+	int n;
+	double f;
+	
+	FitOneData.hMCdE = hMC;
+	TMinuit *mn = new TMinuit(2);
+	mn->mninit(5, 6, 7);
+	mn->Command("set print -1");
+	mn->SetFCN(fit_one_fun);
+	mn->DefineParameter(0, "Escale", 1.0, 0.05, 0.1, 10.);	// Escale
+	mn->Migrad();
+	mn->GetParameter(0, kE, ekE);
+	n = 1;
+	fit_one_fun(n, NULL, f, &kE, 0);
+	
+	delete mn;
+	escale = kE;
+	return f;
+}
+
 //	Try to fit depth
 void fit_one(int num, TTree *tIn, TFile *fMC)
 {
-	struct StoppedMuonStruct Muon;
+	TH1D *hMCdE[DEPTHBINS];
 	double L[MAXLAYERS], dedx[MAXLAYERS];
 	double scale;
 	int i, j, k, m;
 	char str[256];
-	TH1D *hMCdE[DEPTHBINS];
 	double chi2[DEPTHBINS];
+	double escale[DEPTHBINS];
 	double d;
 	TCanvas *cv;
 	
-	tIn->SetBranchAddress("Stopped", &Muon);
+	tIn->SetBranchAddress("Stopped", &FitOneData.Muon);
 	if (!tIn->GetEntry(num)) return;
 	
-	scale = sqrt(1 + tan(Muon.thetaX)*tan(Muon.thetaX) + tan(Muon.thetaY)*tan(Muon.thetaY));
+	scale = sqrt(1 + tan(FitOneData.Muon.thetaX)*tan(FitOneData.Muon.thetaX) + 
+		tan(FitOneData.Muon.thetaY)*tan(FitOneData.Muon.thetaY));
 	m = (scale - 1.0) / 0.1;
 	if (m < 0) m = 0;
 	if (m >= SCALEBINS) m = SCALEBINS - 1;
@@ -82,24 +125,22 @@ void fit_one(int num, TTree *tIn, TFile *fMC)
 		}
 	}
 	k = 0;
-	memset(chi2, 0, sizeof(chi2));
-	for (i=0; i<Muon.NHits && i<MAXLAYERS; i++) if (Muon.Ehit[i] > 0) {
+	for (i=0; i<FitOneData.Muon.NHits && k < MAXLAYERS; i++) if (FitOneData.Muon.Ehit[i] > 0) {
 		L[k] = i + 0.5;
-		dedx[k] = Muon.Ehit[i];
-		for (j=0; j<DEPTHBINS; j++) {
-			d = (Muon.Ehit[i] - hMCdE[j]->GetBinContent(i+1));// / hMCdE[j]->GetBinError(i+1);
-			chi2[j] += d * d;
-		}
+		dedx[k] = FitOneData.Muon.Ehit[i];
 		k++;
 	}
+	
+	for (i=0; i<DEPTHBINS; i++) chi2[i] = FitOneFit(hMCdE[i], escale[i]);
+	
 	cv = new TCanvas("CV", "CV", 800, 900);
 	cv->Divide(1, 2);
 	
-	TH1D h("_h", "#chi^{2}", 11, 0, 1.1);
+	TH1D h("_h", "S^{2}", 11, 0, 1.1);
 	for (i=0; i<DEPTHBINS; i++) h.SetBinContent(i+1, chi2[i]);
 	TF1 fpar("fPar", "pol2");
 	cv->cd(1);
-	h.Fit(fpar.GetName(), "", "");
+	h.Fit(fpar.GetName(), "Q", "");
 	h.DrawCopy();
 	d = - 0.5 * fpar.GetParameter(1) / fpar.GetParameter(2);
 	if (d < 0) d = 0;
@@ -112,12 +153,14 @@ void fit_one(int num, TTree *tIn, TFile *fMC)
 	gr->SetMarkerColor(kRed);
 	gr->SetMarkerSize(1.1);
 	gr->SetMinimum(0);
-	sprintf(str, "Evt No %d, scale = %5.3f, depth = %5.3f [%d];L, cm;dE/dx, MeV/cm", num, scale, d, j);
-	hMCdE[j]->SetTitle(str);
-	hMCdE[j]->SetMinimum(0);
-	hMCdE[j]->SetMaximum(25);
+	TH1D *hMC = (TH1D *)hMCdE[j]->Clone("hMC");
+	sprintf(str, "Evt No %d, scale = %5.3f, depth = %5.3f [%d] escale = %5.3f;L, cm;dE, MeV", num, scale, d, j, escale[j]);
+	hMC->SetTitle(str);
+	hMC->Scale(escale[j]);
+	hMC->SetMinimum(0);
+	hMC->SetMaximum(25);
 	cv->cd(2);
-	hMCdE[j]->Draw();
+	hMC->Draw();
 	gr->Draw("P");
 	cv->Update();
 }
@@ -449,7 +492,33 @@ void fit_BraggShape(int from, int to)
 		kE, ekE, kB, ekB, kC, ekC, kH, ekH, kP, ekP);
 	
 	draw_BraggShape(from, to, kE, kB, kC, kH, kP);
-	
+	delete mn;
 //	fExp->Close();
 //	fIn->Close();
+}
+
+//	make MC chain
+TChain *MCchain(const char *mcname = "")
+{
+	char str[1024];
+	int i, j, N, K;
+	const char *mcdir = "/home/clusters/rrcmpi/alekseev/igor/stopped8n2/MC/Chikuma/Muons/Hit_checker_cutted_Chikuma";
+
+	TChain *chIn = new TChain("StoppedMuons", "StoppedMuons");
+	TChain *chDepth = new TChain("Depth", "Depth");
+	for (i=0; i<5; i++) for (j=1; j<=16; j++) {
+		sprintf(str, "%s%s/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d.root", mcdir, mcname, i, j);
+		chIn->AddFile(str);
+		sprintf(str, "%s%s/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d-depth.root", mcdir, mcname, i, j);
+		chDepth->AddFile(str);
+	}
+	N = chIn->GetEntries();
+	K = chDepth->GetEntries();
+	if (N != K) {
+		printf("Chain lengths mismatch %d != %d\n", N, K);
+		return NULL;
+	}
+	chIn->AddFriend(chDepth);
+	printf("Total %d events\n", N);
+	return chIn;
 }
