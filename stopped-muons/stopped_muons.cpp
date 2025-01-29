@@ -43,8 +43,9 @@ struct HitStruct {
 } HitData;
 
 struct PlaneHitStruct {
-	float xy;
-	float E;
+	float xy;		// resulting coordinate
+	float E;		// resulting E
+	int n;			// number of strips (1 or 2)
 };
 
 struct TrackProjStruct {
@@ -99,19 +100,22 @@ void CreateDeadMap(TTree *evt)
 /*	only accepted						*/
 int MergeHits(double *pl, struct PlaneHitStruct *hit)
 {
-	int i, j, cnt;
+	int i, j, cnt, n;
 	double x;
 	double E;
 	cnt = 0;
 	x = 0;
 	E = 0;
+	n = 0;
 	for (i=0; i<MAXXY; i++) if (pl[i] > 0) {
 		if (cnt > 0) return 1;
 		x = i * pl[i];
 		E = pl[i];
-		if (i < MAXXY - 1) {
+		n = 1;
+		if (i < MAXXY - 1 && pl[i+1] > 0) {
 			x += (i+1) * pl[i+1];
 			E += pl[i+1];
+			n++;
 			i++;
 		}
 		x /= E;
@@ -119,6 +123,7 @@ int MergeHits(double *pl, struct PlaneHitStruct *hit)
 	}
 	hit->xy = x;
 	hit->E = E;
+	hit->n = n;
 	return 0;
 }
 
@@ -236,9 +241,12 @@ int main(int argc, char **argv)
 		"Gold planes          ", 
 		"Good track           ", 
 		"Stopped muon         ", 
-		"", "", "", ""};
+		"Good last hits       ",
+		"", "", ""};
 	int iZ, iXY, NHits;
 	long long gtOld;
+	double E;
+	
 //			Check number of arguments
 	if (argc < 2) {
 		printf("Usage: %s runnumber [rootdir [outdir]]\n", argv[0]);
@@ -326,7 +334,7 @@ int main(int argc, char **argv)
 			}
 			printf("**************************** ZY %8d *******************************\n", i);
 			for (j=MAXZ/2-1; j>=0; j--) {
-				printf("%dt\t|", 2*j);
+				printf("%d\t|", 2*j);
 				for (k=0; k<MAXXY; k++) printf("%c ", (ZY[j][k] > 0) ? '*' : ' ');
 				printf("|\t%5.1f  %5.1f MeV\n", YY[j].xy, YY[j].E);
 			}
@@ -341,6 +349,31 @@ int main(int argc, char **argv)
 		if (irc) continue;		// bad endpoint
 		Stat[5]++;
 		if (DEBUG & 2) {
+			printf("**************************** ZX %8d *******************************\n", i);
+			for (j=MAXZ/2-1; j>=0; j--) {
+				printf("%d\t|", 2*j+1);
+				for (k=0; k<MAXXY; k++) printf("%c ", (ZX[j][k] > 0) ? '*' : ' ');
+				printf("|\t%5.1f  %5.1f MeV\n", XX[j].xy, XX[j].E);
+			}
+			printf("**************************** ZY %8d *******************************\n", i);
+			for (j=MAXZ/2-1; j>=0; j--) {
+				printf("%d\t|", 2*j);
+				for (k=0; k<MAXXY; k++) printf("%c ", (ZY[j][k] > 0) ? '*' : ' ');
+				printf("|\t%5.1f  %5.1f MeV\n", YY[j].xy, YY[j].E);
+			}
+		}
+//			Check the end point and the previous point
+//			in both of these points exactly one strip should be hit and
+//			it should not be near the edge
+		if (iZ & 1) {
+			if (XX[iZ / 2].n != 1 || YY[(iZ+1) / 2].n != 1) continue;
+			if (YY[(iZ+1) / 2].xy < 0.5 || YY[(iZ+1) / 2].xy > MAXXY - 1.5) continue;
+		} else {
+			if (YY[iZ / 2].n != 1 || XX[(iZ+1) / 2].n != 1) continue;
+			if (XX[(iZ+1) / 2].xy < 0.5 || XX[(iZ+1) / 2].xy > MAXXY - 1.5) continue;
+		}
+		Stat[6]++;
+		if (DEBUG & 4) {
 			printf("**************************** Index %8d *****************************\n", i);
 			printf("\ttrack X: [%d-%d] %f*z + %f\n", 2*TX.Zmin+1, 2*TX.Zmax+1, TX.A, TX.B);
 			printf("\ttrack Y: [%d-%d] %f*z + %f\n", 2*TY.Zmin, 2*TY.Zmax, TY.A, TY.B);
@@ -354,9 +387,16 @@ int main(int argc, char **argv)
 		StoppedMuon.thetaX = atan(2 * TX.A);
 		StoppedMuon.thetaY = atan(2 * TY.A);
 		StoppedMuon.NHits = NHits;
-		for (j=0; j <NHits; j++) StoppedMuon.Ehit[j] = ((iZ + j) & 1) ? 
-			XX[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j)*TY.A + TY.B)) : 
-			YY[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j-1)*TX.A + TX.B));
+		for (j=0; j <NHits; j++) {
+			if ((iZ + j) & 1) {
+				E = (XX[(iZ + j) / 2].n == 1) ?		// don't use energy from split hits
+					XX[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j)*TY.A + TY.B)) : 0;
+			} else {
+				E = (YY[(iZ + j) / 2].n == 1) ?
+					YY[(iZ + j) / 2].E / SiPMYAverageLightColl(4.0*(0.5*(iZ+j-1)*TX.A + TX.B)) : 0;
+			}
+			StoppedMuon.Ehit[j] = E;
+		}
 		lfEventID = EventTree->GetLeaf("EventID");
 		if (lfEventID) MCEventID = lfEventID->GetValueLong64();
 		tOut->Fill();
