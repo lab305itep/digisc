@@ -136,16 +136,19 @@ void fit_one(int num, TTree *tIn, TFile *fMC)
 	cv = new TCanvas("CV", "CV", 800, 900);
 	cv->Divide(1, 2);
 	
-	TH1D h("_h", "S^{2}", 11, 0, 1.1);
+	TH1D h("_h", "S^{2};Depth, mm", 11, 0, 11.0);
 	for (i=0; i<DEPTHBINS; i++) h.SetBinContent(i+1, chi2[i]);
 	TF1 fpar("fPar", "pol2");
 	cv->cd(1);
-	h.Fit(fpar.GetName(), "Q", "");
-	h.DrawCopy();
+	h.SetMarkerStyle(kFullCircle);
+	h.SetMarkerSize(2.0);
+	h.SetMarkerColor(kMagenta);
+	h.Fit(fpar.GetName(), "QW", "");
+	h.DrawCopy("P");
 	d = - 0.5 * fpar.GetParameter(1) / fpar.GetParameter(2);
 	if (d < 0) d = 0;
-	if (d > 1.1) d = 1.1;
-	j = (d+0.05) / 0.1;
+	if (d > 11) d = 11;
+	j = d + 0.5;
 	if (j >= DEPTHBINS) j = DEPTHBINS-1;
 	
 	TGraph *gr = new TGraph(k, L, dedx);
@@ -154,7 +157,8 @@ void fit_one(int num, TTree *tIn, TFile *fMC)
 	gr->SetMarkerSize(1.1);
 	gr->SetMinimum(0);
 	TH1D *hMC = (TH1D *)hMCdE[j]->Clone("hMC");
-	sprintf(str, "Evt No %d, scale = %5.3f, depth = %5.3f [%d] escale = %5.3f;L, cm;dE, MeV", num, scale, d, j, escale[j]);
+	sprintf(str, "Evt No %d, Length = %5.3f mm, depth = %5.3f mm, kE = %5.3f;Layer;dE, MeV", 
+		num, 10.0*scale, d, escale[j]);
 	hMC->SetTitle(str);
 	hMC->Scale(escale[j]);
 	hMC->SetMinimum(0);
@@ -501,24 +505,73 @@ void fit_BraggShape(int from, int to)
 TChain *MCchain(const char *mcname = "")
 {
 	char str[1024];
-	int i, j, N, K;
+	int i, j, N, K, M;
 	const char *mcdir = "/home/clusters/rrcmpi/alekseev/igor/stopped8n2/MC/Chikuma/Muons/Hit_checker_cutted_Chikuma";
 
 	TChain *chIn = new TChain("StoppedMuons", "StoppedMuons");
 	TChain *chDepth = new TChain("Depth", "Depth");
+	TChain *chFDepth = new TChain("FDepth", "FDepth");
 	for (i=0; i<5; i++) for (j=1; j<=16; j++) {
 		sprintf(str, "%s%s/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d.root", mcdir, mcname, i, j);
 		chIn->AddFile(str);
 		sprintf(str, "%s%s/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d-depth.root", mcdir, mcname, i, j);
 		chDepth->AddFile(str);
+		sprintf(str, "%s%s/mc_Muons_indLY_transcode_rawProc_pedSim_%2.2d_%2.2d-fdepth.root?#Depth", mcdir, mcname, i, j);
+		chFDepth->AddFile(str);
 	}
 	N = chIn->GetEntries();
 	K = chDepth->GetEntries();
-	if (N != K) {
-		printf("Chain lengths mismatch %d != %d\n", N, K);
+	M = chFDepth->GetEntries();
+	if (N != K || N != M) {
+		printf("Chain lengths %d %d %d mismatch\n", N, K, M);
 		return NULL;
 	}
 	chIn->AddFriend(chDepth);
+	chIn->AddFriend(chFDepth);
 	printf("Total %d events\n", N);
 	return chIn;
+}
+
+void draw_MCdE(int iscale, const char *mcname = "")
+{
+	const char *mcdir = "/home/clusters/rrcmpi/alekseev/igor/stopped8n2/MC/Chikuma/Muons/Hit_checker_cutted_Chikuma";
+	const int color[] = {kRed, kGreen, kBlue, kMagenta, kBlack};
+	const char *legend[] = {"0 - 2 mm", "2 - 4 mm", "4 - 6 mm", "6 - 8 mm", "8 - 11 mm"};
+	TH2D *hEL[DEPTHBINS];
+	TH2D *hSum;
+	TProfile *hProf[5];
+	int i;
+	char str[1024];
+	
+	gStyle->SetOptStat(0);
+	sprintf(str, "%s%s-hist.root", mcdir, mcname);
+	TFile *fIn = new TFile(str);
+	if (!fIn->IsOpen()) return;
+	
+	for (i=0; i<DEPTHBINS; i++) {
+		sprintf(str, "hdE_s%2.2dd%d", iscale, i);
+		hEL[i]=(TH2D *) fIn->Get(str);
+		if (!hEL[i]) {
+			printf("%s not found in %s\n", str, mcname);
+			return;
+		}
+	}
+	hSum = (TH2D *) hEL[0]->Clone("__hSum");
+	for (i=0; i<5; i++) {
+		hSum->Add(hEL[2*i], hEL[2*i+1]);
+		if (i == 4) hSum->Add(hEL[10]);
+		sprintf(str, "hdEprof_%d", i);
+		hProf[i] = hSum->ProfileX(str);
+		hProf[i]->SetLineWidth(2);
+		hProf[i]->SetLineColor(color[i]);
+		hProf[i]->SetMinimum(0);
+		sprintf(str, "dE in the layer for length in strip %4.1f mm;Layer;dE, MeV", 10.0 + iscale);
+		hProf[i]->SetTitle(str);
+	}
+	TLegend *lg = new TLegend(0.6, 0.7, 0.9, 0.9);
+	for (i=4; i>=0; i--) {
+		hProf[i]->Draw((i != 4) ? "same" : "");
+		lg->AddEntry(hProf[i], legend[i], "l");
+	}
+	lg->Draw();
 }
