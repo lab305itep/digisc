@@ -17,6 +17,7 @@
 
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
 #define VETO	(20 * GFREQ2US)	// 20 us veto 
+#define DECAY	(10 * GFREQ2US)	// 10 us to decay
 #define MAXZ	100
 #define MAXXY	25
 #define iMaxDataElements 3000
@@ -26,6 +27,7 @@
 #pragma pack(push,1)
 struct StoppedMuonStruct {
 	int index;		// Index in the DanssEvent tree
+	int flags;		// some flags (or'ed). 1 - Decay was found later.
 	long long globalTime;	// global time 125 MHz ticks
 	int Z;			// z of the stopping strip
 	int XY;			// xy of the stopping strip
@@ -205,6 +207,7 @@ int main(int argc, char **argv)
 {
 	const char LeafList[] = 
 		"index/I:"		// Index in the DanssEvent tree
+		"flags/I:"		// Event flags. So far bit 0: decay found
 		"globalTime/L:"		// global time 125 MHz ticks
 		"Z/I:"			// z of the stopping strip
 		"XY/I:"			// xy of the stopping strip
@@ -242,8 +245,10 @@ int main(int argc, char **argv)
 		"Good track           ", 
 		"Stopped muon         ", 
 		"Good last hits       ",
-		"", "", ""};
-	int iZ, iXY, NHits;
+		"Decay found          ", 
+		"", ""};
+	int iZ, iXY, iXYn, NHits;
+	int iFound;
 	long long gtOld;
 	double E;
 	
@@ -381,6 +386,7 @@ int main(int argc, char **argv)
 		}
 //			Fill the tree
 		StoppedMuon.index = i;
+		StoppedMuon.flags = 0;
 		StoppedMuon.globalTime = DanssEvent.globalTime;
 		StoppedMuon.Z = iZ;
 		StoppedMuon.XY = iXY;
@@ -399,6 +405,33 @@ int main(int argc, char **argv)
 		}
 		lfEventID = EventTree->GetLeaf("EventID");
 		if (lfEventID) MCEventID = lfEventID->GetValueLong64();
+//			Look for decay
+//			We consider decay if there is at least 3 MeV energy deposit and the end strip, 
+//			or one of its neighbors is hit
+		iFound = 0;
+		iXYn = ((iZ & 1) ? (iZ * TY.A + TY.B) : (iZ * TX.A + TX.B)) + 0.5;	// iXY in the neighbor layer
+		for (j=i+1; j<N; j++) {
+			EventTree->GetEntry(j);
+			if (DanssEvent.globalTime - StoppedMuon.globalTime > DECAY) break;
+			if (DanssEvent.globalTime < StoppedMuon.globalTime) break;	// a rare case of globaltime counter wrap
+			if (DanssEvent.TotalEnergy < 3) continue;
+			for (k=0; k<DanssEvent.NHits; k++) if (HitData.type[k].type == 0) {
+				if (HitData.type[k].z == iZ && HitData.type[k].xy >= iXY - 1 && HitData.type[k].xy <= iXY + 1) {
+					iFound = 1;
+					break;
+				}
+				if ((HitData.type[k].z == iZ-1 || HitData.type[k].z == iZ+1) && 
+					HitData.type[k].xy >= iXYn - 1 && HitData.type[k].xy <= iXYn + 1) {
+					iFound = 1;
+					break;
+				}
+			}
+			if (iFound) break;
+		}
+		if (iFound) {
+			StoppedMuon.flags |= 1;
+			Stat[7]++;
+		}
 		tOut->Fill();
 		if (DEBUG) printf("----------------------------------------------------------------\n");
 	}

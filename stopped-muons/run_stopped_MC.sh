@@ -8,7 +8,8 @@ cd /home/itep/alekseev/igor/stopped-muons
 
 BASE=/home/clusters/rrcmpi/alekseev/igor/root8n2
 CHIKUMA=MC/Chikuma/Muons
-LIST=(Hit_checker_cutted_Chikuma \
+LIST=(	Hit_checker_Chikuma \
+	Hit_checker_cutted_Chikuma \
 	Hit_checker_cutted_Chikuma_Birks_el_0_0108 \
 	Hit_checker_cutted_Chikuma_Birks_el_0_0308 \
 	Hit_checker_cutted_Chikuma_Cher_coeff_0_033 \
