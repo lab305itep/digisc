@@ -238,14 +238,19 @@ int main(int argc, char **argv)
 			}
 			Exotics.E = Exotics.Est[0] + Exotics.Est[1] + Exotics.Est[2];
 			Exotics.X[2] = iZ;
-		} else if (DanssEvent.PositronEnergy > 5 && DanssEvent.PositronEnergy < 10 
-			&& DanssEvent.AnnihilationGammas > 0.2) {	// axion
+		} else if (DanssEvent.PositronEnergy > 5 && DanssEvent.PositronEnergy < 10 && DanssEvent.AnnihilationGammas > 0.2 
+			&& DanssEvent.PositronX[0] > 2 && DanssEvent.PositronX[0] < 94
+			&& DanssEvent.PositronX[1] > 2 && DanssEvent.PositronX[1] < 94
+			&& DanssEvent.PositronX[2] > 3.5 && DanssEvent.PositronX[2] < 95.5) {	// axion
 			Exotics.type = TYPE_AXION;
 			Exotics.E = DanssEvent.PositronEnergy;
 			Exotics.X[0] = DanssEvent.PositronX[0];
 			Exotics.X[1] = DanssEvent.PositronX[1];
 			Exotics.X[2] = DanssEvent.PositronX[2];
-		} else if (DanssEvent.NeutronEnergy > 7 && DanssEvent.NeutronEnergy < 10) {	// Dark neutron
+		} else if (DanssEvent.NeutronEnergy > 7 && DanssEvent.NeutronEnergy < 10
+			&& DanssEvent.NeutronX[0] > 2 && DanssEvent.NeutronX[0] < 94
+			&& DanssEvent.NeutronX[1] > 2 && DanssEvent.NeutronX[1] < 94
+			&& DanssEvent.NeutronX[2] > 3.5 && DanssEvent.NeutronX[2] < 95.5) {	// Dark neutron
 			Exotics.type = TYPE_DARKN;
 			Exotics.E = DanssEvent.NeutronEnergy;
 			Exotics.X[0] = DanssEvent.NeutronX[0];
