@@ -6,6 +6,7 @@
 #pragma pack(push,1)
 struct StoppedMuonStruct {
         int index;              // Index in the DanssEvent tree
+        int flags;
         long long globalTime;   // global time 125 MHz ticks
         int Z;                  // z of the stopping strip
         int XY;                 // xy of the stopping strip
@@ -95,7 +96,7 @@ double FitOneFit(TH1D *hMC, double &escale)
 	return f;
 }
 
-//	Try to fit depth
+//	Try to fit depth using two parameter fit
 void fit_one(int num, TTree *tIn, TFile *fMC)
 {
 	TH1D *hMCdE[DEPTHBINS];
@@ -132,6 +133,102 @@ void fit_one(int num, TTree *tIn, TFile *fMC)
 	}
 	
 	for (i=0; i<DEPTHBINS; i++) chi2[i] = FitOneFit(hMCdE[i], escale[i]);
+	
+	cv = new TCanvas("CV", "CV", 800, 900);
+	cv->Divide(1, 2);
+	
+	TH1D h("_h", "S^{2};Depth, mm", 11, 0, 11.0);
+	for (i=0; i<DEPTHBINS; i++) h.SetBinContent(i+1, chi2[i]);
+	TF1 fpar("fPar", "pol2");
+	cv->cd(1);
+	h.SetMarkerStyle(kFullCircle);
+	h.SetMarkerSize(2.0);
+	h.SetMarkerColor(kMagenta);
+	h.Fit(fpar.GetName(), "QW", "");
+	h.DrawCopy("P");
+	d = - 0.5 * fpar.GetParameter(1) / fpar.GetParameter(2);
+	if (d < 0) d = 0;
+	if (d > 11) d = 11;
+	j = d + 0.5;
+	if (j >= DEPTHBINS) j = DEPTHBINS-1;
+	
+	TGraph *gr = new TGraph(k, L, dedx);
+	gr->SetMarkerStyle(kFullSquare);
+	gr->SetMarkerColor(kRed);
+	gr->SetMarkerSize(1.1);
+	gr->SetMinimum(0);
+	TH1D *hMC = (TH1D *)hMCdE[j]->Clone("hMC");
+	sprintf(str, "Evt No %d, Length = %5.3f mm, depth = %5.3f mm, kE = %5.3f;Layer;dE, MeV", 
+		num, 10.0*scale, d, escale[j]);
+	hMC->SetTitle(str);
+	hMC->Scale(escale[j]);
+	hMC->SetMinimum(0);
+	hMC->SetMaximum(25);
+	cv->cd(2);
+	hMC->Draw();
+	gr->Draw("P");
+	cv->Update();
+}
+
+double TrackChi2(StoppedMuonStruct *Muon, TH1D *hDE, double &escale)
+{
+	int i;
+	double sExp, sMC, d;
+	
+	sExp = sMC = 0;
+	for (i=6; i<25 && i<Muon->NHits; i++) if (Muon->Ehit[i] > 0) {
+		sExp += Muon->Ehit[i];
+		sMC += hDE->GetBinContent(i+1);
+	}
+	escale = sExp / sMC;
+	sExp = 0;
+	for (i=0; i<6; i++) if (Muon->Ehit[i] > 0) {
+		d = Muon->Ehit[i] - hDE->GetBinContent(i+1) * escale;
+		sExp += d*d;
+	}
+	return sExp;
+}
+
+//	Try to fit depth - calculate scale from integral >= 6 layers
+void fit_one_v2(int num, TTree *tIn, TFile *fMC)
+{
+	TH1D *hMCdE[DEPTHBINS];
+	double L[MAXLAYERS], dedx[MAXLAYERS];
+	double scale;
+	int i, j, k, m;
+	char str[256];
+	double chi2[DEPTHBINS];
+	double escale[DEPTHBINS];
+	double d;
+	TCanvas *cv;
+	StoppedMuonStruct Muon;
+	
+	tIn->SetBranchAddress("Stopped", &Muon);
+	if (!tIn->GetEntry(num)) return;
+	
+	scale = sqrt(1 + tan(Muon.thetaX)*tan(Muon.thetaX) + 
+		tan(Muon.thetaY)*tan(Muon.thetaY));
+	m = (scale - 1.0) / 0.1;
+	if (m < 0) m = 0;
+	if (m >= SCALEBINS) m = SCALEBINS - 1;
+	for (i=0; i<DEPTHBINS; i++) {
+		sprintf(str, "hdEprof_s%2.2dd%d", m, i);
+		hMCdE[i] = (TH1D*) fMC->Get(str);
+		if (!hMCdE[i]) {
+			printf("No hist %s\n", str);
+			return;
+		}
+	}
+	k = 0;
+	for (i=0; i<Muon.NHits && k < MAXLAYERS; i++) if (Muon.Ehit[i] > 0) {
+		L[k] = i + 0.5;
+		dedx[k] = Muon.Ehit[i];
+		k++;
+	}
+	
+	for (i=0; i<DEPTHBINS; i++) {
+		chi2[i] = TrackChi2(&Muon, hMCdE[i], escale[i]);
+	}
 	
 	cv = new TCanvas("CV", "CV", 800, 900);
 	cv->Divide(1, 2);
