@@ -43,7 +43,7 @@
 #include "evtbuilder.h"
 
 /***********************	Definitions	****************************/
-#define MYVERSION	"4.50"
+#define MYVERSION	"4.60"
 //	Initial clean parameters
 #define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit for FineTime calculation
 // #define MINSIPMPIXELS2	2			// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
@@ -159,6 +159,7 @@ int RawHitsCnt;
 
 TH1D *hCrossTalk;
 TH1D *hPMTAmpl[iNChannels_AdcBoard];
+TH1D *hSiPMtime;
 
 TH1D *hEtoEMC;
 TH1D *hNPEtoEMC;
@@ -671,8 +672,9 @@ void CleanByTime(void)
 	
 	N = user->nhits();
 	if (DanssEvent.fineTime != NOFINETIME) {
-		for (i=0; i<N; i++) switch (user->type(i)) {
+		for (i=0; i<N; i++) if (HitFlag[i] >= 0) switch (user->type(i)) {
 		case bSiPm:
+			hSiPMtime->Fill(user->t_raw(i) - DanssEvent.fineTime);
 			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) {
 				HitFlag[i] = -1;
 				DanssInfo.Cuts[5]++;
@@ -1424,6 +1426,7 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		hPMTTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
 	}
 	hCrossTalk = new TH1D("hCrossTalk", "Croos talk distribution;Pixels/Ph.e.", 280, 0.8, 2.2);
+	hSiPMtime = new TH1D("hSiPMtime", "SiPM time - finetime;ns;Hits", 500, -10, 50);
 	for (j=0; j<iNChannels_AdcBoard; j++) {
 		sprintf(strs, "hPMTAmpl%2.2d", j);
 		sprintf(strl, "PMT amplification: ADC integral units per MeV %2.2d", j);
@@ -1495,7 +1498,9 @@ int ReadDigiDataUser::processUserEvent()
 	SumEverything();
 	FindFineTime();
 	if (!(iFlags & FLG_NOTIMECUT)) CleanByTime();
-	CleanByConfirmation();
+//		Remove clean by confirmation --- trying to get SiPM response linear
+//	CleanByConfirmation();
+//
 	SumClean();
 	CalculateNeutron();
 	CalculatePositron();
@@ -1556,6 +1561,7 @@ void ReadDigiDataUser::finishUserProc()
 	}
 	hCrossTalk->Write();
 	for (j=0; j<iNChannels_AdcBoard; j++) if (hPMTAmpl[j]->GetEntries() > 0) hPMTAmpl[j]->Write();
+	if (hSiPMtime) hSiPMtime->Write();
 	if (RawHitsTree) RawHitsTree->Write();
 	if (RawHitsArray) free(RawHitsArray);
 	if (IsMc) {

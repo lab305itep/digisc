@@ -24,8 +24,8 @@
 #include "../evtbuilder.h"
 
 #define GFREQ2US	(GLOBALFREQ / 1000000.0)
-#define VETO		(100 * GFREQ2US)	// 100 us veto 
-#define ISOLATION	(100 * GFREQ2US)	// 100 us isolation
+#define VETO		(200 * GFREQ2US)	// 100 us veto 
+#define ISOLATION	(200 * GFREQ2US)	// 100 us isolation
 #define MAXZ	100
 #define MAXXY	25
 #define iMaxDataElements 3000
@@ -140,8 +140,8 @@ int main(int argc, char **argv)
 	int Stat[10];
 	const char *StatName[10] = {
 		"Total triggers       ", 
-		"> 3 MeV              ",
 		"Nothing before       ",
+		"> 3 MeV              ",
 		"Some exotics         ",
 		"Nothing after        ",
 		"nu-e                 ", 
@@ -201,6 +201,13 @@ int main(int argc, char **argv)
 		EventTree->GetEntry(i);
 		memset(&Exotics, 0, sizeof(Exotics));
 		Stat[0]++;
+//			Check VETO
+		if (DanssEvent.globalTime - gtOld < VETO) {
+			gtOld = DanssEvent.globalTime;
+			continue;
+		}
+		gtOld = DanssEvent.globalTime;
+		Stat[1]++;
 		if (DanssEvent.TotalEnergy < 3) continue;	// 3 Mev minimum for anything
 //			Create hit table
 		memset(ZX, 0, sizeof(ZX));
@@ -212,13 +219,6 @@ int main(int argc, char **argv)
 				ZY[HitData.type[j].z / 2][HitData.type[j].xy] = HitData.E[j];
 			}
 		}
-		Stat[1]++;
-//			Check VETO
-		if (DanssEvent.globalTime - gtOld < VETO) {
-			gtOld = DanssEvent.globalTime;
-			continue;
-		}
-		gtOld = DanssEvent.globalTime;
 		Stat[2]++;
 //			Look for the exotics
 		if (IsItNuE(ZX, ZY, iZ, iXY, iXY1)) {			// nu-e
