@@ -159,7 +159,7 @@ int RawHitsCnt;
 
 TH1D *hCrossTalk;
 TH1D *hPMTAmpl[iNChannels_AdcBoard];
-TH1D *hSiPMtime;
+TH1D *hSiPMtime[3];
 
 TH1D *hEtoEMC;
 TH1D *hNPEtoEMC;
@@ -665,6 +665,14 @@ void CleanByConfirmation(void)
 	}
 }
 
+void Clean1Pixel(void)
+{
+	int i, N;
+	N = user->nhits();
+	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm) 
+		if(user->npix(i) < 1.5) HitFlag[i] = -1;
+}
+
 void CleanByTime(void)
 {
 	int i, N;
@@ -674,7 +682,12 @@ void CleanByTime(void)
 	if (DanssEvent.fineTime != NOFINETIME) {
 		for (i=0; i<N; i++) if (HitFlag[i] >= 0) switch (user->type(i)) {
 		case bSiPm:
-			hSiPMtime->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			hSiPMtime[0]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			if (user->npix(i) < 1.5) {
+				hSiPMtime[1]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			} else if (user->npix(i) < 2.5) {
+				hSiPMtime[2]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			}
 			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) {
 				HitFlag[i] = -1;
 				DanssInfo.Cuts[5]++;
@@ -1426,7 +1439,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		hPMTTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
 	}
 	hCrossTalk = new TH1D("hCrossTalk", "Croos talk distribution;Pixels/Ph.e.", 280, 0.8, 2.2);
-	hSiPMtime = new TH1D("hSiPMtime", "SiPM time - finetime;ns;Hits", 500, -10, 50);
+	hSiPMtime[0] = new TH1D("hSiPMtimeAll", "SiPM time - finetime, all hits;ns;Hits", 400, -40, 40);
+	hSiPMtime[1] = new TH1D("hSiPMtime1Px", "SiPM time - finetime, 1 pixel hits;ns;Hits", 400, -40, 40);
+	hSiPMtime[2] = new TH1D("hSiPMtime2Px", "SiPM time - finetime, 2 pixel hits;ns;Hits", 400, -40, 40);
 	for (j=0; j<iNChannels_AdcBoard; j++) {
 		sprintf(strs, "hPMTAmpl%2.2d", j);
 		sprintf(strl, "PMT amplification: ADC integral units per MeV %2.2d", j);
@@ -1498,6 +1513,7 @@ int ReadDigiDataUser::processUserEvent()
 	SumEverything();
 	FindFineTime();
 	if (!(iFlags & FLG_NOTIMECUT)) CleanByTime();
+	Clean1Pixel();
 //		Remove clean by confirmation --- trying to get SiPM response linear
 //	CleanByConfirmation();
 //
@@ -1561,7 +1577,7 @@ void ReadDigiDataUser::finishUserProc()
 	}
 	hCrossTalk->Write();
 	for (j=0; j<iNChannels_AdcBoard; j++) if (hPMTAmpl[j]->GetEntries() > 0) hPMTAmpl[j]->Write();
-	if (hSiPMtime) hSiPMtime->Write();
+	for (i=0; i<3; i++) hSiPMtime[i]->Write();
 	if (RawHitsTree) RawHitsTree->Write();
 	if (RawHitsArray) free(RawHitsArray);
 	if (IsMc) {

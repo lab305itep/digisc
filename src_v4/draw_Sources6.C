@@ -107,7 +107,7 @@ struct RawHitInfoStruct {
 /*
 	Fill histograms excluding events with beta-afected strips
 */
-void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hHits, double X, double Y, double Z, double RMAX)
+void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hHits, double X, double Y, double Z, double RMAX, double scale = 1)
 {
 	long long i, N, N1, N2, N3, N4, N5, N6;
 	int j, k;
@@ -155,9 +155,9 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		N6++;
 //	Fill
 		E = (DanssEvent.SiPmCleanEnergy+DanssEvent.PmtCleanEnergy)/2.0;
-		hSum->Fill(E);
-		hSiPM->Fill(DanssEvent.SiPmCleanEnergy);
-		hPMT->Fill(DanssEvent.PmtCleanEnergy);
+		hSum->Fill(E * scale);
+		hSiPM->Fill(DanssEvent.SiPmCleanEnergy * scale);
+		hPMT->Fill(DanssEvent.PmtCleanEnergy * scale);
 		if (E > 1.0 && E < 2.6) hHits->Fill(DanssEvent.SiPmCleanHits);
 	}
 	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips)\n", N, N1, N2, N3, N4, N5, N6);
@@ -204,8 +204,8 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	TCut cSel = cxyz && cVeto && cn && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
-	do_projections(tExpA, hExpA, hExpSiPMA, hExpPMTA, hHitsA, X, Y, Z, RMAX);
-	do_projections(tExpB, hExpB, hExpSiPMB, hExpPMTB, hHitsB, X, Y, Z, RMAX);
+	do_projections(tExpA, hExpA, hExpSiPMA, hExpPMTA, hHitsA, X, Y, Z, RMAX, 1.0);
+	do_projections(tExpB, hExpB, hExpSiPMB, hExpPMTB, hHitsB, X, Y, Z, RMAX, 1.0);
 	
 	gtA = gtB = 0;
 	for(i=0; i<tInfoA->GetEntries(); i++) {
@@ -331,13 +331,14 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, double scale, dou
 	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6");
 	
 	tMc->Project("hMcXY", "NeutronX[1]+2:NeutronX[0]+2", cSel && cE);
-	sprintf(str, "%5.3f*(SiPmCleanEnergy+PmtCleanEnergy)/2.0", scale);
-	tMc->Project("hMc", str, cSel && cR2);
-	sprintf(str, "%5.3f*SiPmCleanEnergy", scale);
-	tMc->Project("hMcSiPM", str, cSel && cR2);
-	sprintf(str, "%5.3f*PmtCleanEnergy", scale);
-	tMc->Project("hMcPMT", str, cSel && cR2);
-	tMc->Project("hMcHits", "SiPmCleanHits", cSel && cR2 && cE);
+	do_projections(tMc, hMc, hMcSiPM, hMcPMT, hMcHits, X, Y, Z, RMAX, scale);
+//	sprintf(str, "%5.3f*(SiPmCleanEnergy+PmtCleanEnergy)/2.0", scale);
+//	tMc->Project("hMc", str, cSel && cR2);
+//	sprintf(str, "%5.3f*SiPmCleanEnergy", scale);
+//	tMc->Project("hMcSiPM", str, cSel && cR2);
+//	sprintf(str, "%5.3f*PmtCleanEnergy", scale);
+//	tMc->Project("hMcPMT", str, cSel && cR2);
+//	tMc->Project("hMcHits", "SiPmCleanHits", cSel && cR2 && cE);
 
 	hMc->Sumw2();
 	hMcSiPM->Sumw2();
@@ -437,6 +438,28 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		name = "22Na";
 		sprintf(fname, "22Na_feb17_edge_%s_R%4.1f", rootdir, RMAX);
 		Y = 90;
+		break;
+	case 3: 
+		Add2Chain(tExpA, 12376, 12407, rootdir, max_files);
+		Add2Chain(tRawA, 12376, 12407, rootdir, max_files);
+		Add2Chain(tInfoA, 12376, 12407, rootdir, max_files);
+		Add2Chain(tExpB, 12411, 12447, rootdir, max_files);
+		Add2Chain(tRawB, 12411, 12447, rootdir, max_files);
+		Add2Chain(tInfoB, 12411, 12447, rootdir, max_files);
+		name = "22Na";
+		sprintf(fname, "22Na_feb17_center_xxx_%s_R%4.1f", rootdir, RMAX);
+		Y = 50;
+		break;
+	case 4: 
+		Add2Chain(tExpA, 12450, 12500, rootdir, max_files);
+		Add2Chain(tRawA, 12450, 12500, rootdir, max_files);
+		Add2Chain(tInfoA, 12450, 12500, rootdir, max_files);
+		Add2Chain(tExpB, 12411, 12447, rootdir, max_files);
+		Add2Chain(tRawB, 12411, 12447, rootdir, max_files);
+		Add2Chain(tInfoB, 12411, 12447, rootdir, max_files);
+		name = "22Na";
+		sprintf(fname, "22Na_feb17_center_yyy_%s_R%4.1f", rootdir, RMAX);
+		Y = 50;
 		break;
 	case 11:		// Na Nov 18, center
 		Add2Chain(tExpA, 51099, 51161, rootdir, max_files);
@@ -573,7 +596,8 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Y = 50;
 		break;
 	case 1031:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+//		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n4/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "Chikuma/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
@@ -601,7 +625,8 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Y = 50;
 		break;
 	case 1131:	// Co MC, center, chikuma, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+//		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n4/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "Chikuma/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
@@ -727,7 +752,8 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 void draw_scale_scan(const char *what, const char *when, const char *where, const char *version, 
 	double RMAX = 30)
 {
-	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
+//	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
+	const char *exppattern = "%s_%s_%s_root8n3_R%4.1f.root"; 		// what, when, where, RMAX
 //	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
 //	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
 	const char *MCpattern = "Chikuma/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
