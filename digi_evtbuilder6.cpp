@@ -669,8 +669,7 @@ void Clean1Pixel(void)
 {
 	int i, N;
 	N = user->nhits();
-	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm) 
-		if(user->npix(i) < 1.5) HitFlag[i] = -1;
+	for (i=0; i<N; i++) if (user->type(i) == bSiPm) if(user->npix(i) < 1.5) HitFlag[i] = -1;
 }
 
 void CleanByTime(void)
@@ -1513,9 +1512,8 @@ int ReadDigiDataUser::processUserEvent()
 	SumEverything();
 	FindFineTime();
 	if (!(iFlags & FLG_NOTIMECUT)) CleanByTime();
-	Clean1Pixel();
-//		Remove clean by confirmation --- trying to get SiPM response linear
-//	CleanByConfirmation();
+//	Clean1Pixel();
+	CleanByConfirmation();
 //
 	SumClean();
 	CalculateNeutron();

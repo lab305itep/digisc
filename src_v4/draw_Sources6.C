@@ -19,27 +19,30 @@
 /***************************************************************************************
 *			Runs with sources
 * Runs		Source	Date		Position	Nruns
-* 12198-12303	none	2017-02-03
+* 12198-12303	none	2017-02-03	down
 * 12306-12346	60Co	2017-02-04	center		41
 * 12348-12361	60Co	2017-02-05	edge		14
 * 12364-12373	22Na	2017-02-05	edge		10
 * 12376-12407	22Na	2017-02-05	center		32
-* 12411-12547	none	2017-02-06
-* 50750-50873	none	2018-11-18
+* 12411-12421	none	2017-02-06	down		later position was changed to up
+* 50750-50873	none	2018-11-18	down
 * 50949-50997	60Co	2018-11-20	center		49
 * 50999-51034	60Co	2018-11-21	edge		36
 * 51036-51095	22Na	2018-11-21	edge		60
 * 51099-51161	22Na	2018-11-22	center		63
-* 51167-51267	none	2018-11-23
-* 127280-127379	none	2022-06-19
+* 51167-51267	none	2018-11-23	down
+* 127280-127379	none	2022-06-19	down
 * 127389-127456	22Na	2022-06-21	center		68
+* 127462-127512	none	2022-06-22	down
 * 127513-127580	24Na	2022-06-23	center, not seen, strong pickup (?)
+* 127581-127657	none	2022-06-24	down
 * 127658-127719	24Na	2022-06-25	center, not seen
 * 127720-127772	248Cm	2022-06-26	center		53
 * 127774-127837	60Co	2022-06-27	center		64
-* 127838-127900	none	2022-06-28
+* 127838-127900	none	2022-06-28	down
+* 127901-127957	none	2022-06-29	up
 * 127958-128016	22Na	2022-06-30	center, UP	59
-* 128020-128119	none	2022-07-01
+* 128020-128119	none	2022-07-01	up
 ***************************************************************************************
 * Center position (50, 50, 50)
 * Edge position   (50, 90, 50)
@@ -109,18 +112,20 @@ struct RawHitInfoStruct {
 */
 void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hHits, double X, double Y, double Z, double RMAX, double scale = 1)
 {
-	long long i, N, N1, N2, N3, N4, N5, N6;
+	long long i, N, N1, N2, N3, N4, N5, N6, N7;
 	int j, k;
 	struct DanssEventStruct7 DanssEvent;
 	struct HitTypeStruct HitType[2600];
 	struct RawHitInfoStruct RawHits;
 	double r2, E;
+	int east, west, north, south, up, down;
+	int noRaw;
 
 	chain->SetBranchAddress("Data", &DanssEvent);
 	chain->SetBranchAddress("HitType", &HitType);
-	chain->SetBranchAddress("RawHits", &RawHits);
+	noRaw = chain->SetBranchAddress("RawHits", &RawHits);
 	N = chain->GetEntries();
-	N1 = N2 = N3 = N4 = N5 = N6 = 0;
+	N1 = N2 = N3 = N4 = N5 = N6 = N7 = 0;
 	for (i=0; i<N; i++) {
 		chain->GetEntry(i);
 //	TCut cxyz("NeutronX[0] >= 0 && NeutronX[1] >= 0 && NeutronX[2] >= 0");
@@ -136,7 +141,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		if (DanssEvent.PmtCleanHits < 1) continue;
 		N3++;
 //	TCut cNoise("((PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3) && VetoCleanHits == 0");
-		if (1.0*DanssEvent.PmtCleanHits/RawHits.PmtCnt <= 0.3 || 1.0*DanssEvent.SiPmHits/RawHits.SiPmCnt <= 0.3) continue;
+		if (!noRaw && (1.0*DanssEvent.PmtCleanHits/RawHits.PmtCnt <= 0.3 || 1.0*DanssEvent.SiPmHits/RawHits.SiPmCnt <= 0.3)) continue;
 		N4++;
 //	Cut over r2
 		r2  = (DanssEvent.NeutronX[0] - X) * (DanssEvent.NeutronX[0] - X);
@@ -153,6 +158,20 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		}
 		if (k != 0) continue;
 		N6++;
+//	Request opposite hits in at least one projection
+		east = west = north = south = up = down = 0;
+		for (j=0; j<DanssEvent.NHits; j++) {
+			if (HitType[j].type != 0) continue;	// Select SiPM
+			if (HitType[j].z < 49) down++;
+			if (HitType[j].z > 49) up++;
+			if ((HitType[j].z & 1) && HitType[j].xy < 12) east++; 
+			if ((HitType[j].z & 1) && HitType[j].xy > 12) west++; 
+			if ((HitType[j].z & 1) == 0 && HitType[j].xy < 12) north++; 
+			if ((HitType[j].z & 1) == 0 && HitType[j].xy > 12) south++; 
+		}
+		if (!((east && west) || (north && south) || (up && down))) continue;
+		N7++;
+
 //	Fill
 		E = (DanssEvent.SiPmCleanEnergy+DanssEvent.PmtCleanEnergy)/2.0;
 		hSum->Fill(E * scale);
@@ -160,7 +179,8 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		hPMT->Fill(DanssEvent.PmtCleanEnergy * scale);
 		if (E > 1.0 && E < 2.6) hHits->Fill(DanssEvent.SiPmCleanHits);
 	}
-	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips)\n", N, N1, N2, N3, N4, N5, N6);
+	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips) %Ld(opposite)\n", 
+		N, N1, N2, N3, N4, N5, N6, N7);
 }
 
 void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, const char *name, const char *fname, double X, double Y, double Z, double RMAX)
@@ -421,9 +441,9 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tExpA, 12376, 12407, rootdir, max_files);
 		Add2Chain(tRawA, 12376, 12407, rootdir, max_files);
 		Add2Chain(tInfoA, 12376, 12407, rootdir, max_files);
-		Add2Chain(tExpB, 12411, 12547, rootdir, max_files);
-		Add2Chain(tRawB, 12411, 12547, rootdir, max_files);
-		Add2Chain(tInfoB, 12411, 12547, rootdir, max_files);
+		Add2Chain(tExpB, 12204, 12303, rootdir, max_files);
+		Add2Chain(tRawB, 12204, 12303, rootdir, max_files);
+		Add2Chain(tInfoB, 12204, 12303, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_feb17_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
@@ -432,42 +452,20 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tExpA, 12364, 12373, rootdir, max_files);
 		Add2Chain(tRawA, 12364, 12373, rootdir, max_files);
 		Add2Chain(tInfoA, 12364, 12373, rootdir, max_files);
-		Add2Chain(tExpB, 12411, 12547, rootdir, max_files);
-		Add2Chain(tRawB, 12411, 12547, rootdir, max_files);
-		Add2Chain(tInfoB, 12411, 12547, rootdir, max_files);
+		Add2Chain(tExpB, 12204, 12303, rootdir, max_files);
+		Add2Chain(tRawB, 12204, 12303, rootdir, max_files);
+		Add2Chain(tInfoB, 12204, 12303, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_feb17_edge_%s_R%4.1f", rootdir, RMAX);
 		Y = 90;
-		break;
-	case 3: 
-		Add2Chain(tExpA, 12376, 12407, rootdir, max_files);
-		Add2Chain(tRawA, 12376, 12407, rootdir, max_files);
-		Add2Chain(tInfoA, 12376, 12407, rootdir, max_files);
-		Add2Chain(tExpB, 12411, 12447, rootdir, max_files);
-		Add2Chain(tRawB, 12411, 12447, rootdir, max_files);
-		Add2Chain(tInfoB, 12411, 12447, rootdir, max_files);
-		name = "22Na";
-		sprintf(fname, "22Na_feb17_center_xxx_%s_R%4.1f", rootdir, RMAX);
-		Y = 50;
-		break;
-	case 4: 
-		Add2Chain(tExpA, 12450, 12500, rootdir, max_files);
-		Add2Chain(tRawA, 12450, 12500, rootdir, max_files);
-		Add2Chain(tInfoA, 12450, 12500, rootdir, max_files);
-		Add2Chain(tExpB, 12411, 12447, rootdir, max_files);
-		Add2Chain(tRawB, 12411, 12447, rootdir, max_files);
-		Add2Chain(tInfoB, 12411, 12447, rootdir, max_files);
-		name = "22Na";
-		sprintf(fname, "22Na_feb17_center_yyy_%s_R%4.1f", rootdir, RMAX);
-		Y = 50;
 		break;
 	case 11:		// Na Nov 18, center
 		Add2Chain(tExpA, 51099, 51161, rootdir, max_files);
 		Add2Chain(tRawA, 51099, 51161, rootdir, max_files);
 		Add2Chain(tInfoA, 51099, 51161, rootdir, max_files);
-		Add2Chain(tExpB, 51167, 51267, rootdir, max_files);
-		Add2Chain(tRawB, 51167, 51267, rootdir, max_files);
-		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
+		Add2Chain(tExpB, 51168, 51267, rootdir, max_files);
+		Add2Chain(tRawB, 51168, 51267, rootdir, max_files);
+		Add2Chain(tInfoB, 51168, 51267, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_nov18_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
@@ -476,9 +474,9 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tExpA, 51036, 51095, rootdir, max_files);
 		Add2Chain(tRawA, 51036, 51095, rootdir, max_files);
 		Add2Chain(tInfoA, 51036, 51095, rootdir, max_files);
-		Add2Chain(tExpB, 51167, 51267, rootdir, max_files);
-		Add2Chain(tRawB, 51167, 51267, rootdir, max_files);
-		Add2Chain(tInfoB, 51167, 51267, rootdir, max_files);
+		Add2Chain(tExpB, 51168, 51267, rootdir, max_files);
+		Add2Chain(tRawB, 51168, 51267, rootdir, max_files);
+		Add2Chain(tInfoB, 51168, 51267, rootdir, max_files);
 		name = "22Na";
 		sprintf(fname, "22Na_nov18_edge_%s_R%4.1f", rootdir, RMAX);
 		Y = 90;
@@ -560,6 +558,28 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "60Co_jun22_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
+	case 221:		// 24Na June 22, center, run 1
+		Add2Chain(tExpA, 127513, 127580, rootdir, max_files);
+		Add2Chain(tRawA, 127513, 127580, rootdir, max_files);
+		Add2Chain(tInfoA, 127513, 127580, rootdir, max_files);
+		Add2Chain(tExpB, 127581, 127657, rootdir, max_files);
+		Add2Chain(tRawB, 127581, 127657, rootdir, max_files);
+		Add2Chain(tInfoB, 127581, 127657, rootdir, max_files);
+		name = "24Na";
+		sprintf(fname, "24Na_jun22a_center_%s_R%4.1f", rootdir, RMAX);
+		Y = 50;
+		break;
+	case 223:		// 24Na June 22, center, run 2
+		Add2Chain(tExpA, 127658, 127719, rootdir, max_files);
+		Add2Chain(tRawA, 127658, 127719, rootdir, max_files);
+		Add2Chain(tInfoA, 127658, 127719, rootdir, max_files);
+		Add2Chain(tExpB, 127838, 127900, rootdir, max_files);
+		Add2Chain(tRawB, 127838, 127900, rootdir, max_files);
+		Add2Chain(tInfoB, 127838, 127900, rootdir, max_files);
+		name = "24Na";
+		sprintf(fname, "24Na_jun22b_center_%s_R%4.1f", rootdir, RMAX);
+		Y = 50;
+		break;
 	case 1001:	// Na MC, center
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/RadSources_v10/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root");
 		tMc->AddFile(str);
@@ -636,13 +656,14 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("%d - unknown\n", iser);
 		printf("Available valuse for iser = MIDD:\n");
 		printf("M  - MC (1) or experiment (0);\n");
-		printf("I  - isotope: 60Co (1) or 22Na (0);\n");
+		printf("I  - isotope: 24Na (2), 60Co (1) or 22Na (0);\n");
 		printf("DD - serial for experiment:\n");
 		printf("1  - February 17, center\n");
 		printf("2  - February 17, edge\n");
 		printf("11 - November 18, center\n");
 		printf("12 - November 18, edge\n");
 		printf("21 - June 22, center\n");
+		printf("23 - June 22, center, 24Na second run\n");
 		printf("31 - June 22, center, UP\n");
 		printf("DD - for MC:\n");
 		printf("1  - center (50, 50, 50) position\n");
@@ -650,7 +671,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("11 - center (50, 50, 50) position, full decay\n");
 		printf("12 - edge (50, 90, 50) position, full decay\n");
 		printf("21 - center (50, 50, 50) position, Akagi. Use rootdir to set suffix\n");
-		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 1001 1002 1011 1012 1021 1101 1102 1121\n");
+		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 221 223 1001 1002 1011 1012 1021 1101 1102 1121\n");
 		code = -1;
 		break;
 	}
@@ -753,7 +774,7 @@ void draw_scale_scan(const char *what, const char *when, const char *where, cons
 	double RMAX = 30)
 {
 //	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
-	const char *exppattern = "%s_%s_%s_root8n3_R%4.1f.root"; 		// what, when, where, RMAX
+	const char *exppattern = "%s_%s_%s_root8n4_R%4.1f.root"; 		// what, when, where, RMAX
 //	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
 //	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
 	const char *MCpattern = "Chikuma/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
