@@ -2,10 +2,13 @@
 #include <stdlib.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TRandom2.h>
 
-#define SLICE	1000
+#define SLICE		1000
 #define TIMELINESHIFT	1000.0
-#define MAXNAME	1000
+#define MAXNAME		1000
+#define NNOISE		50000		// 100kHz * 200 us * 2500 SiPM
+#define XTALK		1.37		// Crosstalk
 
 /****************************************************************
  *			Structures				*
@@ -135,6 +138,7 @@ void Usage(const char *progname)
 	printf("\t-h --- print this help;\n");
 	printf("\t-n N --- copy N entries only;\n");
 	printf("\t-p --- do not copy DANSSPrimary\n");
+	printf("\t-s --- add SiPM noise (very large output file !!!)\n");
 }
 
 int main(int argc, char **argv)
@@ -157,17 +161,19 @@ int main(int argc, char **argv)
 	double *SiPMTimeline;
 	char SiPMArray[25][100];
 	long i;
-	int j;
+	int j, k;
 	char *IsEventNonZeroEnergy;
 	int bNoPrimary = 0;
 	int bCutParticle = 0;
+	int bAddSiPMNoise = 0;
 	int c;
+	TRandom2 rndm;
 /****************************************************************
  *			Files and arguments			*
  ****************************************************************/
 	nMax = TTree::kMaxEntries;
 	iFirst = 0;
-	while ((c = getopt (argc, argv, "cf:hn:p")) != -1) {
+	while ((c = getopt (argc, argv, "cf:hn:ps")) != -1) {
 		switch (c) {
 		case 'c':
 			bCutParticle = 1;
@@ -184,6 +190,9 @@ int main(int argc, char **argv)
 		case 'p':
 			bNoPrimary = 1;
 			break;
+		case 's':
+			bAddSiPMNoise = 1;
+			break;
 		default:
 			Usage(argv[0]);
 			return 5;
@@ -194,7 +203,8 @@ int main(int argc, char **argv)
 		return 10;
 	}
 	
-	printf("%s%s%Ld entries @ %Ld\n", (bCutParticle) ? "CutParticle " : "", (bNoPrimary) ? "NoPrimary " : "", nMax, iFirst);
+	printf("%s%s%s%Ld entries @ %Ld\n", (bCutParticle) ? "CutParticle " : "", (bNoPrimary) ? "NoPrimary " : "", 
+		(bAddSiPMNoise) ? "Adding SiPM noise " : "", nMax, iFirst);
 	
 	TFile *fOut = new TFile(argv[optind+1], "RECREATE");
 	if (!fOut->IsOpen()) return 20;
@@ -437,6 +447,18 @@ int main(int argc, char **argv)
 			}
 			SiPMTimeline[(SiPMHits[i].Column * 100 + SiPMHits[i].Row) * 25000 + j] += SiPMHits[i].Signal;
 		}
+//		Add SiPM noise
+		if (bAddSiPMNoise) for (i=0; i<NNOISE; i++) {
+			j = 2500 * rndm.Rndm();			//	channel
+			k = 25000 * rndm.Rndm();		//	time
+			c = 1 + rndm.Poisson(XTALK - 1);	//	signal
+			if (!SiPMArray[j / 100][j % 100]) {
+				memset(&SiPMTimeline[j * 25000], 0, 25000 * sizeof(double));
+				SiPMArray[j / 100][j % 100] = 1;
+			}
+			SiPMTimeline[j * 25000 + k] += c;
+		}
+//		Fill the tree
 		for (i=0; i<25; i++) for (j=0; j<100; j++) if (SiPMArray[i][j]) {
 			SiPMTimelineBranch.EventID = EventID;
 			SiPMTimelineBranch.Column = i;

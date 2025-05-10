@@ -116,13 +116,16 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 	int j, k;
 	struct DanssEventStruct7 DanssEvent;
 	struct HitTypeStruct HitType[2600];
+	float HitE[2600];
 	struct RawHitInfoStruct RawHits;
 	double r2, E;
 	int east, west, north, south, up, down;
 	int noRaw;
+	double SiPmMax, PmtMax;
 
 	chain->SetBranchAddress("Data", &DanssEvent);
 	chain->SetBranchAddress("HitType", &HitType);
+	chain->SetBranchAddress("HitE", &HitE);
 	noRaw = chain->SetBranchAddress("RawHits", &RawHits);
 	N = chain->GetEntries();
 	N1 = N2 = N3 = N4 = N5 = N6 = N7 = 0;
@@ -171,12 +174,25 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		}
 		if (!((east && west) || (north && south) || (up && down))) continue;
 		N7++;
-
+//	Find maximum hits
+		SiPmMax = PmtMax = 0;
+		for (j=0; j<DanssEvent.NHits; j++) {
+			switch (HitType[j].type) {
+			case 0:	// SiPM
+				if (HitE[j] > SiPmMax) SiPmMax = HitE[j];
+				break;
+			case 1:	// PMT
+				if (HitE[j] > PmtMax) PmtMax = HitE[j];
+				break;
+			}
+		}
 //	Fill
 		E = (DanssEvent.SiPmCleanEnergy+DanssEvent.PmtCleanEnergy)/2.0;
 		hSum->Fill(E * scale);
-		hSiPM->Fill(DanssEvent.SiPmCleanEnergy * scale);
-		hPMT->Fill(DanssEvent.PmtCleanEnergy * scale);
+//		hSiPM->Fill(DanssEvent.SiPmCleanEnergy * scale);
+//		hPMT->Fill(DanssEvent.PmtCleanEnergy * scale);
+		hSiPM->Fill(SiPmMax * scale);
+		hPMT->Fill(PmtMax * scale);
 		if (E > 1.0 && E < 2.6) hHits->Fill(DanssEvent.SiPmCleanHits);
 	}
 	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips) %Ld(opposite)\n", 
