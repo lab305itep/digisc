@@ -60,6 +60,8 @@
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
 #define TCUT		10			// fine time cut, ns for SiPM
+#define TMCCUTMIN	0			// fine time cut, ns for SiPM for MC
+#define TMCCUTMAX	40			// fine time cut, ns for SiPM for MC
 #define TCUTPMT		30			// fine time cut, ns for PMT and VETO
 #define NOFINETIME	10000			// something out of range
 //	Flags
@@ -71,7 +73,7 @@
 #define FLG_SIMLONGCORR	  	  0x1000	// simulate "neutron" correction for MC events
 //#define FLG_NOCLEANNOISE 	 0x10000	// do not clean low energy signals
 #define FLG_NOTIMECUT		 0x20000	// do not clean signals by time
-#define FLG_NOCONFIRM		 0x40000	// do not search PMT confirmation for SiPM and vice versa
+//#define FLG_NOCONFIRM		 0x40000	// do not search PMT confirmation for SiPM and vice versa
 //#define FLG_NOCONFIRM2	 0x80000	// do not search PMT confirmation for 1 pixel SiPM signals
 #define FLG_NOPMTCORR		0x100000	// do not correct PMT energy of cluster for out of cluster SiPM hits
 #define FLG_PMTTIMECUT		0x200000	// Cut PMT and Veto by time
@@ -687,9 +689,17 @@ void CleanByTime(void)
 			} else if (user->npix(i) < 2.5) {
 				hSiPMtime[2]->Fill(user->t_raw(i) - DanssEvent.fineTime);
 			}
-			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) {
-				HitFlag[i] = -1;
-				DanssInfo.Cuts[5]++;
+			if (IsMc) {
+				if ((user->t_raw(i) - DanssEvent.fineTime) < TMCCUTMIN ||
+					(user->t_raw(i) - DanssEvent.fineTime) > TMCCUTMAX) {
+					HitFlag[i] = -1;
+					DanssInfo.Cuts[5]++;
+				}
+			} else {
+				if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) {
+					HitFlag[i] = -1;
+					DanssInfo.Cuts[5]++;
+				}
 			}
 			break;
 		case bPmt:
@@ -704,7 +714,14 @@ void CleanByTime(void)
 	} else {
 		tearly = SOMEEARLYTIME;
 	}
-	for (i=0; i<N; i++) if (user->type(i) == bSiPm && fabs(user->t_raw(i) - tearly) <= TCUT) HitFlag[i] = -100;	// mark early hit candidates
+	for (i=0; i<N; i++) if (user->type(i) == bSiPm) {
+		if (IsMc ) {
+			if ((user->t_raw(i) - tearly) > TMCCUTMIN &&
+				(user->t_raw(i) - tearly) < TMCCUTMAX) HitFlag[i] = -100;	// mark early hit candidates
+		} else {
+			if (fabs(user->t_raw(i) - tearly) <= TCUT) HitFlag[i] = -100;	// mark early hit candidates
+		}
+	}
 }
 
 void CorrectEnergy(double scale)

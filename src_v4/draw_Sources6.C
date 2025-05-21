@@ -172,7 +172,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 			if ((HitType[j].z & 1) == 0 && HitType[j].xy < 12) north++; 
 			if ((HitType[j].z & 1) == 0 && HitType[j].xy > 12) south++; 
 		}
-		if (!((east && west) || (north && south) || (up && down))) continue;
+// don't use		if (!((east && west) || (north && south) || (up && down))) continue;
 		N7++;
 //	Find maximum hits
 		SiPmMax = PmtMax = 0;
@@ -189,10 +189,10 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 //	Fill
 		E = (DanssEvent.SiPmCleanEnergy+DanssEvent.PmtCleanEnergy)/2.0;
 		hSum->Fill(E * scale);
-//		hSiPM->Fill(DanssEvent.SiPmCleanEnergy * scale);
-//		hPMT->Fill(DanssEvent.PmtCleanEnergy * scale);
-		hSiPM->Fill(SiPmMax * scale);
-		hPMT->Fill(PmtMax * scale);
+		hSiPM->Fill(DanssEvent.SiPmCleanEnergy * scale);
+		hPMT->Fill(DanssEvent.PmtCleanEnergy * scale);
+//		hSiPM->Fill(SiPmMax * scale);
+//		hPMT->Fill(PmtMax * scale);
 		if (E > 1.0 && E < 2.6) hHits->Fill(DanssEvent.SiPmCleanHits);
 	}
 	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips) %Ld(opposite)\n", 
@@ -633,10 +633,19 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		break;
 	case 1031:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na
 //		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n4/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "22Na";
 		sprintf(fname, "Chikuma/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
+	case 1041:	// Na MC with SiPM noise
+		for (i=0; i<40; i++) {
+			sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/Full_decay_center_Chikuma_xzmap/SiPmNoise/mc_22Na_indLY_transcode_rawProc_pedSim_1p%d.root", i);
+			tMc->AddFile(str);
+		}
+		name = "22Na";
+		sprintf(fname, "Chikuma/22Na/%s_noise/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1101:	// Co MC, center
@@ -661,8 +670,8 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Y = 50;
 		break;
 	case 1131:	// Co MC, center, chikuma, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co
-//		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
-		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n4/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+//		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n4/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "Chikuma/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
@@ -789,8 +798,8 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 void draw_scale_scan(const char *what, const char *when, const char *where, const char *version, 
 	double RMAX = 30)
 {
-//	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
-	const char *exppattern = "%s_%s_%s_root8n4_R%4.1f.root"; 		// what, when, where, RMAX
+	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
+//	const char *exppattern = "%s_%s_%s_ODroot8n4_R%4.1f.root"; 		// what, when, where, RMAX
 //	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
 //	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
 	const char *MCpattern = "Chikuma/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
