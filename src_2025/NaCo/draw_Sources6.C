@@ -152,7 +152,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		r2 += (DanssEvent.NeutronX[2] + 0.5 - Z) * (DanssEvent.NeutronX[2] + 0.5 - Z);
 		if (r2 > RMAX*RMAX) continue;		// 30 cm
 		N5++;
-//	Remove event if beta-afected strip hit
+//	Remove event if beta-afected strip hit	- not used
 		k = 0;
 		for (j=0; j<DanssEvent.NHits; j++) {
 			if (HitType[j].type != 0) continue;	// Select SiPM
@@ -161,7 +161,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		}
 //		if (k != 0) continue;
 		N6++;
-//	Request opposite hits in at least one projection
+//	Request opposite hits in at least one projection - not used
 		east = west = north = south = up = down = 0;
 		for (j=0; j<DanssEvent.NHits; j++) {
 			if (HitType[j].type != 0) continue;	// Select SiPM
@@ -174,7 +174,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		}
 // don't use		if (!((east && west) || (north && south) || (up && down))) continue;
 		N7++;
-//	Find maximum hits
+//	Find maximum hits	- not used
 		SiPmMax = PmtMax = 0;
 		for (j=0; j<DanssEvent.NHits; j++) {
 			switch (HitType[j].type) {
@@ -632,11 +632,17 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Y = 50;
 		break;
 	case 1031:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na
-//		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "22Na";
-		sprintf(fname, "Chikuma/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "Chikuma/root8n2/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
+	case 1032:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/22Na
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "22Na";
+		sprintf(fname, "Chikuma/root8n6/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1041:	// Na MC with SiPM noise
@@ -671,10 +677,16 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		break;
 	case 1131:	// Co MC, center, chikuma, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co
 		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
-//		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n4/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
 		tMc->AddFile(str);
 		name = "60Co";
-		sprintf(fname, "Chikuma/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "Chikuma/root8n2/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
+	case 1132:	// Co MC, center, chikuma, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/60Co
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "60Co";
+		sprintf(fname, "Chikuma/root8n6/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	default:
@@ -696,11 +708,15 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("11 - center (50, 50, 50) position, full decay\n");
 		printf("12 - edge (50, 90, 50) position, full decay\n");
 		printf("21 - center (50, 50, 50) position, Akagi. Use rootdir to set suffix\n");
+		printf("31 - center (50, 50, 50) position, Chikuma root8n2. Use rootdir to set suffix\n");
+		printf("32 - center (50, 50, 50) position, Chikuma root8n6. Use rootdir to set suffix\n");
 		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 221 223 1001 1002 1011 1012 1021 1101 1102 1121\n");
 		code = -1;
 		break;
 	}
 
+	sprintf(str, "mkdir -p `dirname %s`", fname);
+	system(str);
 	switch (code) {
 	case 0:	// Experiment
 		draw_Exp(tExpA, tExpB, tInfoA, tInfoB, name, fname, X, Y, Z, RMAX);

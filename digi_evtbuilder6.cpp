@@ -59,7 +59,8 @@
 //	fine time
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
-#define TCUT		10			// fine time cut, ns for SiPM
+//#define TCUT		10			// fine time cut, ns for SiPM
+#define TCUT		15			// fine time cut, ns for SiPM for experiment
 #define TMCCUTMIN	0			// fine time cut, ns for SiPM for MC
 #define TMCCUTMAX	40			// fine time cut, ns for SiPM for MC
 #define TCUTPMT		30			// fine time cut, ns for PMT and VETO
@@ -161,7 +162,7 @@ int RawHitsCnt;
 
 TH1D *hCrossTalk;
 TH1D *hPMTAmpl[iNChannels_AdcBoard];
-TH1D *hSiPMtime[3];
+TH1D *hSiPMtime[6];
 
 TH1D *hEtoEMC;
 TH1D *hNPEtoEMC;
@@ -688,6 +689,12 @@ void CleanByTime(void)
 				hSiPMtime[1]->Fill(user->t_raw(i) - DanssEvent.fineTime);
 			} else if (user->npix(i) < 2.5) {
 				hSiPMtime[2]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			} else if (user->npix(i) < 5.5) {
+				hSiPMtime[3]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			} else if (user->npix(i) < 10.5) {
+				hSiPMtime[4]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			} else {
+				hSiPMtime[5]->Fill(user->t_raw(i) - DanssEvent.fineTime);
 			}
 			if (IsMc) {
 				if ((user->t_raw(i) - DanssEvent.fineTime) < TMCCUTMIN ||
@@ -1455,9 +1462,12 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 		hPMTTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
 	}
 	hCrossTalk = new TH1D("hCrossTalk", "Croos talk distribution;Pixels/Ph.e.", 280, 0.8, 2.2);
-	hSiPMtime[0] = new TH1D("hSiPMtimeAll", "SiPM time - finetime, all hits;ns;Hits", 400, -40, 40);
-	hSiPMtime[1] = new TH1D("hSiPMtime1Px", "SiPM time - finetime, 1 pixel hits;ns;Hits", 400, -40, 40);
-	hSiPMtime[2] = new TH1D("hSiPMtime2Px", "SiPM time - finetime, 2 pixel hits;ns;Hits", 400, -40, 40);
+	hSiPMtime[0] = new TH1D("hSiPMtimeAll", "SiPM time - finetime, all hits;ns;Hits", 500, -40, 60);
+	hSiPMtime[1] = new TH1D("hSiPMtime1Px", "SiPM time - finetime, 1 pixel hits;ns;Hits", 500, -40, 60);
+	hSiPMtime[2] = new TH1D("hSiPMtime2Px", "SiPM time - finetime, 2 pixels hits;ns;Hits", 500, -40, 60);
+	hSiPMtime[3] = new TH1D("hSiPMtime3Px", "SiPM time - finetime, 3-5 pixels hits;ns;Hits", 500, -40, 60);
+	hSiPMtime[4] = new TH1D("hSiPMtime6Px", "SiPM time - finetime, 6-10 pixels hits;ns;Hits", 500, -40, 60);
+	hSiPMtime[5] = new TH1D("hSiPMtime10Px", "SiPM time - finetime, > 10 pixels hits;ns;Hits", 500, -40, 60);
 	for (j=0; j<iNChannels_AdcBoard; j++) {
 		sprintf(strs, "hPMTAmpl%2.2d", j);
 		sprintf(strl, "PMT amplification: ADC integral units per MeV %2.2d", j);
@@ -1592,7 +1602,7 @@ void ReadDigiDataUser::finishUserProc()
 	}
 	hCrossTalk->Write();
 	for (j=0; j<iNChannels_AdcBoard; j++) if (hPMTAmpl[j]->GetEntries() > 0) hPMTAmpl[j]->Write();
-	for (i=0; i<3; i++) hSiPMtime[i]->Write();
+	for (i=0; i<6; i++) hSiPMtime[i]->Write();
 	if (RawHitsTree) RawHitsTree->Write();
 	if (RawHitsArray) free(RawHitsArray);
 	if (IsMc) {
