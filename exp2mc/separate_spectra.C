@@ -339,6 +339,7 @@ int MakePure59(const char *fPos = "pos_10dF_2210_154797.txt", const char *fBase 
 		SetHistProperties(positions[i].hSp, kRed, kFullCircle);
 		positions[i].hSp->SetMinimum(0);
 		positions[i].hSp->SetMaximum(12);
+		positions[i].hSp->GetYaxis()->SetTitle("a.u.");
 		positions[i].hSp->DrawCopy();
 		if (!i) lgA->AddEntry(positions[i].hSp->Clone("_Total"), "Total", "lp");
 		sprintf(str, "h238_%d", i);
@@ -357,15 +358,15 @@ int MakePure59(const char *fPos = "pos_10dF_2210_154797.txt", const char *fBase 
 		positions[i].hSp->DrawCopy("same");
 		positions[i].f239S = 100.0 * positions[i].f239 / (positions[i].f235 + positions[i].f239);
 		positions[i].hSp->Scale(100.0 / (positions[i].f235 + positions[i].f239));
-		sprintf(str, "^{235}U: %5.2f  ^{238}U: %5.2f  ^{239}Pu: %5.2f  ^{241}Pu: %5.2f", 
+		sprintf(str, "Fractions: ^{235}U: %5.2f  ^{238}U: %5.2f  ^{239}Pu: %5.2f  ^{241}Pu: %5.2f", 
 			positions[i].f235, positions[i].f238, positions[i].f239, positions[i].f241);
 		lt->DrawLatexNDC(0.4, 0.82, str);
 		sprintf(str, "Scaled fraction ^{239}Pu: %5.2f", positions[i].f239S);
 		lt->DrawLatexNDC(0.6, 0.75, str);
 		if (!i) {
 			lgA->AddEntry(positions[i].hSp, "^{235}U+^{239}Pu", "lp");
-			lgA->AddEntry(h238, "^{238}U", "lp");
-			lgA->AddEntry(h241, "^{241}Pu", "lp");
+			lgA->AddEntry(h238, "^{238}U (HM)", "lp");
+			lgA->AddEntry(h241, "^{241}Pu (HM)", "lp");
 		}
 		lgA->Draw();
 		cv->Update();
@@ -373,8 +374,14 @@ int MakePure59(const char *fPos = "pos_10dF_2210_154797.txt", const char *fBase 
 	}
 //		Create and fit Graphs 
 	TF1 *lFit = new TF1("lFit", "[0]+([1]-[0])*x/100.0", 0, 100);
+	lFit->SetParNames("S_{5}", "S_{9}");
 	TH1D *h235 = new TH1D("h235", "^{235}U spectrum;MeV;a.u.", 128, 0, 16);
 	TH1D *h239 = new TH1D("h239", "^{239}Pu spectrum;MeV;a.u.", 128, 0, 16);
+	double _ndf = PosEntries - 2;
+	double chimin = _ndf - 5*sqrt(_ndf);
+	if (chimin < 0) chimin = 0;
+	double chimax = _ndf + 9*sqrt(_ndf);
+	TH1D *hChi2 = new TH1D("hChi2", "#chi^{2} distribution;#chi^{2}", 15, chimin, chimax);
 	SetHistProperties(h235, kRed, kFullSquare);
 	SetHistProperties(h239, kBlue, kFullSquare);
 	for (i=5; i<80; i++) {	// 0.5 - 10 MeV
@@ -385,6 +392,7 @@ int MakePure59(const char *fPos = "pos_10dF_2210_154797.txt", const char *fBase 
 		es235 = lFit->GetParError(0);
 		s239 = lFit->GetParameter(1);
 		es239 = lFit->GetParError(1);
+		if (i < 57) hChi2->Fill(lFit->GetChisquare());	// till 7 MeV
 		sprintf(str, "^{235}U: %6.3f#pm%6.3f", s235, es235);
 		lt->DrawLatexNDC(0.6, 0.82, str);
 		sprintf(str, "^{239}Pu: %6.3f#pm%6.3f", s239, es239);
@@ -433,10 +441,15 @@ int MakePure59(const char *fPos = "pos_10dF_2210_154797.txt", const char *fBase 
 		a5, ea5, a9, ea9, a, ea);
 	lt->DrawLatexNDC(0.3, 0.85, str);
 	cv->SaveAs((oname + ".pdf").Data());
+	cv->Clear();
+	gStyle->SetOptStat(1001110);
+	hChi2->Draw();
+	cv->SaveAs((oname + ".pdf").Data());
 	cv->SaveAs((oname + ".pdf]").Data());
 	TFile *fOut = new TFile((oname + ".root").Data(), "RECREATE");
 	h235->Write();
-	h239->Write();	
+	h239->Write();
+	hChi2->Write();
 	fOut->Close();
 	return 0;
 }

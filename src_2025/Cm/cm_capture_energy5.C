@@ -50,7 +50,7 @@ TChain *create_chain(const char *fname, const char *chname)
 
 //	Make experimental hists from file(s) with a tree of 248Cm fission events
 //  fnameIn - input file name(s)
-//  fnameOut - outptu file name
+//  fnameOut - output file name
 void src_248Cm(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax = 7)
 {
 	char strA[1024];
@@ -417,4 +417,53 @@ void cm_capture_energy5(void)
 		"248Cm_MC_edge_8.2_v10.root");
 	src_248CmMC("cm_MC_center_8.2_v10.root", "248Cm_MCF_center_8.2_v10.root");
 	src_248CmMC("cm_MC_edge_8.2_v10.root", "248Cm_MCF_edge_8.2_v10.root");
+}
+
+void scan_scale_all(void)
+{
+	const char *expCm82[] = {"cm_14428_14485_8.2.hist.root", "cm_50578_50647_8.2.hist.root", "cm_127720_127772_8.2.hist.root"};
+	const char *expCm86[] = {"cm_14428_14485_8.6.hist.root", "cm_50578_50647_8.6.hist.root", "cm_127720_127772_8.6.hist.root"};
+	const char *MCCm82[] = {"cm_MC_8.2_Center_Chikuma.hist.root",
+		"cm_MC_8.2_Center_Chikuma_Birks_el_0_0108.hist.root",
+		"cm_MC_8.2_Center_Chikuma_Birks_el_0_0308.hist.root",
+		"cm_MC_8.2_Center_Chikuma_Cher_coeff_0_033.hist.root",
+		"cm_MC_8.2_Center_Chikuma_Cher_coeff_0_233.hist.root",
+		"cm_MC_8.2_Center_Chikuma_main_Birks_0_0108.hist.root",
+		"cm_MC_8.2_Center_Chikuma_main_Birks_0_0308.hist.root",
+		"cm_MC_8.2_Center_Chikuma_paint_0_15.hist.root",
+		"cm_MC_8.2_Center_Chikuma_paint_0_45.hist.root",
+		"cm_MC_8.2_Center_Chikuma_xzmap.hist.root"};
+	const char *MCCm86[] = {"cm_MC_8.6_Center_Chikuma.hist.root",
+		"cm_MC_8.6_Center_Chikuma_Birks_el_0_0108.hist.root",
+		"cm_MC_8.6_Center_Chikuma_Birks_el_0_0308.hist.root",
+		"cm_MC_8.6_Center_Chikuma_Cher_coeff_0_033.hist.root",
+		"cm_MC_8.6_Center_Chikuma_Cher_coeff_0_233.hist.root",
+		"cm_MC_8.6_Center_Chikuma_main_Birks_0_0108.hist.root",
+		"cm_MC_8.6_Center_Chikuma_main_Birks_0_0308.hist.root",
+		"cm_MC_8.6_Center_Chikuma_paint_0_15.hist.root",
+		"cm_MC_8.6_Center_Chikuma_paint_0_45.hist.root",
+		"cm_MC_8.6_Center_Chikuma_xzmap.hist.root"};
+	const char *when[] = {"mar17", "nov18", "jun22"};
+	const char *MC[] = {"Chikuma",
+		"Chikuma_Birks_el_0_0108",
+		"Chikuma_Birks_el_0_0308",
+		"Chikuma_Cher_coeff_0_033",
+		"Chikuma_Cher_coeff_0_233",
+		"Chikuma_main_Birks_0_0108",
+		"Chikuma_main_Birks_0_0308",
+		"Chikuma_paint_0_15",
+		"Chikuma_paint_0_45",
+		"Chikuma_xzmap"};
+	int i, j, nExp, nMC;
+	char str[1024];
+	
+	nExp = sizeof(when) / sizeof(when[0]);
+	nMC = sizeof(MC) / sizeof(MC[0]);
+	
+	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
+		sprintf(str, "cm_8.2_%s_%s.root", when[j], MC[i]);
+		scan_248Cm(expCm82[j], MCCm82[i], str);
+		sprintf(str, "cm_8.6_%s_%s.root", when[j], MC[i]);
+		scan_248Cm(expCm86[j], MCCm86[i], str);
+	}
 }

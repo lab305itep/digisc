@@ -43,12 +43,12 @@
 #include "evtbuilder.h"
 
 /***********************	Definitions	****************************/
-#define MYVERSION	"4.60"
+#define MYVERSION	"4.70"
 //	Initial clean parameters
 #define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit for FineTime calculation
-// #define MINSIPMPIXELS2	2			// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
+// #define MINSIPMPIXELS2	2		// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
 // #define MINPMTENERGY	0.1			// Minimum PMT energy for a hit
-// #define MINVETOENERGY	0.1			// Minimum VETO energy for a hit
+// #define MINVETOENERGY	0.1		// Minimum VETO energy for a hit
 #define SIPMEARLYTIME	45			// ns - shift from fine time
 #define SOMEEARLYTIME	130			// ns - absolute if fineTime is not defined
 #define MAXPOSITRONENERGY	20		// Maximum Total clean energy to calculate positron parameters
@@ -59,12 +59,14 @@
 //	fine time
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
-//#define TCUT		10			// fine time cut, ns for SiPM
-#define TCUT		15			// fine time cut, ns for SiPM for experiment
-#define TMCCUTMIN	0			// fine time cut, ns for SiPM for MC
-#define TMCCUTMAX	40			// fine time cut, ns for SiPM for MC
+#define TCUT		10			// fine time cut, ns for SiPM
+//#define TCUT		15.0			// fine time cut, ns for SiPM for experiment
+#define TMCCUTMIN	(-15.0)			// fine time cut, ns for SiPM for MC
+#define TMCCUTMAX	(15.0)			// fine time cut, ns for SiPM for MC
 #define TCUTPMT		30			// fine time cut, ns for PMT and VETO
 #define NOFINETIME	10000			// something out of range
+#define MCPMTDELAY	(-13.2)			// PMT MC DELAY, ns (-13.2)
+#define MCSIPMDELAY	15.2			// SiPM MC DELAY, ns (15.2)
 //	Flags
 #define FLG_PRINTALL		       1	// do large debuggging printout
 #define FLG_DTHIST		       2	// create time delta histogramms
@@ -83,7 +85,7 @@
 
 #define MAXADCBOARD	60
 #define TAGMASK		((1L<<45) - 1)
-#define TIMEHISTMINENERGY	10		// Minimum sum energy in SiPm + Pmt + Veto to fill time hists (not divided by 2)
+#define TIMEHISTMINENERGY	3		// Minimum sum energy in SiPm + Pmt + Veto to fill time hists (not divided by 2)
 #define TIMEHISTMINHITS		4		// Minimum number of hits in SiPm + Pmt + Veto to fill time hists
 
 using namespace std;
@@ -163,6 +165,7 @@ int RawHitsCnt;
 TH1D *hCrossTalk;
 TH1D *hPMTAmpl[iNChannels_AdcBoard];
 TH1D *hSiPMtime[6];
+TH1D *hSiPMtimeClean[6];
 
 TH1D *hEtoEMC;
 TH1D *hNPEtoEMC;
@@ -302,6 +305,15 @@ int IsPickUp(void)
 /********************************************************************************************************************/
 /************************	Analysis functions					*****************************/
 /********************************************************************************************************************/
+
+// Get time from hit number. Apply MC correction
+// i - hit number
+double HitTime(int i)
+{
+	if (!IsMc) return user->t_raw(i);
+	if (user->adc(i) == 1 || user->adc(i) == 3) return  user->t_raw(i) - MCPMTDELAY;
+	return user->t_raw(i) - MCSIPMDELAY;
+}
 
 // Get energy from hit number. Apply global corrections
 // i - hit number
@@ -634,37 +646,46 @@ void CleanZeroes(void)
 
 	N = user->nhits();
 	for (i=0; i<N; i++) if ((user->type(i) == bSiPm && user->npix(i) <= 0) || (!isfinite(user->e(i))) ||
-		Energy(i) <= 0 || user->t_raw(i) < -1000 || user->isBadChannel(user->chanIndex(i)) || DeadList[user->adc(i)-1][user->adcChan(i)]) {
-		HitFlag[i] = -1;
+		Energy(i) <= 0 || HitTime(i) < -1000 || user->isBadChannel(user->chanIndex(i)) || DeadList[user->adc(i)-1][user->adcChan(i)]) {
+		HitFlag[i] = -10;
 		DanssInfo.Cuts[0]++;
 	}
 }
 
-
 /*	Clean only SiPM by PMT confirmation		*
 *	Require PMT confirmation for ALL SiPM hits	*/
-
 void CleanByConfirmation(void)
 {
 	int i, j, N;
 	
 	N = user->nhits();
-	for (i=0; i<N; i++) if (HitFlag[i] >= 0 && user->type(i) == bSiPm) {
-//		commented out - search for confirmation for all SiPm hits
-//		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
+	for (i=0; i<N; i++) if (user->type(i) == bSiPm) {
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j)) break;
 		if (j < N) continue;
-		HitFlag[i] = -1;
+		HitFlag[i] = -3;
 		DanssInfo.Cuts[3]++;
-//		if (user->npix(i) < MINSIPMPIXELS2) DanssInfo.Cuts[4]++;
 	}
 //		"early" hits
 	for (i=0; i<N; i++) if (HitFlag[i] == -100)
 	{
-//		if (user->npix(i) >= MINSIPMPIXELS2 && (iFlags & FLG_CONFIRMSIPM)) continue;		// that's enough
 		for (j=0; j<N; j++) if (HitFlag[j] >= 0 && user->type(j) == bPmt && IsInModule(i, j)) break;
 		if (j < N) continue;
-		HitFlag[i] = -1;
+		HitFlag[i] = -3;
+	}
+//		clean time
+	for (i=0; i<N; i++) if (HitFlag[i] >= -1 && user->type(i) == bSiPm) {
+		hSiPMtimeClean[0]->Fill(HitTime(i) - DanssEvent.fineTime);
+		if (user->npix(i) < 1.5) {
+			hSiPMtimeClean[1]->Fill(HitTime(i) - DanssEvent.fineTime);
+		} else if (user->npix(i) < 2.5) {
+			hSiPMtimeClean[2]->Fill(HitTime(i) - DanssEvent.fineTime);
+		} else if (user->npix(i) < 5.5) {
+			hSiPMtimeClean[3]->Fill(HitTime(i) - DanssEvent.fineTime);
+		} else if (user->npix(i) < 10.5) {
+			hSiPMtimeClean[4]->Fill(HitTime(i) - DanssEvent.fineTime);
+		} else {
+			hSiPMtimeClean[5]->Fill(HitTime(i) - DanssEvent.fineTime);
+		}
 	}
 }
 
@@ -672,7 +693,7 @@ void Clean1Pixel(void)
 {
 	int i, N;
 	N = user->nhits();
-	for (i=0; i<N; i++) if (user->type(i) == bSiPm) if(user->npix(i) < 1.5) HitFlag[i] = -1;
+	for (i=0; i<N; i++) if (user->type(i) == bSiPm) if(user->npix(i) < 1.5) HitFlag[i] = -2;
 }
 
 void CleanByTime(void)
@@ -684,26 +705,26 @@ void CleanByTime(void)
 	if (DanssEvent.fineTime != NOFINETIME) {
 		for (i=0; i<N; i++) if (HitFlag[i] >= 0) switch (user->type(i)) {
 		case bSiPm:
-			hSiPMtime[0]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+			hSiPMtime[0]->Fill(HitTime(i) - DanssEvent.fineTime);
 			if (user->npix(i) < 1.5) {
-				hSiPMtime[1]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+				hSiPMtime[1]->Fill(HitTime(i) - DanssEvent.fineTime);
 			} else if (user->npix(i) < 2.5) {
-				hSiPMtime[2]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+				hSiPMtime[2]->Fill(HitTime(i) - DanssEvent.fineTime);
 			} else if (user->npix(i) < 5.5) {
-				hSiPMtime[3]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+				hSiPMtime[3]->Fill(HitTime(i) - DanssEvent.fineTime);
 			} else if (user->npix(i) < 10.5) {
-				hSiPMtime[4]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+				hSiPMtime[4]->Fill(HitTime(i) - DanssEvent.fineTime);
 			} else {
-				hSiPMtime[5]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+				hSiPMtime[5]->Fill(HitTime(i) - DanssEvent.fineTime);
 			}
 			if (IsMc) {
-				if ((user->t_raw(i) - DanssEvent.fineTime) < TMCCUTMIN ||
-					(user->t_raw(i) - DanssEvent.fineTime) > TMCCUTMAX) {
+				if ((HitTime(i) - DanssEvent.fineTime) < TMCCUTMIN ||
+					(HitTime(i) - DanssEvent.fineTime) > TMCCUTMAX) {
 					HitFlag[i] = -1;
 					DanssInfo.Cuts[5]++;
 				}
 			} else {
-				if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUT) {
+				if (fabs(HitTime(i) - DanssEvent.fineTime) > TCUT) {
 					HitFlag[i] = -1;
 					DanssInfo.Cuts[5]++;
 				}
@@ -711,7 +732,7 @@ void CleanByTime(void)
 			break;
 		case bPmt:
 		case bVeto:
-			if (fabs(user->t_raw(i) - DanssEvent.fineTime) > TCUTPMT && (iFlags & FLG_PMTTIMECUT)) {
+			if (fabs(HitTime(i) - DanssEvent.fineTime) > TCUTPMT && (iFlags & FLG_PMTTIMECUT)) {
 				HitFlag[i] = -1;
 				DanssInfo.Cuts[6]++;
 			}
@@ -721,12 +742,12 @@ void CleanByTime(void)
 	} else {
 		tearly = SOMEEARLYTIME;
 	}
-	for (i=0; i<N; i++) if (user->type(i) == bSiPm) {
+	for (i=0; i<N; i++) if (user->type(i) == bSiPm && HitFlag[i] >= -5) {
 		if (IsMc ) {
-			if ((user->t_raw(i) - tearly) > TMCCUTMIN &&
-				(user->t_raw(i) - tearly) < TMCCUTMAX) HitFlag[i] = -100;	// mark early hit candidates
+			if ((HitTime(i) - tearly) > TMCCUTMIN &&
+				(HitTime(i) - tearly) < TMCCUTMAX) HitFlag[i] = -100;	// mark early hit candidates
 		} else {
-			if (fabs(user->t_raw(i) - tearly) <= TCUT) HitFlag[i] = -100;	// mark early hit candidates
+			if (fabs(HitTime(i) - tearly) <= TCUT) HitFlag[i] = -100;	// mark early hit candidates
 		}
 	}
 }
@@ -816,17 +837,17 @@ void DebugFullPrint(void)
 		for(i=0; i<N; i++) switch(user->type(i)) {
 		case bSiPm:
 			printf("%4d SiPM %3.0f %7.1f %4.1f %5.1f %2d.%2.2d    %c  %2d %2d  %c\n", i+1, user->npix(i), user->signal(i),
-				Energy(i), user->adc(i), user->t_raw(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
+				Energy(i), user->adc(i), HitTime(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
 				(HitFlag[i]<0) ? 'X' : ' ');
 			break;
 		case bPmt:
 			printf("%4d PMT      %7.1f %4.1f %5.1f %2d.%2.2d    %c  %2d %2d  %c\n", i+1, user->signal(i),
-				Energy(i), user->t_raw(i), user->adc(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
+				Energy(i), HitTime(i), user->adc(i), user->adcChan(i), user->side(i), user->firstCoord(i), user->zCoord(i),
 				(HitFlag[i]<0) ? 'X' : ' ');
 			break;
 		case bVeto:
 			printf("%4d VETO     %7.1f %4.1f %5.1f %2d.%2.2d    -  xx xx  %c\n", i+1, user->signal(i),
-				Energy(i), user->t_raw(i), user->adc(i), user->adcChan(i),
+				Energy(i), HitTime(i), user->adc(i), user->adcChan(i),
 				(HitFlag[i]<0) ? 'X' : ' ');
 			break;
 		}
@@ -914,8 +935,8 @@ void DumpEvent(void)
 			Veto->Fill(user->adcChan(i), Energy(i));
 			break;
 		}
-		Time->Fill(user->t_raw(i), Energy(i));
-		if (HitFlag[i] >= 0) TimeClean->Fill(user->t_raw(i), Energy(i));
+		Time->Fill(HitTime(i), Energy(i));
+		if (HitFlag[i] >= 0) TimeClean->Fill(HitTime(i), Energy(i));
 	}
 	SiPmX->Write();
 	SiPmY->Write();
@@ -946,10 +967,10 @@ void FillTimeHists(void)
 {
 	int i, N;
 	N = user->nhits();
-	for (i=0; i<N; i++) if (Energy(i) > MINENERGY4TIME && user->t_raw(i) > 0) {
-		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - DanssEvent.fineTime);
+	for (i=0; i<N; i++) if (Energy(i) > MINENERGY4TIME && HitTime(i) > 0) {
+		hTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(HitTime(i) - DanssEvent.fineTime);
 //		time relative to PMT - we need some common calibration of delays
-		if (PmtFineTime > 0) hPMTTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(user->t_raw(i) - PmtFineTime);
+		if (PmtFineTime > 0) hPMTTimeDelta[user->adc(i)-1][user->adcChan(i)]->Fill(HitTime(i) - PmtFineTime);
 	}
 }
 
@@ -975,7 +996,7 @@ void FindFineTime(void)
 			break;
 		case bPmt:
 			e = Energy(i);
-			PMTsumT += user->t_raw(i) * e;
+			PMTsumT += HitTime(i) * e;
 			PMTsumA += e;
 			n++;
 			break;
@@ -983,8 +1004,8 @@ void FindFineTime(void)
 			e = 0;	// exclude veto from time averaging
 			break;
 		}
-		if (e > MINENERGY4TIME && user->t_raw(i) > MINAVRTIME) {
-			tsum += user->t_raw(i) * e;
+		if (e > MINENERGY4TIME && HitTime(i) > MINAVRTIME) {
+			tsum += HitTime(i) * e;
 			asum += e;
 			k++;
 		}
@@ -1013,7 +1034,7 @@ void StoreHits(void)
 	N = user->nhits();
 	for (i=0; i<N; i++) if (HitFlag[i] >= 0) {
 		HitArray.E[j] = Energy(i);
-		HitArray.T[j] = user->t_raw(i);
+		HitArray.T[j] = HitTime(i);
 		HitArray.type[j].type = user->type(i);
 		HitArray.type[j].flag = HitFlag[i];
 		switch (user->type(i)) {
@@ -1132,7 +1153,7 @@ void SumEverything(void)
  *  CC - channel number
  *  NNNNNN - run range begin
  *  MMMMMM - run range end
- *  FFFF   - flaot number of the delay
+ *  FFFF   - float number of the delay
  *
  ***/
 
@@ -1147,12 +1168,27 @@ void ReadDigiDataUser::init_Tds()
 	double val;
 
 //	Set all zeroes
-	for(i = 100; i < iNElements; i++) {
-    		iAdcNum = i / 100;
-    		iAdcChan = i % 100;
-    		if(!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
-    		setTd(i, 0); // set all td = 0
-  	}
+//	for(i = 100; i < iNElements; i++) {
+//		iAdcNum = i / 100;
+//		iAdcChan = i % 100;
+//		if(!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
+//		setTd(i, 0); // set all td = 0
+//	}
+//	Set MC time calibration
+	if (IsMc) {
+		printf("Setting delays for MC: SiPM = %6.2f,  PMT = %6.2f\n", MCSIPMDELAY, MCPMTDELAY);
+		for(i = 100; i < iNElements; i++) {
+			iAdcNum = i / 100;
+			iAdcChan = i % 100;
+			if(!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
+			val = (iAdcNum == 1 || iAdcNum == 3) ? MCPMTDELAY : MCSIPMDELAY;
+//			if (i < 800) printf("%d %d %d => %f\n", i, iAdcNum, iAdcChan, val);
+			setTd(i, val);
+		}
+//		getchar();
+		return;
+	}
+
 	if (!chTimeCalibration) return;
 
 //	Read and implement tcalib file
@@ -1188,6 +1224,7 @@ void ReadDigiDataUser::init_Tds()
 	printf("Time calibration used: %s. %d channels found.\n", chTimeCalibration, k);
 
 	fclose(f);
+//	getchar();
 }
 
 //------------------------------->
@@ -1453,13 +1490,15 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	memset(&DanssInfo, 0, sizeof(struct DanssInfoStruct4));
 	memset(&RawHits, 0, sizeof(RawHits));
 	
-	if (iFlags & FLG_DTHIST) for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
-		sprintf(strs, "hDT%2.2dc%2.2d", i+1, j);
-		sprintf(strl, "Time delta distribution for channel %2.2d.%2.2d;ns", i+1, j);
-		hTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
-		sprintf(strs, "hDTP%2.2dc%2.2d", i+1, j);
-		sprintf(strl, "Time delta distribution for channel %2.2d.%2.2d versus PMT;ns", i+1, j);
-		hPMTTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
+	if (iFlags & FLG_DTHIST) {
+		for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
+			sprintf(strs, "hDT%2.2dc%2.2d", i+1, j);
+			sprintf(strl, "Time delta distribution for channel %2.2d.%2.2d;ns", i+1, j);
+			hTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
+			sprintf(strs, "hDTP%2.2dc%2.2d", i+1, j);
+			sprintf(strl, "Time delta distribution for channel %2.2d.%2.2d versus PMT;ns", i+1, j);
+			hPMTTimeDelta[i][j] = new TH1D(strs, strl, 250, -25, 25);
+		}
 	}
 	hCrossTalk = new TH1D("hCrossTalk", "Croos talk distribution;Pixels/Ph.e.", 280, 0.8, 2.2);
 	hSiPMtime[0] = new TH1D("hSiPMtimeAll", "SiPM time - finetime, all hits;ns;Hits", 500, -40, 60);
@@ -1468,6 +1507,12 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 	hSiPMtime[3] = new TH1D("hSiPMtime3Px", "SiPM time - finetime, 3-5 pixels hits;ns;Hits", 500, -40, 60);
 	hSiPMtime[4] = new TH1D("hSiPMtime6Px", "SiPM time - finetime, 6-10 pixels hits;ns;Hits", 500, -40, 60);
 	hSiPMtime[5] = new TH1D("hSiPMtime10Px", "SiPM time - finetime, > 10 pixels hits;ns;Hits", 500, -40, 60);
+	hSiPMtimeClean[0] = new TH1D("hSiPMtimeCleanAll", "SiPM time - finetime, all hits;ns;Hits", 500, -40, 60);
+	hSiPMtimeClean[1] = new TH1D("hSiPMtimeClean1Px", "SiPM time - finetime, 1 pixel hits;ns;Hits", 500, -40, 60);
+	hSiPMtimeClean[2] = new TH1D("hSiPMtimeClean2Px", "SiPM time - finetime, 2 pixels hits;ns;Hits", 500, -40, 60);
+	hSiPMtimeClean[3] = new TH1D("hSiPMtimeClean3Px", "SiPM time - finetime, 3-5 pixels hits;ns;Hits", 500, -40, 60);
+	hSiPMtimeClean[4] = new TH1D("hSiPMtimeClean6Px", "SiPM time - finetime, 6-10 pixels hits;ns;Hits", 500, -40, 60);
+	hSiPMtimeClean[5] = new TH1D("hSiPMtimeClean10Px", "SiPM time - finetime, > 10 pixels hits;ns;Hits", 500, -40, 60);
 	for (j=0; j<iNChannels_AdcBoard; j++) {
 		sprintf(strs, "hPMTAmpl%2.2d", j);
 		sprintf(strl, "PMT amplification: ADC integral units per MeV %2.2d", j);
@@ -1493,9 +1538,9 @@ void ReadDigiDataUser::initUserData(int argc, const char **argv)
 
 int ReadDigiDataUser::processUserEvent()
 {
-	float fineTime;
 	int McNum;
 	long long gt;
+	int i;
 
 	if( ttype() != 1 ) return 0;
 	
@@ -1549,6 +1594,13 @@ int ReadDigiDataUser::processUserEvent()
 //	CorrectEnergy((IsMc) ? MCEnergyCorrection : EnergyCorrection);
 	if (IsMc && (iFlags & FLG_MCENERGYSMEAR)) MCSmear();
 	if (iFlags & FLG_PRINTALL) DebugFullPrint();
+	
+//	if (iNevtTotal < 2) {
+//		printf("\n\t==================\ncell t t_raw t0 t0raw t0Digi t0rawDigi t0rawRawDigi td\n");
+//		for (i=0; i<nhits(); i++) printf("%d.%d %f %f %f %f %f %f %f %f\n", adc(i), adcChan(i), t(i), t_raw(i), t0(i), t0raw(i), 
+//			t0Digi(i), t0rawDigi(i), t0rawRawDigi(i), td(100*adc(i) + adcChan(i)));
+//	}
+	
 	if (DanssEvent.globalTime == dumpgTime) {
 		DumpEvent();
 		return -1;
@@ -1560,8 +1612,7 @@ int ReadDigiDataUser::processUserEvent()
 		FillTimeHists();
 
 	if ((DanssEvent.SiPmCleanHits > 0 && DanssEvent.PmtCleanHits > 0) || DanssEvent.VetoCleanHits > 0
-		|| DanssEvent.trigType == masterTrgRandom
-  	) {	// remove pure pickup noise
+		|| DanssEvent.trigType == masterTrgRandom) {	// remove pure pickup noise
 		iNevtTotal++;
 		DanssInfo.events++;
 		if (OutputTree) OutputTree->Fill();
@@ -1596,13 +1647,16 @@ void ReadDigiDataUser::finishUserProc()
 	if (OutputFile) OutputFile->cd();
 	if (OutputTree) OutputTree->Write();
 	if (InfoTree) InfoTree->Write();
-	if ((iFlags & FLG_DTHIST) && OutputFile) for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
-		if (hTimeDelta[i][j]->GetEntries() > 0) hTimeDelta[i][j]->Write();
-		if (hPMTTimeDelta[i][j]->GetEntries() > 0) hPMTTimeDelta[i][j]->Write();
+	if ((iFlags & FLG_DTHIST) && OutputFile) {
+		for (i=0; i<MAXADCBOARD; i++) for (j=0; j<iNChannels_AdcBoard; j++) {
+			if (hTimeDelta[i][j]->GetEntries() > 0) hTimeDelta[i][j]->Write();
+			if (hPMTTimeDelta[i][j]->GetEntries() > 0) hPMTTimeDelta[i][j]->Write();
+		}
 	}
 	hCrossTalk->Write();
 	for (j=0; j<iNChannels_AdcBoard; j++) if (hPMTAmpl[j]->GetEntries() > 0) hPMTAmpl[j]->Write();
 	for (i=0; i<6; i++) hSiPMtime[i]->Write();
+	for (i=0; i<6; i++) hSiPMtimeClean[i]->Write();
 	if (RawHitsTree) RawHitsTree->Write();
 	if (RawHitsArray) free(RawHitsArray);
 	if (IsMc) {
@@ -1615,7 +1669,7 @@ void ReadDigiDataUser::finishUserProc()
 	printf("Total up time        %Ld seconds\n", upTime / (long long) GLOBALFREQ);
 	printf("Total physics events %Ld\n", iNevtTotal);
 	printf("Run completed in     %d seconds\n", time(NULL) - progStartTime);
-  	return;
+	return;
 }
 
 //--------------------->

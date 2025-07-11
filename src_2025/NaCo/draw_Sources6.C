@@ -645,13 +645,22 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "Chikuma/root8n6/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
-	case 1041:	// Na MC with SiPM noise
+	case 1041:	// Na MC with SiPM noise root8n6
 		for (i=0; i<40; i++) {
-			sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/22Na/%s/SiPmNoise/mc_22Na_indLY_transcode_rawProc_pedSim_1p%d.root", rootdir, i);
+			sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_1p%d.root", rootdir, i);
 			tMc->AddFile(str);
 		}
 		name = "22Na";
-		sprintf(fname, "Chikuma/22Na/%s_noise/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		sprintf(fname, "Chikuma/root8n6/22Na/%s_noise/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
+	case 1042:	// Na MC with SiPM noise root8n6 new scinttime
+		for (i=0; i<40; i++) {
+			sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/22Na/%s/mc_22Na_no_transv_profile_indLY_transcode_rawProc_pedSim_1p%d.root", rootdir, i);
+			tMc->AddFile(str);
+		}
+		name = "22Na";
+		sprintf(fname, "Chikuma/root8n6/22Na/%s_noise/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	case 1101:	// Co MC, center
@@ -811,17 +820,76 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 	version = "Full_decay_center_Akagi" etc.
 	RMAX - maximum distance from the source ()
 */
-void draw_scale_scan(const char *what, const char *when, const char *where, const char *version, 
-	double RMAX = 30)
+//void draw_scale_scan(const char *what, const char *when, const char *where, const char *version, 
+//	double RMAX = 30)
+/*
+	Experimental files:
+	22Na_feb17_center_root8n2_R30.0.root
+	22Na_feb17_center_root8n6_R30.0.root
+	22Na_jun22_center_root8n2_R30.0.root
+	22Na_jun22_center_root8n6_R30.0.root
+	22Na_jun22_centerUP_root8n2_R30.0.root
+	22Na_jun22_centerUP_root8n6_R30.0.root
+	22Na_nov18_center_root8n2_R30.0.root
+	22Na_nov18_center_root8n6_R30.0.root
+	60Co_feb17_center_root8n2_R30.0.root
+	60Co_feb17_center_root8n6_R30.0.root
+	60Co_jun22_center_root8n2_R30.0.root
+	60Co_jun22_center_root8n6_R30.0.root
+	60Co_nov18_center_root8n2_R30.0.root
+	60Co_nov18_center_root8n6_R30.0.root
+	MC patterns:
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/22Na/Full_decay_center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n2/60Co/Center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/22Na/Full_decay_center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root
+	Chikuma/root8n6/60Co/Center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root
+	Result example:
+	scan_22Na_feb17_Full_decay_center_Chikuma_main_Birks_0_0308_8n2.root
+*/
+void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *Result)
 {
 //	const char *exppattern = "%s_%s_%s_root8n2_R%4.1f.root"; 		// what, when, where, RMAX
-	const char *exppattern = "%s_%s_%s_root8n6_R%4.1f.root"; 		// what, when, where, RMAX
+//	const char *exppattern = "%s_%s_%s_root8n6_R%4.1f.root"; 		// what, when, where, RMAX
 //	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
 //	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
-	const char *MCpattern = "Chikuma/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
+//	const char *MCpattern = "Chikuma/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
 	const int binMin = 11;
 	const int binMax = 26;
-	char expname[1024];
 	char MCname[1024];
 	char str[256];
 	int i;
@@ -835,11 +903,11 @@ void draw_scale_scan(const char *what, const char *when, const char *where, cons
 	gStyle->SetOptStat(0);
 	gStyle->SetOptFit(0);
 	
-	sprintf(str, "Scan over scale for %s, %s, %s;Scale;#chi^{2}", what, when, where);
+	sprintf(str, "Scan over scale for %s;Scale;#chi^{2}", Experiment);
 	TH1D *hScan = new TH1D("hScan", str, 41, 0.8975, 1.1025);
-	sprintf(str, "Scan over scale for %s, %s, %s, SiPM;Scale;#chi^{2}", what, when, where);
+	sprintf(str, "Scan over scale for %s, SiPM;Scale;#chi^{2}", Experiment);
 	TH1D *hScanSiPM = new TH1D("hScanSiPM", str, 41, 0.8975, 1.1025);
-	sprintf(str, "Scan over scale for %s, %s, %s, PMT;Scale;#chi^{2}", what, when, where);
+	sprintf(str, "Scan over scale for %s, PMT;Scale;#chi^{2}", Experiment);
 	TH1D *hScanPMT = new TH1D("hScanPMT", str, 41, 0.8975, 1.1025);
 	hScan->SetMarkerStyle(kFullCircle);
 	hScanSiPM->SetMarkerStyle(kFullCircle);
@@ -848,14 +916,13 @@ void draw_scale_scan(const char *what, const char *when, const char *where, cons
 	hScanSiPM->SetMarkerSize(1.5);
 	hScanPMT->SetMarkerSize(1.5);
 
-	sprintf(expname, exppattern, what, when, where, RMAX);
-	TFile *fExp = new TFile(expname);
+	TFile *fExp = new TFile(Experiment);
 	if (!fExp->IsOpen()) return;
 	TH1D *hExp = (TH1D *) fExp->Get("hExpC");
 	TH1D *hExpSiPM = (TH1D *) fExp->Get("hExpSiPMC");
 	TH1D *hExpPMT = (TH1D *) fExp->Get("hExpPMTC");
 	if (!hExp || !hExpSiPM || !hExpPMT) {
-		printf("Not all histograms found in %s\n", expname);
+		printf("Not all histograms found in %s\n", Experiment);
 		return;
 	}
 
@@ -869,13 +936,9 @@ void draw_scale_scan(const char *what, const char *when, const char *where, cons
 	hExpPMT->SetMarkerColor(kRed);
 	hExpPMT->SetMarkerStyle(kFullCircle);
 	
-	char *whereMC = strdup(where);
-	if (!whereMC) return;
-	if (strlen(whereMC) > strlen("center")) whereMC[strlen("center")] = '\0';
-	
 	for (i=0; i<41; i++) {
 		scale = 0.9 + 0.005*i;
-		sprintf(MCname, MCpattern, what, version, whereMC, scale, RMAX);
+		sprintf(MCname, MCpattern, scale);
 		fMC = new TFile(MCname);
 		if (!fMC->IsOpen()) return;
 		hMC = (TH1D *) fMC->Get("hMc");
@@ -937,7 +1000,7 @@ void draw_scale_scan(const char *what, const char *when, const char *where, cons
 	if (i < 0) i = 0;
 	if (i > 41) i = 41;
 	scale = 0.9 + 0.005*i;
-	sprintf(MCname, MCpattern, what, version, whereMC, scale, RMAX);
+	sprintf(MCname, MCpattern, scale);
 	fMC = new TFile(MCname);
 	if (!fMC->IsOpen()) return;
 	hMC = (TH1D *) fMC->Get("hMc");
@@ -969,11 +1032,12 @@ void draw_scale_scan(const char *what, const char *when, const char *where, cons
 	hMCPMT->DrawCopy("same,hist");
 	lg->Draw();
 
-	sprintf(str, "%s_%s_%s_%s_R%4.1f_scan.png", what, when, where, version, RMAX);
-	cv->SaveAs(str);
+	TString Png(Result);
+	Png.ReplaceAll(".root", "");
+	Png += ".png";
+	cv->SaveAs(Png.Data());
 
-	sprintf(str, "%s_%s_%s_%s_R%4.1f_scan.root", what, when, where, version, RMAX);
-	TFile *fOut = new TFile(str, "RECREATE");
+	TFile *fOut = new TFile(Result, "RECREATE");
 	if (!fOut->IsOpen()) return;
 	hExp->Write();
 	hMC->Write();
@@ -1037,4 +1101,117 @@ void draw_nHits(const char *what, const char *when = "jun22", const char *where 
 	
 	fExp->Close();
 	fMC->Close();
+}
+
+void scan_scale_all2025(void)
+{
+//	Experimental files:
+	const char *expNa82[] = {"22Na_feb17_center_root8n2_R30.0.root",
+		"22Na_nov18_center_root8n2_R30.0.root",
+		"22Na_jun22_center_root8n2_R30.0.root",
+		"22Na_jun22_centerUP_root8n2_R30.0.root"};
+	const char *expNa86[] = {"22Na_feb17_center_root8n6_R30.0.root",
+		"22Na_nov18_center_root8n6_R30.0.root",
+		"22Na_jun22_center_root8n6_R30.0.root",
+		"22Na_jun22_centerUP_root8n6_R30.0.root"};
+	const char *expCo82[] = {"60Co_feb17_center_root8n2_R30.0.root",
+		"60Co_nov18_center_root8n2_R30.0.root",
+		"60Co_jun22_center_root8n2_R30.0.root"};
+	const char *expCo86[] = {"60Co_feb17_center_root8n6_R30.0.root",
+		"60Co_nov18_center_root8n6_R30.0.root",
+		"60Co_jun22_center_root8n6_R30.0.root"};
+//	MC patterns:
+	const char *MCNa82[] = {"Chikuma/root8n2/22Na/Full_decay_center_Chikuma/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/22Na/Full_decay_center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCNa86[] = {"Chikuma/root8n6/22Na/Full_decay_center_Chikuma/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCCo82[] = {"Chikuma/root8n2/60Co/Center_Chikuma/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n2/60Co/Center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCCo86[] = {"Chikuma/root8n6/60Co/Center_Chikuma/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root",
+	"Chikuma/root8n6/60Co/Center_Chikuma_xzmap/MC_center_S%-5.3f_R30.0.root"};
+//	Results:
+	const char *when[] = {"feb17", "nov18", "jun22", "jun22UP"};
+	const char *MC[] = {"Chikuma",
+		"Chikuma_Birks_el_0_0108",
+		"Chikuma_Birks_el_0_0308",
+		"Chikuma_Cher_coeff_0_033",
+		"Chikuma_Cher_coeff_0_233",
+		"Chikuma_main_Birks_0_0108",
+		"Chikuma_main_Birks_0_0308",
+		"Chikuma_paint_0_15",
+		"Chikuma_paint_0_45",
+		"Chikuma_xzmap"};
+	char str[1024];
+	int i, j;
+	int nMC = sizeof(MC) / sizeof(MC[0]);
+	int nExp = sizeof(when) / sizeof(when[0]);
+	
+	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
+		printf("\nExp[%d] MC[%d]\n", j, i);
+		sprintf(str, "scan_22Na_8n2_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expNa82[j], MCNa82[i], str);
+//		printf("%s[%d] %s[%d] => %s\n", expNa82[j], j, MCNa82[i], i, str);
+		sprintf(str, "scan_22Na_8n6_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expNa86[j], MCNa86[i], str);
+		if (j >= nExp - 1) continue;	// only Na has UP
+		sprintf(str, "scan_60Co_8n2_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expCo82[j], MCCo82[i], str);
+		sprintf(str, "scan_60Co_8n6_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expCo86[j], MCCo86[i], str);
+	}
+}
+
+void scan_noise(void)
+{
+	const char *expNa86[] = {"22Na_feb17_center_root8n6_R30.0.root",
+		"22Na_nov18_center_root8n6_R30.0.root",
+		"22Na_jun22_center_root8n6_R30.0.root",
+		"22Na_jun22_centerUP_root8n6_R30.0.root"};
+	const char *MCNa86[] = {"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_xzmap_noise/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n6/22Na/Full_decay_center_Chikuma_xzmap_new_scinttime_noise/MC_center_S%-5.3f_R30.0.root"};
+	const char *when[] = {"feb17", "nov18", "jun22", "jun22UP"};
+	const char *MC[] = {"Chikuma_xzmap_noise", "Chikuma_xzmap_new_scinttime_noise"};
+
+	char str[1024];
+	int i, j;
+	int nMC = sizeof(MC) / sizeof(MC[0]);
+	int nExp = sizeof(when) / sizeof(when[0]);
+
+	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
+		printf("\nExp[%d] MC[%d]\n", j, i);
+		sprintf(str, "scan_22Na_8n6_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expNa86[j], MCNa86[i], str);
+	}
 }
