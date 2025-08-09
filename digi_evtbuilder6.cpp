@@ -1,6 +1,6 @@
 /***
  *
- * Version:       4.0
+ * Version:       4.80
  *
  * Package:       DANSS SiPm Signal Processing and Calibration
  *
@@ -43,7 +43,7 @@
 #include "evtbuilder.h"
 
 /***********************	Definitions	****************************/
-#define MYVERSION	"4.70"
+#define MYVERSION	"4.80"
 //	Initial clean parameters
 #define MINSIPMPIXELS	3			// Minimum number of pixels to consider SiPM hit for FineTime calculation
 // #define MINSIPMPIXELS2	2		// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
@@ -59,10 +59,10 @@
 //	fine time
 #define MINENERGY4TIME	0.25			// Minimum energy to use for fine time averaging
 #define MINAVRTIME	130			// Minimum time for hit to be used in fine time calculations
-#define TCUT		10			// fine time cut, ns for SiPM
+//#define TCUT		10			// fine time cut, ns for SiPM
 //#define TCUT		15.0			// fine time cut, ns for SiPM for experiment
-#define TMCCUTMIN	(-15.0)			// fine time cut, ns for SiPM for MC
-#define TMCCUTMAX	(15.0)			// fine time cut, ns for SiPM for MC
+#define TCUTMIN		(-20.0)			// fine time cut, ns for SiPM
+#define TCUTMAX		(40.0)			// fine time cut, ns for SiPM
 #define TCUTPMT		30			// fine time cut, ns for PMT and VETO
 #define NOFINETIME	10000			// something out of range
 #define MCPMTDELAY	(-13.2)			// PMT MC DELAY, ns (-13.2)
@@ -717,17 +717,10 @@ void CleanByTime(void)
 			} else {
 				hSiPMtime[5]->Fill(HitTime(i) - DanssEvent.fineTime);
 			}
-			if (IsMc) {
-				if ((HitTime(i) - DanssEvent.fineTime) < TMCCUTMIN ||
-					(HitTime(i) - DanssEvent.fineTime) > TMCCUTMAX) {
-					HitFlag[i] = -1;
-					DanssInfo.Cuts[5]++;
-				}
-			} else {
-				if (fabs(HitTime(i) - DanssEvent.fineTime) > TCUT) {
-					HitFlag[i] = -1;
-					DanssInfo.Cuts[5]++;
-				}
+			if ((HitTime(i) - DanssEvent.fineTime) < TCUTMIN ||
+				(HitTime(i) - DanssEvent.fineTime) > TCUTMAX) {
+				HitFlag[i] = -1;
+				DanssInfo.Cuts[5]++;
 			}
 			break;
 		case bPmt:
@@ -743,12 +736,8 @@ void CleanByTime(void)
 		tearly = SOMEEARLYTIME;
 	}
 	for (i=0; i<N; i++) if (user->type(i) == bSiPm && HitFlag[i] >= -5) {
-		if (IsMc ) {
-			if ((HitTime(i) - tearly) > TMCCUTMIN &&
-				(HitTime(i) - tearly) < TMCCUTMAX) HitFlag[i] = -100;	// mark early hit candidates
-		} else {
-			if (fabs(HitTime(i) - tearly) <= TCUT) HitFlag[i] = -100;	// mark early hit candidates
-		}
+		if ((HitTime(i) - tearly) > TCUTMIN &&
+			(HitTime(i) - tearly) < TCUTMAX) HitFlag[i] = -100;	// mark early hit candidates
 	}
 }
 
