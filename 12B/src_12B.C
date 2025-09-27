@@ -357,7 +357,7 @@ void src_12B(int from, int to, const char *format = "/home/clusters/rrcmpi/aleks
 	hDiffT->SetLineColor(kBlue);
 	
 	TCanvas *cv = new TCanvas("CV", "12B", 1400, 1000);
-	sprintf(str, "12B_exp82_%d_%d", from, to);
+	sprintf(str, "12B_exp87_%d_%d", from, to);
 	TString oname(str);
 
 	cv->Divide(2, 2);

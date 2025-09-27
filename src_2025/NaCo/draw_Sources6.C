@@ -161,13 +161,15 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 		if (r2 > RMAX*RMAX) continue;		// 30 cm
 		N5++;
 //	Remove event if beta-afected strip hit	- not used
-		k = 0;
-		for (j=0; j<DanssEvent.NHits; j++) {
-			if (HitType[j].type != 0) continue;	// Select SiPM
-			if (HitType[j].z == 48 && HitType[j].xy == 12) k++;
-			if (HitType[j].z == 49 && (HitType[j].xy == 11 || HitType[j].xy == 12)) k++;
-		}
+//		k = 0;
+//		for (j=0; j<DanssEvent.NHits; j++) {
+//			if (HitType[j].type != 0) continue;	// Select SiPM
+//			if (HitType[j].z == 48 && HitType[j].xy == 12) k++;
+//			if (HitType[j].z == 49 && (HitType[j].xy == 11 || HitType[j].xy == 12)) k++;
+//		}
 //		if (k != 0) continue;
+//		Requirement on PMT energy emulates trigger
+		if (DanssEvent.PmtCleanEnergy < 0.7) continue;
 		N6++;
 //	Request opposite hits in at least one projection - not used
 		east = west = north = south = up = down = 0;
@@ -203,7 +205,7 @@ void do_projections(TChain *chain, TH1D *hSum, TH1D *hSiPM, TH1D *hPMT, TH1D *hH
 //		hPMT->Fill(PmtMax * scale);
 		if (E > 1.0 && E < 2.6) hHits->Fill(DanssEvent.SiPmCleanHits);
 	}
-	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(strips) %Ld(opposite)\n", 
+	printf("Cut rejection: %Ld(total) %Ld(xyz) %Ld(veto) %Ld(hits) %Ld(noise) %Ld(r2) %Ld(trigger) %Ld(opposite)\n", 
 		N, N1, N2, N3, N4, N5, N6, N7);
 }
 
@@ -244,7 +246,8 @@ void draw_Exp(TChain *tExpA, TChain *tExpB, TChain *tInfoA, TChain *tInfoB, cons
 	TCut cVeto("VetoCleanHits < 2 && VetoCleanEnergy < 4");
 	TCut cn("SiPmCleanHits > 2 && PmtCleanHits > 0");
 	TCut cNoise("((PmtCnt > 0 && PmtCleanHits/PmtCnt < 0.3) || SiPmHits/SiPmCnt < 0.3) && VetoCleanHits == 0");
-	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6");
+//	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6");
+	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6 && PmtCleanEnergy > 0.7");
 	TCut cSel = cxyz && cVeto && cn && !cNoise;
 	
 	tExpA->Project("hXY", "NeutronX[1]+2:NeutronX[0]+2", cSel);
@@ -372,7 +375,7 @@ void draw_MC(TChain *tMc, const char *name, const char *fname, double scale, dou
 	sprintf(str, "(NeutronX[0]+2-%5.1f)*(NeutronX[0]+2-%5.1f) + (NeutronX[1]+2-%5.1f)*(NeutronX[1]+2-%5.1f) + "
 		"(NeutronX[2]+0.5-%5.1f)*(NeutronX[2]+0.5-%5.1f) < %5.1f*%5.1f", X, X, Y, Y, Z, Z, RMAX, RMAX);
 	TCut cR2(str);
-	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6");
+	TCut cE("(SiPmCleanEnergy+PmtCleanEnergy)/2.0 > 1.0 && (SiPmCleanEnergy+PmtCleanEnergy)/2.0 < 2.6 && PmtCleanEnergy > 0.7");
 	
 	tMc->Project("hMcXY", "NeutronX[1]+2:NeutronX[0]+2", cSel && cE);
 	do_projections(tMc, hMc, hMcSiPM, hMcPMT, hMcHits, X, Y, Z, RMAX, scale);

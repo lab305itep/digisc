@@ -81,7 +81,7 @@ void src_248Cm(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax
 	for (i=nMin; i<=nMax; i++) {
 //		sprintf(strA, "(SiPmCleanEnergy[%d]+PmtCleanEnergy[%d])/2", i, i);
 		sprintf(strA, "NeutronEnergy[%d]", i);
-		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2", i, i, i);
+		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2 && PmtCleanEnergy[%d] > 0.7", i, i, i, i);
 		t->Project(hCm1->GetName(), strA, strB);
 		hCm->Add(hCm1);
 		sprintf(strA, "SiPmCleanEnergy[%d]", i);
@@ -91,7 +91,7 @@ void src_248Cm(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax
 		t->Project(hCmPMT1->GetName(), strA, strB);
 		hCmPMT->Add(hCmPMT1);
 		sprintf(strA, "NeutronX[%d][1]+2:NeutronX[%d][0]+2", i, i);
-		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2 && NeutronX[%d][1]>=0 && NeutronX[%d][0]>=0", i, i, i, i, i);
+		sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2 && NeutronX[%d][1]>=0 && NeutronX[%d][0]>=0 && PmtCleanEnergy[%d] > 0.7", i, i, i, i, i, i);
 		t->Project(hCmXY1->GetName(), strA, strB);
 		hCmXY->Add(hCmXY1);
 	}
@@ -143,11 +143,11 @@ void src_248CmMCn(const char *fnameIn, const char *fnameOut)
 		sprintf(strB, "^{248}Cm MC neutron data. Scale=%5.3f, PMT;Energy of delayed event, MeV;Events", scale);
 		hMCPMT = new TH1D(strA, strB, 120, 0, 12);
 		sprintf(strA, "NeutronEnergy*%5.3f", scale);
-		t->Project(hMC->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250");
+		t->Project(hMC->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250 && PmtCleanEnergy > 0.7");
 		sprintf(strA, "SiPmCleanEnergy*%5.3f", scale);
-		t->Project(hMCSiPM->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250");
+		t->Project(hMCSiPM->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250 && PmtCleanEnergy > 0.7");
 		sprintf(strA, "PmtCleanEnergy*%5.3f", scale);
-		t->Project(hMCPMT->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250");
+		t->Project(hMCPMT->GetName(), strA, "(globalTime % 125000000) > 250 && (globalTime % 125000000) < 6250 && PmtCleanEnergy > 0.7");
 
 		hMC->Sumw2();
 		hMCSiPM->Sumw2();
@@ -208,7 +208,7 @@ void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMin = 2, int nM
 		hMCPMT1 = (TH1D*) hMCPMT->Clone("hMCPMT1");
 		for (j=nMin; j<=nMax; j++) {
 			sprintf(strA, "NeutronEnergy[%d]*%5.3f", j, scale);
-			sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2", j, j, j);
+			sprintf(strB, "N>%d && gtDiff[%d]/125<50 && gtDiff[%d]/125>2 && PmtCleanEnergy[%d]*%5.3f > 0.7", j, j, j, j, scale);
 			t->Project(hMC1->GetName(), strA, strB);
 			hMC->Add(hMC1);
 			sprintf(strA, "SiPmCleanEnergy[%d]*%5.3f", j, scale);
@@ -472,7 +472,7 @@ void scan_scale_all(void)
 void scan_scale_all87(void)
 {
 	const char *expCm87[] = {"cm_14428_14485_8.7.hist.root", "cm_50578_50647_8.7.hist.root", 
-		"cm_127720_127772_8.7.hist.root", "cm_175471_17528_8.7.hist.root"};
+		"cm_127720_127772_8.7.hist.root", "cm_175471_175528_8.7.hist.root"};
 	const char *MCCm87[] = {"cm_MC_8.7_Center_Chikuma.hist.root",
 		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0108.hist.root",
 		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0308.hist.root",
