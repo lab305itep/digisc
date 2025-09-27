@@ -5,6 +5,7 @@ Position  Date   Runs
 center    mar17  14428-14485
 center    nov18  50578-50647
 center    jun22  127720-127772
+center    may25  175471-175528
 edge      mar17  14487-14512
 edge      nov18  50875-50947
 ***********************************************************/
@@ -108,7 +109,7 @@ void src_248Cm(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax
 
 //	Make MC hists from file(s) with a tree of 248Cm neutrons
 //  fnameIn - input file name(s)
-//  fnameOut - outptu file name
+//  fnameOut - output file name
 void src_248CmMCn(const char *fnameIn, const char *fnameOut)
 {
 	char strA[1024];
@@ -465,5 +466,40 @@ void scan_scale_all(void)
 		scan_248Cm(expCm82[j], MCCm82[i], str);
 		sprintf(str, "cm_8.6_%s_%s.root", when[j], MC[i]);
 		scan_248Cm(expCm86[j], MCCm86[i], str);
+	}
+}
+
+void scan_scale_all87(void)
+{
+	const char *expCm87[] = {"cm_14428_14485_8.7.hist.root", "cm_50578_50647_8.7.hist.root", 
+		"cm_127720_127772_8.7.hist.root", "cm_175471_17528_8.7.hist.root"};
+	const char *MCCm87[] = {"cm_MC_8.7_Center_Chikuma.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0108.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0308.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_033.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_233.hist.root",
+		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0108.hist.root",
+		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0308.hist.root",
+		"cm_MC_8.7_Center_Chikuma_paint_0_15.hist.root",
+		"cm_MC_8.7_Center_Chikuma_paint_0_45.hist.root"};
+	const char *when[] = {"mar17", "nov18", "jun22", "may25"};
+	const char *MC[] = {"Chikuma",
+		"Chikuma_Birks_el_0_0108",
+		"Chikuma_Birks_el_0_0308",
+		"Chikuma_Cher_coeff_0_033",
+		"Chikuma_Cher_coeff_0_233",
+		"Chikuma_main_Birks_0_0108",
+		"Chikuma_main_Birks_0_0308",
+		"Chikuma_paint_0_15",
+		"Chikuma_paint_0_45"};
+	int i, j, nExp, nMC;
+	char str[1024];
+	
+	nExp = sizeof(when) / sizeof(when[0]);
+	nMC = sizeof(MC) / sizeof(MC[0]);
+	
+	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
+		sprintf(str, "cm_8.7_%s_%s.root", when[j], MC[i]);
+		scan_248Cm(expCm87[j], MCCm87[i], str);
 	}
 }

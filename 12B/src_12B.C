@@ -254,7 +254,7 @@ TChain *create_chain(const char *name, int from, int to, const char *format = "/
 	to - the last run
 	format - pattern for muon pair file names
 */
-void src_12B(int from, int to, const char *format = "/home/clusters/rrcmpi/alekseev/igor/muon8n2/%3.3dxxx/muon_%6.6d.root")
+void src_12B(int from, int to, const char *format = "/home/clusters/rrcmpi/alekseev/igor/muon8n7/%3.3dxxx/muon_%6.6d.root")
 {
 	char str[1024];
 
@@ -472,6 +472,31 @@ void src_12BMC(const char *mcname, const char *mchist)
 		hMCPMT->Write();
 	}
 	fOut->Close();
+}
+
+void Chikuma_All_MC(void)
+{
+	const char *MCvar[] = { "DB_spectrum_Chikuma", 
+		"DB_spectrum_Chikuma_Birks_el_0_0108",
+		"DB_spectrum_Chikuma_Birks_el_0_0308",
+		"DB_spectrum_Chikuma_Cher_coeff_0_033",
+		"DB_spectrum_Chikuma_Cher_coeff_0_233",
+		"DB_spectrum_Chikuma_main_Birks_0_0108",
+		"DB_spectrum_Chikuma_main_Birks_0_0308",
+		"DB_spectrum_Chikuma_paint_0_15",
+		"DB_spectrum_Chikuma_paint_0_45"};
+	const char *MCdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Chikuma/12B";
+	char namein[4096];
+	char nameout[4096];
+	int i;
+	
+	for (i=0; i < sizeof(MCvar)/sizeof(MCvar[0]); i++) {
+		sprintf(namein,
+			"%s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root %s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root",
+			MCdir, MCvar[i], MCdir, MCvar[i]);
+		sprintf(nameout, "MC12B_8.7-%s.hist.root", MCvar[i]);
+		src_12BMC(namein, nameout);
+	}
 }
 
 /*
@@ -739,6 +764,27 @@ void scan_12B(const char *expname, const char *mcname)
 	fMC->Close();
 }
 
+void scan_all87(void)
+{
+	const char *MCvar[] = { "DB_spectrum_Chikuma", 
+		"DB_spectrum_Chikuma_Birks_el_0_0108",
+		"DB_spectrum_Chikuma_Birks_el_0_0308",
+		"DB_spectrum_Chikuma_Cher_coeff_0_033",
+		"DB_spectrum_Chikuma_Cher_coeff_0_233",
+		"DB_spectrum_Chikuma_main_Birks_0_0108",
+		"DB_spectrum_Chikuma_main_Birks_0_0308",
+		"DB_spectrum_Chikuma_paint_0_15",
+		"DB_spectrum_Chikuma_paint_0_45"};
+	char nameMC[4096];
+	int i;
+	
+	for (i=0; i < sizeof(MCvar)/sizeof(MCvar[0]); i++) {
+		sprintf(nameMC, "MC12B-%s.hist.root", MCvar[i]);
+		scan_12B("12B_exp87_2210_175528.root", nameMC);
+	}
+}
+
+
 /*
 	Scan the difference between the experimental and MC histgrams in several energy bins
 	expname - file with experimental histograms
@@ -995,7 +1041,7 @@ TVectorD *MCvector(const char *mcorig)
  ****************************************/
 void MakeChikumaMatrixes(const char *fname, const char *cuts)
 {
-	const char *ChikumaDir = "/home/clusters/rrcmpi/alekseev/igor/root8n2/MC/Chikuma/12B";
+	const char *ChikumaDir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Chikuma/12B";
 	const char *MCRawDir = "/home/clusters/rrcmpi/danss/MC_RAW/Chikuma/12B";
 	const char *mcnames[] = {
 		"DB_spectrum_Chikuma", 
@@ -1066,8 +1112,8 @@ void MakeChikumaMatrixes(const char *fname, const char *cuts)
  ********************************************************/
 void MakeAllChikumaMatrixes(void)
 {
-	MakeChikumaMatrixes("12B_Chikuma_matrixes_IA_v2.root", "AnnihilationEnergy < 0.06 && PositronEnergy > 3");
-	MakeChikumaMatrixes("12B_Chikuma_matrixes_AY_v2.root", "AnnihilationEnergy < 0.06 && "
+	MakeChikumaMatrixes("12B_Chikuma_matrixes_IA_v7.root", "AnnihilationEnergy < 0.06 && PositronEnergy > 3");
+	MakeChikumaMatrixes("12B_Chikuma_matrixes_AY_v7.root", "AnnihilationEnergy < 0.06 && "
 		"((PositronX[0] > 10 && PositronX[0] < 86) || PositronX[0] < 0) && "
 		"((PositronX[1] > 10 && PositronX[1] < 86) || PositronX[1] < 0) && "
 		"PositronX[2] > 11.5 && PositronX[2] < 87.5");
@@ -1157,7 +1203,7 @@ void DrawMatrixLinearityAll(const char *pdfname)
  ****************************************************************/
 void MakeShortTree(int from, int to)
 {
-	const char *format = "/home/clusters/rrcmpi/alekseev/igor/muon8n2/%3.3dxxx/muon_%6.6d.root";
+	const char *format = "/home/clusters/rrcmpi/alekseev/igor/muon8n7/%3.3dxxx/muon_%6.6d.root";
 	char str[1024];
 	struct DanssMuonStruct event;
 	const char *LeafList = 
@@ -1172,7 +1218,7 @@ void MakeShortTree(int from, int to)
 	chA->SetBranchAddress("Pair", &event);
 	chR->SetBranchAddress("Pair", &event);
 	
-	sprintf(str, "12B_events_%6.6d_%6.6d.root", from, to);
+	sprintf(str, "12B_events_8n7_%6.6d_%6.6d.root", from, to);
 	TFile *fOut = new TFile(str, "RECREATE");
 	TTree *tOut = new TTree("MuonPair", "MuonPair");
 	tOut->Branch("Pair", &event.ClusterEnergy, LeafList);

@@ -43,6 +43,14 @@
 * 127901-127957	none	2022-06-29	up
 * 127958-128016	22Na	2022-06-30	center, UP	59
 * 128020-128119	none	2022-07-01	up
+* 174324-174343	none	2025-04-22	down		20
+* 174345-174400	60Co	2025-04-22	center		58
+* 174403-174457	Th	2025-04-23	center		55
+* 174459-174496	none	2025-04-24	down		38
+* 174720-174828	none	2025-04-30	down		109
+* 174830-175058	22Na	2025-05-01	center		229
+* 175060-175114	none	2025-05-05	down		55
+*
 ***************************************************************************************
 * Center position (50, 50, 50)
 * Edge position   (50, 90, 50)
@@ -519,6 +527,17 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "22Na_jun22_centerUP_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
+	case 41:		// Na Apr-May 25, center down
+		Add2Chain(tExpA, 174830, 175058, rootdir, max_files);
+		Add2Chain(tRawA, 174830, 175058, rootdir, max_files);
+		Add2Chain(tInfoA, 174830, 175058, rootdir, max_files);
+		Add2Chain(tExpB, 174720, 174828, rootdir, max_files);
+		Add2Chain(tRawB, 174720, 174828, rootdir, max_files);
+		Add2Chain(tInfoB, 174720, 174828, rootdir, max_files);
+		name = "22Na";
+		sprintf(fname, "22Na_may22_center_%s_R%4.1f", rootdir, RMAX);
+		Y = 50;
+		break;
 	case 101:		// Co Feb 17, center
 		Add2Chain(tExpA, 12306, 12346, rootdir, max_files);
 		Add2Chain(tRawA, 12306, 12346, rootdir, max_files);
@@ -572,6 +591,17 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tInfoB, 127838, 127900, rootdir, max_files);
 		name = "60Co";
 		sprintf(fname, "60Co_jun22_center_%s_R%4.1f", rootdir, RMAX);
+		Y = 50;
+		break;
+	case 141:		// Co Apr 25, center
+		Add2Chain(tExpA, 174345, 174400, rootdir, max_files);
+		Add2Chain(tRawA, 174345, 174400, rootdir, max_files);
+		Add2Chain(tInfoA, 174345, 174400, rootdir, max_files);
+		Add2Chain(tExpB, 174324, 174343, rootdir, max_files);
+		Add2Chain(tRawB, 174324, 174343, rootdir, max_files);
+		Add2Chain(tInfoB, 174324, 174343, rootdir, max_files);
+		name = "60Co";
+		sprintf(fname, "60Co_apr25_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 221:		// 24Na June 22, center, run 1
@@ -645,6 +675,13 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "Chikuma/root8n6/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
+	case 1033:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Chikuma/22Na
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "22Na";
+		sprintf(fname, "Chikuma/root8n7/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
 	case 1041:	// Na MC with SiPM noise root8n6
 		for (i=0; i<40; i++) {
 			sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_1p%d.root", rootdir, i);
@@ -698,6 +735,13 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "Chikuma/root8n6/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
+	case 1133:	// Co MC, center, chikuma, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Chikuma/60Co
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Chikuma/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "60Co";
+		sprintf(fname, "Chikuma/root8n7/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
 	default:
 		printf("%d - unknown\n", iser);
 		printf("Available valuse for iser = MIDD:\n");
@@ -711,6 +755,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("21 - June 22, center\n");
 		printf("23 - June 22, center, 24Na second run\n");
 		printf("31 - June 22, center, UP\n");
+		printf("41 - April-May 25, center\n");
 		printf("DD - for MC:\n");
 		printf("1  - center (50, 50, 50) position\n");
 		printf("2  - edge (50, 90, 50) position\n");
@@ -719,7 +764,9 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		printf("21 - center (50, 50, 50) position, Akagi. Use rootdir to set suffix\n");
 		printf("31 - center (50, 50, 50) position, Chikuma root8n2. Use rootdir to set suffix\n");
 		printf("32 - center (50, 50, 50) position, Chikuma root8n6. Use rootdir to set suffix\n");
-		printf("The whole list: 1 2 11 12 21 31 101 102 111 112 121 221 223 1001 1002 1011 1012 1021 1101 1102 1121\n");
+		printf("33 - center (50, 50, 50) position, Chikuma root8n7. Use rootdir to set suffix\n");
+		printf("The whole list: 1 2 11 12 21 31 41 101 102 111 112 121 141 221 223 1001 1002 1011 1012 1021 1101 1102 1121\n");
+		printf("1031, 1032, 1033, 1131, 1132, 1133 - for Chikuma in some directory\n");
 		code = -1;
 		break;
 	}
@@ -815,7 +862,7 @@ double chi2Diff(const TH1D *hA, const TH1D *hB, int binMin, int binMax)
 /*
 	Draw scale scan
 	what = "22Na" or "60Co"
-	when = "feb17", "nov18" or "jun22"
+	when = "feb17", "nov18", "jun22" or "apr25"
 	where = "center", "centerUP" or "edge"
 	version = "Full_decay_center_Akagi" etc.
 	RMAX - maximum distance from the source ()
@@ -1190,6 +1237,61 @@ void scan_scale_all2025(void)
 		draw_scale_scan(expCo82[j], MCCo82[i], str);
 		sprintf(str, "scan_60Co_8n6_%s_%s.root", when[j], MC[i]);
 		draw_scale_scan(expCo86[j], MCCo86[i], str);
+	}
+}
+
+void scan_scale_all2025_7(void)
+{
+//	Experimental files:
+	const char *expNa87[] = {"22Na_feb17_center_root8n7_R30.0.root",
+		"22Na_nov18_center_root8n7_R30.0.root",
+		"22Na_jun22_center_root8n7_R30.0.root",
+		"22Na_may25_center_root8n7_R30.0.root"};
+	const char *expCo87[] = {"60Co_feb17_center_root8n7_R30.0.root",
+		"60Co_nov18_center_root8n7_R30.0.root",
+		"60Co_jun22_center_root8n7_R30.0.root",
+		"60Co_apr25_center_root8n7_R30.0.root"};
+//	MC patterns:
+	const char *MCNa87[] = {"Chikuma/root8n7/22Na/Full_decay_center_Chikuma/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/22Na/Full_decay_center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCCo87[] = {"Chikuma/root8n7/60Co/Center_Chikuma/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_Birks_el_0_0108/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_Birks_el_0_0308/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_Cher_coeff_0_033/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_Cher_coeff_0_233/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_main_Birks_0_0108/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_main_Birks_0_0308/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_paint_0_15/MC_center_S%-5.3f_R30.0.root",
+		"Chikuma/root8n7/60Co/Center_Chikuma_paint_0_45/MC_center_S%-5.3f_R30.0.root"};
+//	Results:
+	const char *when[] = {"feb17", "nov18", "jun22", "apr25"};
+	const char *MC[] = {"Chikuma",
+		"Chikuma_Birks_el_0_0108",
+		"Chikuma_Birks_el_0_0308",
+		"Chikuma_Cher_coeff_0_033",
+		"Chikuma_Cher_coeff_0_233",
+		"Chikuma_main_Birks_0_0108",
+		"Chikuma_main_Birks_0_0308",
+		"Chikuma_paint_0_15",
+		"Chikuma_paint_0_45"};
+	char str[1024];
+	int i, j;
+	int nMC = sizeof(MC) / sizeof(MC[0]);
+	int nExp = sizeof(when) / sizeof(when[0]);
+	
+	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
+		printf("\nExp[%d] MC[%d]\n", j, i);
+		sprintf(str, "scan_22Na_8n7_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expNa87[j], MCNa87[i], str);
+		sprintf(str, "scan_60Co_8n7_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expCo87[j], MCCo87[i], str);
 	}
 }
 
