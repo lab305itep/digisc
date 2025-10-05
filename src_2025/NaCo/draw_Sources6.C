@@ -538,7 +538,7 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		Add2Chain(tRawB, 174720, 174828, rootdir, max_files);
 		Add2Chain(tInfoB, 174720, 174828, rootdir, max_files);
 		name = "22Na";
-		sprintf(fname, "22Na_may22_center_%s_R%4.1f", rootdir, RMAX);
+		sprintf(fname, "22Na_may25_center_%s_R%4.1f", rootdir, RMAX);
 		Y = 50;
 		break;
 	case 101:		// Co Feb 17, center

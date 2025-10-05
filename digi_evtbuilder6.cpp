@@ -310,6 +310,7 @@ int IsPickUp(void)
 // i - hit number
 double HitTime(int i)
 {
+//	return user->t_raw(i);
 	if (!IsMc) return user->t_raw(i);
 	if (user->adc(i) == 1 || user->adc(i) == 3) return  user->t_raw(i) - MCPMTDELAY;
 	return user->t_raw(i) - MCSIPMDELAY;
@@ -1163,20 +1164,19 @@ void ReadDigiDataUser::init_Tds()
 //		if(!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
 //		setTd(i, 0); // set all td = 0
 //	}
-//	Set MC time calibration
-	if (IsMc) {
-		printf("Setting delays for MC: SiPM = %6.2f,  PMT = %6.2f\n", MCSIPMDELAY, MCPMTDELAY);
-		for(i = 100; i < iNElements; i++) {
-			iAdcNum = i / 100;
-			iAdcChan = i % 100;
-			if(!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
-			val = (iAdcNum == 1 || iAdcNum == 3) ? MCPMTDELAY : MCSIPMDELAY;
+//	Set MC time calibration - does not work
+//	if (IsMc) {
+//		printf("Setting delays for MC: SiPM = %6.2f,  PMT = %6.2f\n", MCSIPMDELAY, MCPMTDELAY);
+//		for(i = 100; i < iNElements; i++) {
+//			iAdcNum = i / 100;
+//			iAdcChan = i % 100;
+//			if(!isAdcChannelExist(iAdcNum, iAdcChan)) continue;
+//			val = (iAdcNum == 1 || iAdcNum == 3) ? MCPMTDELAY : MCSIPMDELAY;
 //			if (i < 800) printf("%d %d %d => %f\n", i, iAdcNum, iAdcChan, val);
-			setTd(i, val);
-		}
-//		getchar();
-		return;
-	}
+//			setTd(i, val);
+//		}
+//		return;
+//	}
 
 	if (!chTimeCalibration) return;
 
@@ -1238,7 +1238,7 @@ void Help(void)
 	printf("\t  0x1000 --- simulate \"neutron\" correction for MC events;\n");
 //	printf("\t 0x10000 --- do not clean small energies;\n");
 	printf("\t 0x20000 --- do not do time cut;\n");
-	printf("\t 0x40000 --- do not require confirmation for all hits;\n");
+//	printf("\t 0x40000 --- do not require confirmation for all hits;\n");
 //	printf("\t 0x80000 --- do not require confirmation for SiPM single pixel hits;\n");
 	printf("\t0x100000 --- do not correct PMT cluster energy for out of cluster SiPM hits.\n");
 	printf("\t0x200000 --- Check PMT and VETO time.\n");
