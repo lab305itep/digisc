@@ -49,7 +49,7 @@
 // #define MINSIPMPIXELS2	2		// Minimum number of pixels to consider SiPM hit without confirmation (method 2)
 // #define MINPMTENERGY	0.1			// Minimum PMT energy for a hit
 // #define MINVETOENERGY	0.1		// Minimum VETO energy for a hit
-#define SIPMEARLYTIME	45			// ns - shift from fine time
+#define SIPMEARLYTIME	65			// ns - shift from fine time MUST be > |TCUTMAX| + |TCUTMIN| 
 #define SOMEEARLYTIME	130			// ns - absolute if fineTime is not defined
 #define MAXPOSITRONENERGY	20		// Maximum Total clean energy to calculate positron parameters
 #define MAXCLUSTITER		10		// Maximum number of iterations in cluster search
@@ -673,7 +673,7 @@ void CleanByConfirmation(void)
 		if (j < N) continue;
 		HitFlag[i] = -3;
 	}
-//		clean time
+//		Fill clean histogram
 	for (i=0; i<N; i++) if (HitFlag[i] >= -1 && user->type(i) == bSiPm) {
 		hSiPMtimeClean[0]->Fill(HitTime(i) - DanssEvent.fineTime);
 		if (user->npix(i) < 1.5) {

@@ -1048,7 +1048,7 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 	
 	i = (sMin - 0.8975) / 0.005;
 	if (i < 0) i = 0;
-	if (i > 41) i = 41;
+	if (i > 40) i = 40;
 	scale = 0.9 + 0.005*i;
 	sprintf(MCname, MCpattern, scale);
 	fMC = new TFile(MCname);

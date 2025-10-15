@@ -8,7 +8,10 @@
 cd /home/itep/alekseev/igor/src_2025/Cm
 CMBUILDER=/home/itep/alekseev/igor/cmbuilder
 
-for f in cm_127720_127772_8.2 cm_127720_127772_8.6 cm_14428_14485_8.2 cm_14428_14485_8.6 cm_50578_50647_8.2 cm_50578_50647_8.6 ; do
+#for f in cm_127720_127772_8.2 cm_127720_127772_8.6 cm_14428_14485_8.2 cm_14428_14485_8.6 cm_50578_50647_8.2 cm_50578_50647_8.6 ; do
+#cm_127720_127772_8.7.list  cm_14428_14485_8.7.list  cm_175471_175528_8.7.list  cm_50578_50647_8.7.list
+#for f in cm_127720_127772_8.7 cm_14428_14485_8.7 cm_50578_50647_8.7 ; do
+for f in cm_175471_175528_8.7 ; do
 	${CMBUILDER} ${f}.list ${f}.root
 done
 

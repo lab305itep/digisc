@@ -29,7 +29,12 @@ int main(int argc, char *argv[])
 	FILE *rfile;
 	int i;
 	int SetVer = 0;
-	
+	const char *digi_dir[] = {
+		"/home/clusters/rrcmpi/danss/DIGI",
+		"/home/clusters/rrcmpi/danss/DANSS/digi_Real/digi_fullProc/v3.0/phys_stream",
+		"/home/clusters/rrcmpi/danss/DANSS/digi_Real/digi_fullProc/v3.0/radSources"
+	};
+
 	t0 = time(NULL);
 //		Get our run number
 	MPI_Init(&argc, &argv);
@@ -63,19 +68,15 @@ int main(int argc, char *argv[])
 //		V3
 	if (!SetVer || SetVer == 3) {
 		iver = 3;
-		sprintf(fname, "digi_v3.0/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
-		irc = access(fname, R_OK);
-		if (!irc) goto found;
-		strcat(fname, ".bz2");
-		irc = access(fname, R_OK);
-		if (!irc) goto found;
-		iver = 3;
-		sprintf(fname, "digi_rad/%3.3dxxx/danss_data_%6.6d_phys.digi", fnum/1000, fnum);
-		irc = access(fname, R_OK);
-		if (!irc) goto found;
-		strcat(fname, ".bz2");
-		irc = access(fname, R_OK);
-		if (!irc) goto found;
+//	Try /home/clusters/rrcmpi/danss/DIGI, phys_stream, rad sources
+		for (i = 0; i < sizeof(digi_dir) / sizeof(digi_dir[0]); i++) {
+			sprintf(fname, "%s/%3.3dxxx/danss_data_%6.6d_phys.digi", digi_dir[i], fnum/1000, fnum);
+			irc = access(fname, R_OK);
+			if (!irc) goto found;
+			strcat(fname, ".bz2");
+			irc = access(fname, R_OK);
+			if (!irc) goto found;
+		}
 	}
 //		V2
 	if (!SetVer || SetVer == 2) {

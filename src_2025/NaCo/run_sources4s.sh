@@ -7,7 +7,9 @@
 #PBS -l walltime=23:00:00
 cd /home/itep/alekseev/igor/src_2025/NaCo
 
-for n in 1 11 21 31 41 101 111 121 141 ; do
+#for n in 1 11 21 31 41 101 111 121 141 ; do
+#for n in 1 11 21 31 101 111 121 ; do
+for n in 41 141 ; do
 	root -l -b -q "draw_Sources6.C(${n}, \"root8n7\")"
 done
 exit 0
