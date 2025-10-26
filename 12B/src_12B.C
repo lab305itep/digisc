@@ -779,7 +779,7 @@ void scan_all87(void)
 	int i;
 	
 	for (i=0; i < sizeof(MCvar)/sizeof(MCvar[0]); i++) {
-		sprintf(nameMC, "MC12B-%s.hist.root", MCvar[i]);
+		sprintf(nameMC, "MC12B_8.7-%s.hist.root", MCvar[i]);
 		scan_12B("12B_exp87_2210_175528.root", nameMC);
 	}
 }
@@ -1425,6 +1425,8 @@ TH1D *GetMC(double Kbirks, double Kcher, TMatrixD *Mmain, TMatrixD *Mbirks, TMat
 	return h;
 }
 
+#ifdef CHIKUMA_82
+
 /*
     SiPM coefficients for other sources
     Kb - Birks for e+-, coef for 0.01 variation, Kb0 = 0.0208 cm/MeV
@@ -1452,6 +1454,59 @@ double RFunction(double Kb, double Kc, double Kh, int num)
 	};
 	return 1.0 / (A[num][0]*Kb + A[num][1]*Kc + A[num][2]*Kh + A[num][3]);
 }
+
+#endif
+
+/*	root8n7, 
+	Kb=Ke+Kh - Birks for all, coef for 0.01 variation, Kb0 = 0.0208 cm/MeV
+	Kc - Cherenkov, coef for 0.1 variation, Kc0 = 0.133 MeV/cm
+	Kp - paint, coef for 0.15 variation, Kp0 = 0.3 mm
+	SiPM+PMT
+	mu    = 0.961 + 0.018*Kb - 0.032*Kc + 0.031*Kp 
+	22Na  = 1.057 + 0.058*Kb - 0.009*Kc + 0.034*Kp
+	60Co  = 1.028 + 0.046*Kb - 0.012*Kc + 0.033*Kp
+	248Cm = 1.001 + 0.034*Kb - 0.020*Kc + 0.033*Kp
+	12B   = 0.943 + 0.022*Kb - 0.033*Kc + 0.038*Kp
+	SiPM
+	mu    = 0.961 + 0.017*Kb - 0.033*Kc + 0.031*Kp
+	22Na  = 1.078 + 0.056*Kb - 0.009*Kc + 0.032*Kp
+	60Co  = 1.024 + 0.048*Kb - 0.013*Kc + 0.037*Kp
+	248Cm = 1.007 + 0.033*Kb - 0.021*Kc + 0.034*Kp
+	12B   = 0.961 + 0.023*Kb - 0.034*Kc + 0.039*Kp
+	PMT
+	mu    = 0.961 + 0.020*Kb - 0.031*Kc + 0.031*Kp
+	22Na  = 1.031 + 0.057*Kb - 0.008*Kc + 0.039*Kp
+	60Co  = 1.016 + 0.047*Kb - 0.012*Kc + 0.040*Kp
+	248Cm = 0.994 + 0.033*Kb - 0.020*Kc + 0.035*Kp
+	12B   = 0.967 + 0.020*Kb - 0.031*Kc + 0.037*Kp
+*/
+
+double RFunction(double Kb, double Kc, double Kp, int num, int det = 0)
+{
+	const double A[3][5][4] = {
+//	SiPM + PMT	det = 0
+		{{0.961, 0.018, -0.032, 0.031},	// mu 
+		{1.057, 0.058, -0.009, 0.034},	// Na
+		{1.028, 0.046, -0.012, 0.033},	// Co
+		{1.001, 0.034, -0.020, 0.033},	// Cm
+		{0.943, 0.022, -0.033, 0.038}},	// B
+//	SiPM		det = 1
+		{{0.961, 0.017, -0.033, 0.031},	// mu
+		{1.078, 0.056, -0.009, 0.032},	// Na
+		{1.024, 0.048, -0.013, 0.037},	// Co
+		{1.007, 0.033, -0.021, 0.034},	// Cm
+		{0.961, 0.023, -0.034, 0.039}},	// B
+//	PMT		det = 2
+		{{0.961, 0.020, -0.031, 0.031},	// mu
+		{1.031, 0.057, -0.008, 0.039},	// Na
+		{1.016, 0.047, -0.012, 0.040},	// Co
+		{0.994, 0.033, -0.020, 0.035},	// Cm
+		{0.967, 0.020, -0.031, 0.037}}	// B
+	};
+	
+	return 1.0 / (A[det][num][0] + A[det][num][1]*Kb + A[det][num][2]*Kc + A[det][num][3]*Kp);
+}
+
 
 
 /****************************************************************
@@ -1501,8 +1556,8 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 		delete hExpAY;
 		delete hMCAY;
 	}
-	for (i=0; i<6; i++) if (FitPar.Sigma[i] > 0) {
-		r = RFunction(Kbirks, Kcher, Kbirks, i) - Kscale;
+	for (i=0; i<4; i++) if (FitPar.Sigma[i] > 0) {	// only muons, 22Na, 60Co, 248Cm
+		r = RFunction(Kbirks, Kcher, 0, i) - Kscale;	// don't vary paint
 		chi2other += r * r / (FitPar.Sigma[i] * FitPar.Sigma[i]);
 	}
 	f = chi2BIA + chi2BAY + chi2other;
@@ -1730,10 +1785,17 @@ void DrawCorrelations(double Kscale, double Kbirks, double Kcher)
  ****************************************************************/
 int LoadFitFiles(int iDet)
 {
+#ifdef CHIKUMA_82
 	const char *expFileIA = "12B_events_002210_154797.root";
 	const char *expFileAY = "12B_events_AY.root";
 	const char *MCFileIA = "12B_Chikuma_matrixes_IA.root";
 	const char *MCFileAY = "12B_Chikuma_matrixes_AY.root";
+#endif
+
+	const char *expFileIA = "12B_events_8n7_002210_175528.root";
+	const char *expFileAY = NULL;
+	const char *MCFileIA = "12B_Chikuma_matrixes_IA_v7.root";
+	const char *MCFileAY = NULL;
 	
 	const char *mcnames[3][3] = {{
 			"m12B_DB_spectrum_Chikuma_PositronEnergy", 
@@ -1752,89 +1814,140 @@ int LoadFitFiles(int iDet)
 	int i, j, N;
 	TMatrixD *M[3][3];
 	float PositronEnergy[3];
-
+	TFile *fExpIA;
+	TFile *fExpAY;
+	TTree *t12BExpSignalIA;
+	TTree *t12BExpRandomIA;
+	TTree *t12BExpSignalAY;
+	TTree *t12BExpRandomAY;
+	TFile *fMCIA;
+	TFile *fMCAY;
 //	Open files and read matrixes
-	TFile *fExpIA = new TFile(expFileIA);
-	TFile *fExpAY = new TFile(expFileAY);
-	if (!fExpIA->IsOpen() || !fExpAY->IsOpen()) return 1;
-	auto t12BExpSignalIA = (TTree *) fExpIA->Get("MuonPair");
-	auto t12BExpRandomIA = (TTree *) fExpIA->Get("MuonRandom");
-	auto t12BExpSignalAY = (TTree *) fExpAY->Get("MuonPair");
-	auto t12BExpRandomAY = (TTree *) fExpAY->Get("MuonRandom");
-	if (!t12BExpSignalIA || !t12BExpRandomIA || !t12BExpSignalAY || !t12BExpRandomAY) {
-		printf("Can not get all trees\n");
-		return 1;
-	}
-	FitPar.ExpIA.NExpSignal = t12BExpSignalIA->GetEntries();
-	FitPar.ExpIA.NExpRandom = t12BExpRandomIA->GetEntries();
-	FitPar.ExpAY.NExpSignal = t12BExpSignalAY->GetEntries();
-	FitPar.ExpAY.NExpRandom = t12BExpRandomAY->GetEntries();
-	FitPar.ExpIA.ExpSignal = (double *) malloc(FitPar.ExpIA.NExpSignal * sizeof(double));
-	FitPar.ExpIA.ExpRandom = (double *) malloc(FitPar.ExpIA.NExpRandom * sizeof(double));
-	FitPar.ExpAY.ExpSignal = (double *) malloc(FitPar.ExpAY.NExpSignal * sizeof(double));
-	FitPar.ExpAY.ExpRandom = (double *) malloc(FitPar.ExpAY.NExpRandom * sizeof(double));
-	t12BExpSignalIA->SetBranchAddress("Pair", PositronEnergy);
-	t12BExpRandomIA->SetBranchAddress("Pair", PositronEnergy);
-	t12BExpSignalAY->SetBranchAddress("Pair", PositronEnergy);
-	t12BExpRandomAY->SetBranchAddress("Pair", PositronEnergy);
-	for (i=0; i<FitPar.ExpIA.NExpSignal; i++) {
-		t12BExpSignalIA->GetEntry(i);
-		FitPar.ExpIA.ExpSignal[i] = PositronEnergy[iDet];
-	}
-	for (i=0; i<FitPar.ExpIA.NExpRandom; i++) {
-		t12BExpRandomIA->GetEntry(i);
-		FitPar.ExpIA.ExpRandom[i] = PositronEnergy[iDet];
-	}
-	for (i=0; i<FitPar.ExpAY.NExpSignal; i++) {
-		t12BExpSignalAY->GetEntry(i);
-		FitPar.ExpAY.ExpSignal[i] = PositronEnergy[iDet];
-	}
-	for (i=0; i<FitPar.ExpAY.NExpRandom; i++) {
-		t12BExpRandomAY->GetEntry(i);
-		FitPar.ExpAY.ExpRandom[i] = PositronEnergy[iDet];
-	}
-	TFile *fMCIA = new TFile(MCFileIA);
-	TFile *fMCAY = new TFile(MCFileAY);
-	if (!fMCIA->IsOpen() || !fMCAY->IsOpen()) return 1;
-	for (i=0; i<3; i++) for (j=0; j<3; j++) {
-		M[i][j] = (TMatrixD *) fMCIA->Get(mcnames[i][j]);
-		if (!M[i][j]) {
-			printf("Can not get all matrixes in %s\n", MCFileIA);
+	FitPar.Spectrum = NULL;
+	FitPar.rangeIA.From = 0;
+	FitPar.rangeIA.Till = 0;
+	FitPar.rangeAY.From = 0;
+	FitPar.rangeAY.Till = 0;
+	
+//		IA
+	if (expFileIA) {
+		fExpIA = new TFile(expFileIA);
+		if (!fExpIA->IsOpen()) return 1;
+		t12BExpSignalIA = (TTree *) fExpIA->Get("MuonPair");
+		t12BExpRandomIA = (TTree *) fExpIA->Get("MuonRandom");
+		if (!t12BExpSignalIA || !t12BExpRandomIA) {
+			printf("Can not get all trees\n");
 			return 1;
 		}
-	}
-	for (i=0; i<3; i++) {
-		FitPar.MCIA.CentralMatrix[i] = (TMatrixD *) M[i][0]->Clone();
-		FitPar.MCIA.BirksMatrix[i] = (TMatrixD *) M[i][1]->Clone();
-		FitPar.MCIA.CherMatrix[i] = (TMatrixD *) M[i][2]->Clone();
-	}
-	for (i=0; i<3; i++) for (j=0; j<3; j++) {
-		M[i][j] = (TMatrixD *) fMCAY->Get(mcnames[i][j]);
-		if (!M[i][j]) {
-			printf("Can not get all matrixes in %s\n", MCFileAY);
+		FitPar.ExpIA.NExpSignal = t12BExpSignalIA->GetEntries();
+		FitPar.ExpIA.NExpRandom = t12BExpRandomIA->GetEntries();
+		FitPar.ExpIA.ExpSignal = (double *) malloc(FitPar.ExpIA.NExpSignal * sizeof(double));
+		FitPar.ExpIA.ExpRandom = (double *) malloc(FitPar.ExpIA.NExpRandom * sizeof(double));
+		t12BExpSignalIA->SetBranchAddress("Pair", PositronEnergy);
+		t12BExpRandomIA->SetBranchAddress("Pair", PositronEnergy);
+		for (i=0; i<FitPar.ExpIA.NExpSignal; i++) {
+			t12BExpSignalIA->GetEntry(i);
+			FitPar.ExpIA.ExpSignal[i] = PositronEnergy[iDet];
+		}
+		for (i=0; i<FitPar.ExpIA.NExpRandom; i++) {
+			t12BExpRandomIA->GetEntry(i);
+			FitPar.ExpIA.ExpRandom[i] = PositronEnergy[iDet];
+		}
+		TFile *fMCIA = new TFile(MCFileIA);
+		if (!fMCIA->IsOpen()) return 1;
+		for (i=0; i<3; i++) for (j=0; j<3; j++) {
+			M[i][j] = (TMatrixD *) fMCIA->Get(mcnames[i][j]);
+			if (!M[i][j]) {
+				printf("Can not get all matrixes in %s\n", MCFileIA);
+				return 1;
+			}
+		}
+		for (i=0; i<3; i++) {
+			FitPar.MCIA.CentralMatrix[i] = (TMatrixD *) M[i][0]->Clone();
+			FitPar.MCIA.BirksMatrix[i] = (TMatrixD *) M[i][1]->Clone();
+			FitPar.MCIA.CherMatrix[i] = (TMatrixD *) M[i][2]->Clone();
+		}
+		fMCIA = new TFile(MCFileIA);
+		if (!fMCIA->IsOpen()) return 1;
+		for (i=0; i<3; i++) for (j=0; j<3; j++) {
+			M[i][j] = (TMatrixD *) fMCIA->Get(mcnames[i][j]);
+			if (!M[i][j]) {
+				printf("Can not get all matrixes in %s\n", MCFileIA);
+				return 1;
+			}
+		}
+		for (i=0; i<3; i++) {
+			FitPar.MCIA.CentralMatrix[i] = (TMatrixD *) M[i][0]->Clone();
+			FitPar.MCIA.BirksMatrix[i] = (TMatrixD *) M[i][1]->Clone();
+			FitPar.MCIA.CherMatrix[i] = (TMatrixD *) M[i][2]->Clone();
+		}
+		FitPar.Spectrum = (TVectorD *) ((TVectorD *) fMCIA->Get("v12B_ParticleEnergy"))->Clone();
+		if (!FitPar.Spectrum) {
+			printf("Can not get true specturm in %s\n", MCFileIA);
 			return 1;
 		}
+		printf("IA: Found %d events = %d signal - %d/16 random\n", 
+			(int)(FitPar.ExpIA.NExpSignal - FitPar.ExpIA.NExpRandom / 16.0), FitPar.ExpIA.NExpSignal, FitPar.ExpIA.NExpRandom);
+		fExpIA->Close();
+		fMCIA->Close();
+//		Fit ranges
+		FitPar.rangeIA.From = 17;	// 4 MeV
+		FitPar.rangeIA.Till = 50;	// 12.5 MeV
 	}
-	for (i=0; i<3; i++) {
-		FitPar.MCAY.CentralMatrix[i] = (TMatrixD *) M[i][0]->Clone();
-		FitPar.MCAY.BirksMatrix[i] = (TMatrixD *) M[i][1]->Clone();
-		FitPar.MCAY.CherMatrix[i] = (TMatrixD *) M[i][2]->Clone();
-	}
-	FitPar.Spectrum = (TVectorD *) ((TVectorD *) fMCIA->Get("v12B_ParticleEnergy"))->Clone();
-	if (!FitPar.Spectrum) {
-		printf("Can not get true specturm in %s\n", MCFileIA);
-		return 1;
+//		AY
+	if (expFileAY) {
+		fExpAY = new TFile(expFileAY);
+		if (!fExpAY->IsOpen()) return 1;
+		t12BExpSignalAY = (TTree *) fExpAY->Get("MuonPair");
+		t12BExpRandomAY = (TTree *) fExpAY->Get("MuonRandom");
+		if (!t12BExpSignalAY || !t12BExpRandomAY) {
+			printf("Can not get all trees\n");
+			return 1;
+		}
+		FitPar.ExpAY.NExpSignal = t12BExpSignalAY->GetEntries();
+		FitPar.ExpAY.NExpRandom = t12BExpRandomAY->GetEntries();
+		FitPar.ExpAY.ExpSignal = (double *) malloc(FitPar.ExpAY.NExpSignal * sizeof(double));
+		FitPar.ExpAY.ExpRandom = (double *) malloc(FitPar.ExpAY.NExpRandom * sizeof(double));
+		t12BExpSignalAY->SetBranchAddress("Pair", PositronEnergy);
+		t12BExpRandomAY->SetBranchAddress("Pair", PositronEnergy);
+		for (i=0; i<FitPar.ExpAY.NExpSignal; i++) {
+			t12BExpSignalAY->GetEntry(i);
+			FitPar.ExpAY.ExpSignal[i] = PositronEnergy[iDet];
+		}
+		for (i=0; i<FitPar.ExpAY.NExpRandom; i++) {
+			t12BExpRandomAY->GetEntry(i);
+			FitPar.ExpAY.ExpRandom[i] = PositronEnergy[iDet];
+		}
+		TFile *fMCAY = new TFile(MCFileAY);
+		if (!fMCAY->IsOpen()) return 1;
+		for (i=0; i<3; i++) for (j=0; j<3; j++) {
+			M[i][j] = (TMatrixD *) fMCAY->Get(mcnames[i][j]);
+			if (!M[i][j]) {
+				printf("Can not get all matrixes in %s\n", MCFileAY);
+				return 1;
+			}
+		}
+		for (i=0; i<3; i++) {
+			FitPar.MCAY.CentralMatrix[i] = (TMatrixD *) M[i][0]->Clone();
+			FitPar.MCAY.BirksMatrix[i] = (TMatrixD *) M[i][1]->Clone();
+			FitPar.MCAY.CherMatrix[i] = (TMatrixD *) M[i][2]->Clone();
+		}
+		if (!FitPar.Spectrum) {
+			FitPar.Spectrum = (TVectorD *) ((TVectorD *) fMCAY->Get("v12B_ParticleEnergy"))->Clone();
+			if (!FitPar.Spectrum) {
+				printf("Can not get true specturm in %s\n", MCFileAY);
+				return 1;
+			}
+		}
+		printf("AY: Found %d events = %d signal - %d/2 random\n", 
+			(int)(FitPar.ExpAY.NExpSignal - FitPar.ExpAY.NExpRandom / 2.0), FitPar.ExpAY.NExpSignal, FitPar.ExpAY.NExpRandom);
+		fExpAY->Close();
+		fMCAY->Close();
+		FitPar.rangeAY.From = 3;	// 0.5 MeV
+		FitPar.rangeAY.Till = 50;	// 12.5 MeV
 	}
 	FitPar.iClusterEnergySelection = iDet;
-	printf("IA: Found %d events = %d signal - %d/16 random\n", 
-		(int)(FitPar.ExpIA.NExpSignal - FitPar.ExpIA.NExpRandom / 16.0), FitPar.ExpIA.NExpSignal, FitPar.ExpIA.NExpRandom);
-	printf("AY: Found %d events = %d signal - %d/2 random\n", 
-		(int)(FitPar.ExpAY.NExpSignal - FitPar.ExpAY.NExpRandom / 2.0), FitPar.ExpAY.NExpSignal, FitPar.ExpAY.NExpRandom);
 
-	fExpIA->Close();
-	fMCIA->Close();
-	fExpAY->Close();
-	fMCAY->Close();
 
 //	Set default parameters: 
 //		sigmas for mu, 22Na, 60co, 248Cm, mudec, Bragg
@@ -1842,14 +1955,9 @@ int LoadFitFiles(int iDet)
 	FitPar.Sigma[1] = 0.005;	// 22Na decay
 	FitPar.Sigma[2] = 0.005;	// 60Co decay
 	FitPar.Sigma[3] = 0.005;	// 248Cm neutrons and IBD neutrons
-	FitPar.Sigma[4] = 0.005;	// Electrons from mu-decay
+	FitPar.Sigma[4] = 0;		// Electrons from mu-decay
 	FitPar.Sigma[5] = 0;		// Bragg peak
-//		Fit ranges
-	FitPar.rangeIA.From = 13;	// 3 MeV
-	FitPar.rangeIA.Till = 50;	// 12.5 MeV
-	FitPar.rangeAY.From = 3;	// 0.5 MeV
-	FitPar.rangeAY.Till = 50;	// 12.5 MeV
-	
+
 	return 0;
 }
 
@@ -1895,7 +2003,8 @@ void FitMCparameters(int iDet, const char *oname)
 	mn->DefineParameter(0, "R", 1.0, 0.05, 0.7, 1.5);	// Kscale
 	mn->DefineParameter(1, "Kb", 0, 0.005, -5, 5);		// Kbirks (Delta)
 	mn->DefineParameter(2, "Kc", 0, 0.05, -5, 5);		// Kcher (Delta)
-	FitFunction(i, NULL, R, NULL, 1);			// Reset counter
+	np = 3;
+	FitFunction(np, NULL, R, NULL, 1);			// Reset counter
 	N = (Rmax-Rmin)/Rstep + 1;
 	gROOT->cd();
 	TH1D *hPar = new TH1D("hPar", "Scale scan;Scale;#chi^{2}", N, Rmin - Rstep/2, Rmax + Rstep/2);
@@ -1963,7 +2072,7 @@ void FitMCparameters(int iDet, const char *oname)
 	sprintf(str, "#chi^{2} = %f / %d ndf", chi2, np);
 	lt.DrawLatexNDC(0.05, 0.94, str);
 	
-	for (i=0; i<6; i++) printf("%s = %6.3f  ", rnames[i], RFunction(Kb, Kc, Kb, i));
+	for (i=0; i<6; i++) if (FitPar.Sigma[i] > 0) printf("%s = %6.3f  ", rnames[i], RFunction(Kb, Kc, Kb, i));
 	printf("\n");
 	
 	cv->Update();
