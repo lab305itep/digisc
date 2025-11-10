@@ -481,7 +481,10 @@ void scan_scale_all87(void)
 		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0108.hist.root",
 		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0308.hist.root",
 		"cm_MC_8.7_Center_Chikuma_paint_0_15.hist.root",
-		"cm_MC_8.7_Center_Chikuma_paint_0_45.hist.root"};
+		"cm_MC_8.7_Center_Chikuma_paint_0_45.hist.root",
+		"cm_MC_8.7_Center_Chikuma_xzmap.hist.root",
+		"cm_MC_8.7_Center_Chikuma_xzmap_Shielding.hist.root"
+		};
 	const char *when[] = {"mar17", "nov18", "jun22", "may25"};
 	const char *MC[] = {"Chikuma",
 		"Chikuma_Birks_el_0_0108",
@@ -491,7 +494,9 @@ void scan_scale_all87(void)
 		"Chikuma_main_Birks_0_0108",
 		"Chikuma_main_Birks_0_0308",
 		"Chikuma_paint_0_15",
-		"Chikuma_paint_0_45"};
+		"Chikuma_paint_0_45",
+		"Chikuma_xzmap",
+		"Chikuma_xzmap_Shielding"};
 	int i, j, nExp, nMC;
 	char str[1024];
 	
@@ -502,4 +507,78 @@ void scan_scale_all87(void)
 		sprintf(str, "cm_8.7_%s_%s.root", when[j], MC[i]);
 		scan_248Cm(expCm87[j], MCCm87[i], str);
 	}
+}
+
+/****************************************
+ *	Make matrixes for Chikuma	*
+ *	fname - output file name	*
+ ****************************************/
+void MakeChikumaDiffHists(const char *fname)
+{
+	const char *mcnames[] = {
+		"cm_MC_8.7_Center_Chikuma.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0108.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0308.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_033.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_233.hist.root",
+		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0108.hist.root",
+		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0308.hist.root",
+		"cm_MC_8.7_Center_Chikuma_paint_0_15.hist.root",
+		"cm_MC_8.7_Center_Chikuma_paint_0_45.hist.root"};
+	const char *detname[] = {"SiPM+PMT", "SiPM", "PMT"};
+	const char *histlist[] = {"hMC_20", "hMCSiPM_20", "hMCPMT_20"};
+	const char *mixname[] = {"Birks_el", "Cher_coeff", "main_Birks", "paint"};
+	int i, j;
+	char name[256];
+	TH1D *HD[17][3];
+	TFile *fIn[9];
+	
+	TFile *fOut = new TFile(fname, "RECREATE");
+	if (!fOut->IsOpen()) return;
+	
+	for (i = 0; i < 9; i++) {
+		fIn[i] = new TFile(mcnames[i]);
+		if (!fIn[i]->IsOpen()) return;
+		for (j = 0; j < 3; j++) {
+			HD[i][j] = (TH1D*) fIn[i]->Get(histlist[j]);
+			if (!HD[i][j]) {
+				printf("Hist %s not found in file %s\n", histlist[j], mcnames[i]);
+				return;
+			}
+			sprintf(name, "m248Cm_%s_%s", mcnames[i], detname[j]);
+			fOut->cd();
+			HD[i][j]->Write(name);
+		}
+	}
+	for (j = 0; j < 3; j++) {
+		for (i=0; i<8; i++) {
+			sprintf(name, "m248Cm_%s_%s_%s", (i & 1) ? "Residual" : "Delta", mixname[i/2], detname[j]);
+			HD[i+9][j] = (TH1D *) HD[0][j]->Clone(name);
+		}
+		HD[9][j]->Add(HD[2][j], HD[1][j], 0.5, -0.5);
+		HD[10][j]->Add(HD[2][j], HD[1][j], 0.5, 0.5);
+		HD[10][j]->Add(HD[0][j], -1.0);
+		HD[11][j]->Add(HD[4][j], HD[3][j], 0.5, -0.5);
+		HD[12][j]->Add(HD[4][j], HD[3][j], 0.5, 0.5);
+		HD[12][j]->Add(HD[0][j], -1.0);
+		HD[13][j]->Add(HD[6][j], HD[5][j], 0.5, -0.5);
+		HD[14][j]->Add(HD[6][j], HD[5][j], 0.5, 0.5);
+		HD[14][j]->Add(HD[0][j], -1.0);
+		HD[15][j]->Add(HD[8][j], HD[7][j], 0.5, -0.5);
+		HD[16][j]->Add(HD[8][j], HD[7][j], 0.5, 0.5);
+		HD[16][j]->Add(HD[0][j], -1.0);
+		for (i=0; i<8; i++) {
+			fOut->cd();
+			HD[i+9][j]->Write();
+		}
+	}
+	
+	fOut->Close();
+	for (i=0; i<9; i++) fIn[i]->Close();
+}
+
+TH1D *GetMC(const char *fMC, double Kbirks, double Kcher)
+{
+	TFile *fIn = new TFile(fMC);
+	???????
 }

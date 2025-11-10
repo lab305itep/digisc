@@ -39,7 +39,7 @@ struct FitParametersStruct {
 	double FunMap[7][7][7];
 	int iIA;
 	int iAY;
-	double Sigma[6];
+	double Sigma[7];
 	struct BinRangeStruct rangeIA;
 	struct BinRangeStruct rangeAY;
 } FitPar = {
@@ -1467,41 +1467,51 @@ double RFunction(double Kb, double Kc, double Kh, int num)
 	60Co  = 1.028 + 0.046*Kb - 0.012*Kc + 0.033*Kp
 	248Cm = 1.001 + 0.034*Kb - 0.020*Kc + 0.033*Kp
 	12B   = 0.943 + 0.022*Kb - 0.033*Kc + 0.038*Kp
+	Dec   = 0.936 + 0.017*Kb - 0.027*Kc + 0.033*Kp
 	SiPM
 	mu    = 0.961 + 0.017*Kb - 0.033*Kc + 0.031*Kp
 	22Na  = 1.078 + 0.056*Kb - 0.009*Kc + 0.032*Kp
 	60Co  = 1.024 + 0.048*Kb - 0.013*Kc + 0.037*Kp
 	248Cm = 1.007 + 0.033*Kb - 0.021*Kc + 0.034*Kp
 	12B   = 0.961 + 0.023*Kb - 0.034*Kc + 0.039*Kp
+	Dec   = 0.929 + 0.017*Kb - 0.024*Kc + 0.032*Kp
+	Brg   = 0.934 + 0.025*Kb - 0.015*Kc + 0.033*Kp
 	PMT
 	mu    = 0.961 + 0.020*Kb - 0.031*Kc + 0.031*Kp
 	22Na  = 1.031 + 0.057*Kb - 0.008*Kc + 0.039*Kp
 	60Co  = 1.016 + 0.047*Kb - 0.012*Kc + 0.040*Kp
 	248Cm = 0.994 + 0.033*Kb - 0.020*Kc + 0.035*Kp
 	12B   = 0.967 + 0.020*Kb - 0.031*Kc + 0.037*Kp
+	Dec   = 0.940 + 0.017*Kb - 0.028*Kc + 0.032*Kp
 */
 
 double RFunction(double Kb, double Kc, double Kp, int num, int det = 0)
 {
-	const double A[3][5][4] = {
+	const double A[3][7][4] = {
 //	SiPM + PMT	det = 0
 		{{0.961, 0.018, -0.032, 0.031},	// mu 
 		{1.057, 0.058, -0.009, 0.034},	// Na
 		{1.028, 0.046, -0.012, 0.033},	// Co
 		{1.001, 0.034, -0.020, 0.033},	// Cm
-		{0.943, 0.022, -0.033, 0.038}},	// B
+		{0.943, 0.022, -0.033, 0.038},	// B
+		{0.936, 0.017, -0.027, 0.033},  // mu-decay
+		{1.0,   0,      0,     0    }}, // Bragg
 //	SiPM		det = 1
 		{{0.961, 0.017, -0.033, 0.031},	// mu
 		{1.078, 0.056, -0.009, 0.032},	// Na
 		{1.024, 0.048, -0.013, 0.037},	// Co
 		{1.007, 0.033, -0.021, 0.034},	// Cm
-		{0.961, 0.023, -0.034, 0.039}},	// B
+		{0.961, 0.023, -0.034, 0.039},	// B
+		{0.929, 0.017, -0.027, 0.032},  // mu-decay
+		{0.934, 0.025, -0.015, 0.032}}, // Bragg
 //	PMT		det = 2
 		{{0.961, 0.020, -0.031, 0.031},	// mu
 		{1.031, 0.057, -0.008, 0.039},	// Na
 		{1.016, 0.047, -0.012, 0.040},	// Co
 		{0.994, 0.033, -0.020, 0.035},	// Cm
-		{0.967, 0.020, -0.031, 0.037}}	// B
+		{0.967, 0.020, -0.031, 0.037},	// B
+		{0.940, 0.017, -0.028, 0.032},  // mu-decay
+		{1.0,   0,      0,     0    }}  // Bragg
 	};
 	
 	return 1.0 / (A[det][num][0] + A[det][num][1]*Kb + A[det][num][2]*Kc + A[det][num][3]*Kp);
@@ -1556,8 +1566,9 @@ void FitFunction(int &Npar, double *gin, double &f, double *x, int iflag)
 		delete hExpAY;
 		delete hMCAY;
 	}
-	for (i=0; i<4; i++) if (FitPar.Sigma[i] > 0) {	// only muons, 22Na, 60Co, 248Cm
-		r = RFunction(Kbirks, Kcher, 0, i) - Kscale;	// don't vary paint
+	for (i=0; i<7; i++) if (FitPar.Sigma[i] > 0) {
+		if (i == 6 && FitPar.iClusterEnergySelection != 1) continue;
+		r = RFunction(Kbirks, Kcher, 0, i, FitPar.iClusterEnergySelection) - Kscale;	// don't vary paint
 		chi2other += r * r / (FitPar.Sigma[i] * FitPar.Sigma[i]);
 	}
 	f = chi2BIA + chi2BAY + chi2other;
@@ -1580,6 +1591,7 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher, int which)
 	TH1D *hMC;
 	int binMin, binMax;
 
+	gStyle->SetOptStat(0);
 	if (which) {
 		if (FitPar.rangeAY.From >= FitPar.rangeAY.Till) return;
 		hExp = GetExperiment(Kscale, &FitPar.ExpAY, "__hExpAY", 1.0/2);
@@ -1622,9 +1634,16 @@ void DrawFitRes(double Kscale, double Kbirks, double Kcher, int which)
 	ln.DrawLine(binMax/4.0, 0, binMax/4.0, hExp->GetMaximum());
 	
 	TLatex lt;
+	lt.SetTextSize(0.045);
 	chi2 = chi2Diff(hExp, hMC, binMin, binMax);
 	sprintf(str, "#chi^{2} = %5.1f", chi2);
-	lt.DrawLatexNDC(0.4, 0.82, str);
+	lt.DrawLatexNDC(0.6, 0.82, str);
+	sprintf(str, "K_{B}= %6.4f cm/MeV", 0.0208 + 0.01 * Kbirks);
+	lt.DrawLatexNDC(0.6, 0.73, str);
+	sprintf(str, "K_{Ch} = %5.3f MeV/cm", 0.133 + 0.1 * Kcher);
+	lt.DrawLatexNDC(0.6, 0.64, str);
+	sprintf(str, "Scale = %5.3f", Kscale);
+	lt.DrawLatexNDC(0.6, 0.55, str);
 }
 
 /****************************************************************
@@ -1793,9 +1812,9 @@ int LoadFitFiles(int iDet)
 #endif
 
 	const char *expFileIA = "12B_events_8n7_002210_175528.root";
-	const char *expFileAY = NULL;
+	const char *expFileAY = "8.2/12B_events_AY.root";
 	const char *MCFileIA = "12B_Chikuma_matrixes_IA_v7.root";
-	const char *MCFileAY = NULL;
+	const char *MCFileAY = "12B_Chikuma_matrixes_AY_v2.root";
 	
 	const char *mcnames[3][3] = {{
 			"m12B_DB_spectrum_Chikuma_PositronEnergy", 
@@ -1947,17 +1966,34 @@ int LoadFitFiles(int iDet)
 		FitPar.rangeAY.Till = 50;	// 12.5 MeV
 	}
 	FitPar.iClusterEnergySelection = iDet;
-
-
 //	Set default parameters: 
 //		sigmas for mu, 22Na, 60co, 248Cm, mudec, Bragg
-	FitPar.Sigma[0] = 0.005;	// vertical muons
-	FitPar.Sigma[1] = 0.005;	// 22Na decay
-	FitPar.Sigma[2] = 0.005;	// 60Co decay
-	FitPar.Sigma[3] = 0.005;	// 248Cm neutrons and IBD neutrons
-	FitPar.Sigma[4] = 0;		// Electrons from mu-decay
-	FitPar.Sigma[5] = 0;		// Bragg peak
-
+	switch (iDet) {
+	case 0:		// SiPM + PMT
+		FitPar.Sigma[0] = 0.005;	// vertical muons
+		FitPar.Sigma[1] = 0.005;	// 22Na decay
+		FitPar.Sigma[2] = 0.005;	// 60Co decay
+		FitPar.Sigma[3] = 0.005;	// 248Cm neutrons and IBD neutrons
+		FitPar.Sigma[4] = 0;		// 12B fit - we don't use it here
+		FitPar.Sigma[5] = 0.005;	// Electrons from mu-decay
+		FitPar.Sigma[6] = 0;		// Bragg peak
+	case 1:		// SiPM
+		FitPar.Sigma[0] = 0.01;		// vertical muons
+		FitPar.Sigma[1] = 0.01;		// 22Na decay
+		FitPar.Sigma[2] = 0.01;		// 60Co decay
+		FitPar.Sigma[3] = 0.01;		// 248Cm neutrons and IBD neutrons
+		FitPar.Sigma[4] = 0;		// 12B fit - we don't use it here
+		FitPar.Sigma[5] = 0.01;		// Electrons from mu-decay
+		FitPar.Sigma[6] = 0.01;		// Bragg peak
+	case 2:		// PMT
+		FitPar.Sigma[0] = 0.01;		// vertical muons
+		FitPar.Sigma[1] = 0.01;		// 22Na decay
+		FitPar.Sigma[2] = 0.01;		// 60Co decay
+		FitPar.Sigma[3] = 0.01;		// 248Cm neutrons and IBD neutrons
+		FitPar.Sigma[4] = 0;		// 12B fit - we don't use it here
+		FitPar.Sigma[5] = 0.01;		// Electrons from mu-decay
+		FitPar.Sigma[6] = 0;		// Bragg peak
+	}
 	return 0;
 }
 
