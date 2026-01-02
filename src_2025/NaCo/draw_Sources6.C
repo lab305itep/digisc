@@ -685,6 +685,13 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		sprintf(fname, "Chikuma/root8n7/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
+	case 1034:	// Na MC, center, full model, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/22Na
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "22Na";
+		sprintf(fname, "Fuso/root8n7/22Na/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
 	case 1041:	// Na MC with SiPM noise root8n6
 		for (i=0; i<40; i++) {
 			sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n6/MC/Chikuma/22Na/%s/mc_22Na_indLY_transcode_rawProc_pedSim_1p%d.root", rootdir, i);
@@ -743,6 +750,13 @@ void draw_Sources6(int iser, const char *rootdir = "root8n2", double scale = 1.0
 		tMc->AddFile(str);
 		name = "60Co";
 		sprintf(fname, "Chikuma/root8n7/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
+		Y = 50;
+		break;
+	case 1134:	// Co MC, center, Fuso, suffix to /home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/60Co
+		sprintf(str, "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/60Co/%s/mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root", rootdir);
+		tMc->AddFile(str);
+		name = "60Co";
+		sprintf(fname, "Fuso/root8n7/60Co/%s/MC_center_S%5.3f_R%4.1f", rootdir, scale, RMAX);
 		Y = 50;
 		break;
 	default:

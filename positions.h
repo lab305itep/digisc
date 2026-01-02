@@ -5,7 +5,7 @@ const struct PositionsStruct {
 	int period;
 	double bgnd;
 } positions[] = {
-#include "positions/pos_2210_175528.h"
+#include "positions/pos_2210_181414.h"
 };
 const char periods[][30] = {
 	"April-June 16", 
@@ -17,5 +17,5 @@ const char periods[][30] = {
 	"March 21 - January 22",
 	"February 22 - June 23",
 	"July 23 - January 25",
-	"February 25 - May 25"
+	"February 25 - August 25"
 };

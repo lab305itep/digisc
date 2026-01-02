@@ -1,3 +1,5 @@
+#include "../../evtbuilder.h"
+
 /**********************************************************
 	Process data and MC for 248Cm measurements
 248Cm runs:
@@ -509,6 +511,36 @@ void scan_scale_all87(void)
 	}
 }
 
+void scan_scale_Fuso87(void)
+{
+	const char *expCm87[] = {"cm_14428_14485_8.7.hist.root", "cm_50578_50647_8.7.hist.root", 
+		"cm_127720_127772_8.7.hist.root", "cm_175471_175528_8.7.hist.root"};
+	const char *MCCm87[] = {"cm_MC_8.7_Center_Chikuma.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0108.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0308.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_033.hist.root",
+		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_233.hist.root",
+		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0108.hist.root",
+		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0308.hist.root",
+		"cm_MC_8.7_Center_Chikuma_paint_0_15.hist.root",
+		"cm_MC_8.7_Center_Chikuma_paint_0_45.hist.root",
+		"cm_MC_8.7_Center_Chikuma_xzmap.hist.root",
+		"cm_MC_8.7_Center_Chikuma_xzmap_Shielding.hist.root"
+		};
+	const char *when[] = {"mar17", "nov18", "jun22", "may25"};
+	const char *MC[] = {"Fuso"};
+	int i, j, nExp, nMC;
+	char str[1024];
+	
+	nExp = sizeof(when) / sizeof(when[0]);
+	nMC = sizeof(MC) / sizeof(MC[0]);
+	
+	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
+		sprintf(str, "cm_8.7_%s_%s.root", when[j], MC[i]);
+		scan_248Cm(expCm87[j], MCCm87[i], str);
+	}
+}
+
 /****************************************
  *	Make matrixes for Chikuma	*
  *	fname - output file name	*
@@ -525,6 +557,8 @@ void MakeChikumaDiffHists(const char *fname)
 		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0308.hist.root",
 		"cm_MC_8.7_Center_Chikuma_paint_0_15.hist.root",
 		"cm_MC_8.7_Center_Chikuma_paint_0_45.hist.root"};
+	const char *mcshort[] = {"Chikuma", "Bel108", "Bel308", "Cher033", "Cher233", 
+		"Bm108", "Bm308", "Pnt150", "Pnt450"};
 	const char *detname[] = {"SiPM+PMT", "SiPM", "PMT"};
 	const char *histlist[] = {"hMC_20", "hMCSiPM_20", "hMCPMT_20"};
 	const char *mixname[] = {"Birks_el", "Cher_coeff", "main_Birks", "paint"};
@@ -545,8 +579,9 @@ void MakeChikumaDiffHists(const char *fname)
 				printf("Hist %s not found in file %s\n", histlist[j], mcnames[i]);
 				return;
 			}
-			sprintf(name, "m248Cm_%s_%s", mcnames[i], detname[j]);
 			fOut->cd();
+			sprintf(name, "m248Cm_%s_%s", mcshort[i], detname[j]);
+			HD[i][j]->SetName(name);
 			HD[i][j]->Write(name);
 		}
 	}
@@ -577,8 +612,71 @@ void MakeChikumaDiffHists(const char *fname)
 	for (i=0; i<9; i++) fIn[i]->Close();
 }
 
-TH1D *GetMC(const char *fMC, double Kbirks, double Kcher)
+TH1D *GetMC(const char *fMC, double Kbirks, double Kcher, int iDet)
 {
+	const char *hbase[] = {"Chikuma", "Delta_Birks_el", "Delta_Cher_coeff"};
+	const char *detname[] = {"SiPM+PMT", "SiPM", "PMT"};
+	int i;
+	char str[1024];
+	TH1D *HD[3];
+	
 	TFile *fIn = new TFile(fMC);
-	???????
+	if (!fIn->IsOpen()) return NULL;
+	for (i=0; i<3; i++) {
+		sprintf(str, "m248Cm_%s_%s", hbase[i], detname[iDet]);
+		HD[i] = (TH1D*) fIn->Get(str);
+		if (!HD[i]) {
+			printf("Can not find %s in %s\n", str, fMC);
+			return NULL;
+		}
+	}
+	gROOT->cd();
+	TH1D *hRes = (TH1D*) HD[0]->Clone("hMC");
+	hRes->Add(HD[1], Kbirks);
+	hRes->Add(HD[2], Kcher);
+	
+	fIn->Close();
+	return hRes;
+}
+
+//	Make short tree of experimental events
+//  fnameIn - input file name(s)
+//  fnameOut - output file name
+//  nMin - nMax - range of delayed events
+void MakeShortTree(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax = 7)
+{
+	struct EnergyStruct {
+		float NeutronEnergy;
+		float SiPmEnergy;
+		float PmtEnergy;
+	} Energy;
+	char strA[1024];
+	char strB[1024];
+	int i, j, N;
+	struct DanssCmStruct DanssCm;
+
+	TFile *fOut = new TFile(fnameOut, "RECREATE");
+	if (!fOut->IsOpen()) return;
+	TTree *tOut = new TTree("Energy", "Energy");
+	tOut->Branch("Energy", &Energy, "NeutronEnergy/F:SiPmEnergy/F:PmtEnergy/F");
+
+	TChain *t = create_chain(fnameIn, "DanssCm");
+	if (!t) {
+		printf("Something is wrong with the experimental tree file %s\n", fnameIn);
+		return;
+	}
+	t->SetBranchAddress("DanssCm", &DanssCm);
+	N = t->GetEntries();
+	for (i=0; i<N; i++) {
+		t->GetEntry(i);
+		for (j=nMin; j <= nMax && j < N; j++) 
+			if (DanssCm.gtDiff[j]/125 < 50 && DanssCm.gtDiff[j]/125 > 2 && DanssCm.PmtCleanEnergy[j] > 0.7) {
+				Energy.NeutronEnergy = DanssCm.NeutronEnergy[j];
+				Energy.SiPmEnergy = DanssCm.SiPmCleanEnergy[j];
+				Energy.PmtEnergy = DanssCm.PmtCleanEnergy[j];
+				tOut->Fill();
+		}
+	}
+	tOut->Write();
+	fOut->Close();
 }

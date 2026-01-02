@@ -17,8 +17,7 @@ CMBUILDER=/home/itep/alekseev/igor/cmbuilder
 #	cm_MC_8.7_Center_Chikuma_main_Birks_0_0308 \
 #	cm_MC_8.7_Center_Chikuma_paint_0_15 \
 #	cm_MC_8.7_Center_Chikuma_paint_0_45 ; do
-for f in cm_MC_8.7_Center_Chikuma_xzmap \
-	cm_MC_8.7_Center_Chikuma_xzmap_Shielding ; do
+for f in cm_MC_8.7_Center_Fuso ; do
 	${CMBUILDER} ${f}.list ${f}.root
 done
 

@@ -729,6 +729,9 @@ void draw_mc2exp(const char *fname)
  * USED in the experimental data calibration:
  *	pheSiPM = 20.38; phePMT = 15.3
  *	MedSiPM = 35.56; MedPMT = 283.65
+ * Chikuma:  pheSiPM = 20.78; phePMT = 14.63
+ * Fuso(v1): pheSiPM = 21.21; phePMT = 14.74
+ * Fuso:     pheSiPM = 21.21; phePMT = 14.80
  */
 void calib4sasha(const char *fname, double pheSiPM0, double phePMT)
 {
