@@ -6,8 +6,8 @@
 #PBS -l nodes=1
 #PBS -l walltime=100:00:00
 cd /home/itep/alekseev/igor
-RVER="8n2"
-PVER="8n2"
+RVER="8n7"
+PVER="8n7"
 
 ROOTDIR=/home/clusters/rrcmpi/alekseev/igor/root${RVER}/MC
 PAIRDIR=/home/clusters/rrcmpi/alekseev/igor/pair${PVER}/MC
@@ -81,8 +81,7 @@ do_gamma()
 }
 
 date
-do_IBDdir Chikuma/IBD/235U_fuel_Chikuma_paint_0_15 6 16 235U
-do_IBDdir Chikuma/IBD/235U_fuel_Chikuma_paint_0_45 6 16 235U
+do_IBDdir Fuso/IBD/235U_fuel_Fuso 6 16 235U
 date
 
 exit 0

@@ -36,7 +36,7 @@ void background_calc(const char *name, int run_first, int run_last, TCut cAux = 
 	TCut cR("Distance < 40 && NeutronX[0] > 0 && NeutronX[1] > 0");		// both coordinates in neutron
         TCut ct = cIso && cVeto && cShower && c20 && cX && cY && cZ && cGamma && cPe && cPh && cR && cAux;
 
-	sprintf(strl, "exp/%s.root", name);
+	sprintf(strl, "exp_87/%s.root", name);
 	TFile *fRoot = new TFile(strl, "RECREATE");
 	hExp = new TH1D("hn", "Delayed event energy;MeV;events", 105, 1.5, 12);
 	hExpSiPM = new TH1D("hnSiPM", "Delayed event energy, SiPM;MeV;events", 105, 1.5, 12);

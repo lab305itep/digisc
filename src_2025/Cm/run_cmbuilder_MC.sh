@@ -17,8 +17,11 @@ CMBUILDER=/home/itep/alekseev/igor/cmbuilder
 #	cm_MC_8.7_Center_Chikuma_main_Birks_0_0308 \
 #	cm_MC_8.7_Center_Chikuma_paint_0_15 \
 #	cm_MC_8.7_Center_Chikuma_paint_0_45 ; do
-for f in cm_MC_8.7_Center_Fuso ; do
+for f in cm_MC_8.7_Center_Fuso_Birks_0_005 cm_MC_8.7_Center_Fuso_Cher_coeff_0_05\
+	cm_MC_8.7_Center_Fuso_paint_0_2 cm_MC_8.7_Center_Fuso_paint_0_3; do
 	${CMBUILDER} ${f}.list ${f}.root
 done
+
+root -l -b -q cm_runMC.C
 
 exit 0

@@ -515,18 +515,7 @@ void scan_scale_Fuso87(void)
 {
 	const char *expCm87[] = {"cm_14428_14485_8.7.hist.root", "cm_50578_50647_8.7.hist.root", 
 		"cm_127720_127772_8.7.hist.root", "cm_175471_175528_8.7.hist.root"};
-	const char *MCCm87[] = {"cm_MC_8.7_Center_Chikuma.hist.root",
-		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0108.hist.root",
-		"cm_MC_8.7_Center_Chikuma_Birks_el_0_0308.hist.root",
-		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_033.hist.root",
-		"cm_MC_8.7_Center_Chikuma_Cher_coeff_0_233.hist.root",
-		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0108.hist.root",
-		"cm_MC_8.7_Center_Chikuma_main_Birks_0_0308.hist.root",
-		"cm_MC_8.7_Center_Chikuma_paint_0_15.hist.root",
-		"cm_MC_8.7_Center_Chikuma_paint_0_45.hist.root",
-		"cm_MC_8.7_Center_Chikuma_xzmap.hist.root",
-		"cm_MC_8.7_Center_Chikuma_xzmap_Shielding.hist.root"
-		};
+	const char *MCCm87[] = {"cm_MC_8.7_Center_Fuso.hist.root"};
 	const char *when[] = {"mar17", "nov18", "jun22", "may25"};
 	const char *MC[] = {"Fuso"};
 	int i, j, nExp, nMC;

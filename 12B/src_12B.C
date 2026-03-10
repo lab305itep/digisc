@@ -499,6 +499,28 @@ void Chikuma_All_MC(void)
 	}
 }
 
+void Fuso_All_MC(void)
+{
+	const char *MCvar[] = {"DB_spectrum_Fuso", 
+		"DB_spectrum_Fuso_Birks_0_005", 
+		"DB_spectrum_Fuso_Cher_coeff_0_05", 
+		"DB_spectrum_Fuso_paint_0_2", 
+		"DB_spectrum_Fuso_paint_0_3", 
+		"G4_spectrum_Fuso"}; 
+	const char *MCdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/12B";
+	char namein[4096];
+	char nameout[4096];
+	int i;
+	
+	for (i=0; i < sizeof(MCvar)/sizeof(MCvar[0]); i++) {
+		sprintf(namein,
+			"%s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root %s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root",
+			MCdir, MCvar[i], MCdir, MCvar[i]);
+		sprintf(nameout, "MC12B_8.7-%s.hist.root", MCvar[i]);
+		src_12BMC(namein, nameout);
+	}
+}
+
 /*
 	Draw a comparison of the experimental and MC histgrams.
 	expname - file with experimental histograms
@@ -608,7 +630,7 @@ void draw_12B(const char *expname, const char *mcname, int iScale = 20, int iShi
 	lg1->AddEntry(fExpo, "Fit to Data", "l");
 	lg1->Draw();
 	
-	sprintf(str, "12B_82_exp2mc_scale_%5.3f_shift_%6.3f.png", scale, shift);
+	sprintf(str, "12B_87_Fuso_exp2mc_scale_%5.3f_shift_%6.3f.png", scale, shift);
 	cv->SaveAs(str);
 	fExp->Close();
 	fMC->Close();

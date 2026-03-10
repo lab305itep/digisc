@@ -1312,6 +1312,37 @@ void scan_scale_all2025_7(void)
 	}
 }
 
+void scan_scale_Fuso(void)
+{
+//	Experimental files:
+	const char *expNa87[] = {"22Na_feb17_center_root8n7_R30.0.root",
+		"22Na_nov18_center_root8n7_R30.0.root",
+		"22Na_jun22_center_root8n7_R30.0.root",
+		"22Na_may25_center_root8n7_R30.0.root"};
+	const char *expCo87[] = {"60Co_feb17_center_root8n7_R30.0.root",
+		"60Co_nov18_center_root8n7_R30.0.root",
+		"60Co_jun22_center_root8n7_R30.0.root",
+		"60Co_apr25_center_root8n7_R30.0.root"};
+//	MC patterns:
+	const char *MCNa87[] = {"Fuso/root8n7/22Na/Full_decay_center_Fuso/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCCo87[] = {"Fuso/root8n7/60Co/Center_Fuso/MC_center_S%-5.3f_R30.0.root"};
+//	Results:
+	const char *when[] = {"feb17", "nov18", "jun22", "apr25"};
+	const char *MC[] = {"Fuso"};
+	char str[1024];
+	int i, j;
+	int nMC = sizeof(MC) / sizeof(MC[0]);
+	int nExp = sizeof(when) / sizeof(when[0]);
+	
+	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
+		printf("\nExp[%d] MC[%d]\n", j, i);
+		sprintf(str, "scan_22Na_8n7_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expNa87[j], MCNa87[i], str);
+		sprintf(str, "scan_60Co_8n7_%s_%s.root", when[j], MC[i]);
+		draw_scale_scan(expCo87[j], MCCo87[i], str);
+	}
+}
+
 void scan_noise(void)
 {
 	const char *expNa86[] = {"22Na_feb17_center_root8n6_R30.0.root",

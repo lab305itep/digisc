@@ -11,9 +11,8 @@
 		"cm_MC_8.7_Center_Chikuma_paint_0_45"};
 */
 
-	const char *mcname[] = {
-		"cm_MC_8.7_Center_Chikuma_xzmap",
-		"cm_MC_8.7_Center_Chikuma_xzmap_Shielding"};
+	const char *mcname[] = {"cm_MC_8.7_Center_Fuso_Birks_0_005", "cm_MC_8.7_Center_Fuso_Cher_coeff_0_05", 
+		"cm_MC_8.7_Center_Fuso_paint_0_2", "cm_MC_8.7_Center_Fuso_paint_0_3"};
 
 	int i;
 	char str[1024];
