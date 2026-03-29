@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 		goto fin;
 	}
 	MPI_Comm_rank(MPI_COMM_WORLD, &serial);
-	scale  = 0.9 + 0.005*serial;
+	scale  = 0.8 + 0.005*serial;
 //		The run itself
 	sprintf(str, argv[1], scale);
 	sprintf(cmd, "root -p -q -b \'%s\'", str);

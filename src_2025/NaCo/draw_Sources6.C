@@ -952,13 +952,14 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 //	const char *MCpattern = "v10/%s_%s_%s_%s_S%5.3f_R%4.1f.root";	// what, mcsuffix, whereMC, version, scale, RMAX
 //	const char *MCpattern = "Akagi/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
 //	const char *MCpattern = "Chikuma/%s/%s/MC_%s_S%5.3f_R%4.1f.root";	// what, versionMC, whereMC, scale, RMAX
-	const int binMin = 11;
-	const int binMax = 26;
+	int binMin = 11;
+	int binMax = 26;
 	char MCname[1024];
 	char str[256];
 	int i;
 	double scale;
 	double sMin, sMinSiPM, sMinPMT;
+	double Emin, Emax;
 	TFile *fMC;
 	TH1D *hMC;
 	TH1D *hMCSiPM;
@@ -967,12 +968,20 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 	gStyle->SetOptStat(0);
 	gStyle->SetOptFit(0);
 	
+	if (strstr(Experiment, "22Na")) {
+		binMin = 11;
+		binMax = 22;
+	} else if (strstr(Experiment, "60Co")) {
+		binMin = 11;
+		binMax = 26;
+	} 
+
 	sprintf(str, "Scan over scale for %s;Scale;#chi^{2}", Experiment);
-	TH1D *hScan = new TH1D("hScan", str, 41, 0.8975, 1.1025);
+	TH1D *hScan = new TH1D("hScan", str, 61, 0.7975, 1.1025);
 	sprintf(str, "Scan over scale for %s, SiPM;Scale;#chi^{2}", Experiment);
-	TH1D *hScanSiPM = new TH1D("hScanSiPM", str, 41, 0.8975, 1.1025);
+	TH1D *hScanSiPM = new TH1D("hScanSiPM", str, 61, 0.7975, 1.1025);
 	sprintf(str, "Scan over scale for %s, PMT;Scale;#chi^{2}", Experiment);
-	TH1D *hScanPMT = new TH1D("hScanPMT", str, 41, 0.8975, 1.1025);
+	TH1D *hScanPMT = new TH1D("hScanPMT", str, 61, 0.7975, 1.1025);
 	hScan->SetMarkerStyle(kFullCircle);
 	hScanSiPM->SetMarkerStyle(kFullCircle);
 	hScanPMT->SetMarkerStyle(kFullCircle);
@@ -990,6 +999,17 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 		return;
 	}
 
+	if (strstr(Experiment, "22Na")) {
+		binMin = 11;
+		binMax = 22;
+	} else if (strstr(Experiment, "60Co")) {
+		binMin = 11;
+		binMax = 26;
+	} 
+
+	Emin = hExp->GetXaxis()->GetBinLowEdge(binMin);
+	Emax = hExp->GetXaxis()->GetBinUpEdge(binMax);
+
 	hExp->SetLineColor(kRed);
 	hExp->SetMarkerColor(kRed);
 	hExp->SetMarkerStyle(kFullCircle);
@@ -1000,8 +1020,8 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 	hExpPMT->SetMarkerColor(kRed);
 	hExpPMT->SetMarkerStyle(kFullCircle);
 	
-	for (i=0; i<41; i++) {
-		scale = 0.9 + 0.005*i;
+	for (i=0; i<61; i++) {
+		scale = 0.8 + 0.005*i;
 		sprintf(MCname, MCpattern, scale);
 		fMC = new TFile(MCname);
 		if (!fMC->IsOpen()) return;
@@ -1060,10 +1080,10 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 	sprintf(str, "#chi^{2}_{min} = %6.1f", fPol2->Eval(sMinPMT));
 	txt.DrawLatexNDC(0.4, 0.72, str);
 	
-	i = (sMin - 0.8975) / 0.005;
+	i = (sMin - 0.7975) / 0.005;
 	if (i < 0) i = 0;
-	if (i > 40) i = 40;
-	scale = 0.9 + 0.005*i;
+	if (i > 40) i = 60;
+	scale = 0.8 + 0.005*i;
 	sprintf(MCname, MCpattern, scale);
 	fMC = new TFile(MCname);
 	if (!fMC->IsOpen()) return;
@@ -1078,9 +1098,15 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 	hMCSiPM->Scale(hExpSiPM->Integral(binMin, binMax) / hMCSiPM->Integral(binMin, binMax));
 	hMCPMT->Scale(hExpPMT->Integral(binMin, binMax) / hMCPMT->Integral(binMin, binMax));
 
+	TLine ln;
+	ln.SetLineColor(kBlue);
+	ln.SetLineWidth(2);
+
 	cv->cd(1);
 	hExp->DrawCopy();
 	hMC->DrawCopy("same,hist");
+	ln.DrawLine(Emin, 0, Emin, hExp->GetMaximum());
+	ln.DrawLine(Emax, 0, Emax, hExp->GetMaximum());
 	TLegend *lg = new TLegend(0.5, 0.6, 0.75, 0.75);
 	lg->AddEntry(hExp, "Data", "pe");
 	lg->AddEntry(hMC, "MC", "l");
@@ -1089,11 +1115,15 @@ void draw_scale_scan(const char *Experiment, const char *MCpattern, const char *
 	cv->cd(2);
 	hExpSiPM->DrawCopy();
 	hMCSiPM->DrawCopy("same,hist");
+	ln.DrawLine(Emin, 0, Emin, hExpSiPM->GetMaximum());
+	ln.DrawLine(Emax, 0, Emax, hExpSiPM->GetMaximum());
 	lg->Draw();
 
 	cv->cd(3);
 	hExpPMT->DrawCopy();
 	hMCPMT->DrawCopy("same,hist");
+	ln.DrawLine(Emin, 0, Emin, hExpPMT->GetMaximum());
+	ln.DrawLine(Emax, 0, Emax, hExpPMT->GetMaximum());
 	lg->Draw();
 
 	TString Png(Result);
@@ -1324,18 +1354,30 @@ void scan_scale_Fuso(void)
 		"60Co_jun22_center_root8n7_R30.0.root",
 		"60Co_apr25_center_root8n7_R30.0.root"};
 //	MC patterns:
-	const char *MCNa87[] = {"Fuso/root8n7/22Na/Full_decay_center_Fuso/MC_center_S%-5.3f_R30.0.root"};
-	const char *MCCo87[] = {"Fuso/root8n7/60Co/Center_Fuso/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCNa87[] = {
+		"Fuso/root8n7/22Na/Full_decay_center_Fuso/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/22Na/Full_decay_center_Fuso_Birks_0_005/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/22Na/Full_decay_center_Fuso_Cher_coeff_0_05/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/22Na/Full_decay_center_Fuso_paint_0_2/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/22Na/Full_decay_center_Fuso_paint_0_3/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCCo87[] = {
+		"Fuso/root8n7/60Co/Center_Fuso/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/60Co/Center_Fuso_Birks_0_005/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/60Co/Center_Fuso_Cher_coeff_0_05/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/60Co/Center_Fuso_paint_0_2/MC_center_S%-5.3f_R30.0.root",
+		"Fuso/root8n7/60Co/Center_Fuso_paint_0_3/MC_center_S%-5.3f_R30.0.root"};
 //	Results:
 	const char *when[] = {"feb17", "nov18", "jun22", "apr25"};
-	const char *MC[] = {"Fuso"};
+	const char *MC[] = {"Fuso", "Fuso_Birks_0_005", "Fuso_Cher_coeff_0_05", "Fuso_paint_0_2", "Fuso_paint_0_3"};
+
+
 	char str[1024];
 	int i, j;
 	int nMC = sizeof(MC) / sizeof(MC[0]);
 	int nExp = sizeof(when) / sizeof(when[0]);
 	
 	for (i=0; i<nMC; i++) for (j=0; j<nExp; j++) {
-		printf("\nExp[%d] MC[%d]\n", j, i);
+		printf("\nExp: %s   MC: %s\n", when[j], MC[i]);
 		sprintf(str, "scan_22Na_8n7_%s_%s.root", when[j], MC[i]);
 		draw_scale_scan(expNa87[j], MCNa87[i], str);
 		sprintf(str, "scan_60Co_8n7_%s_%s.root", when[j], MC[i]);

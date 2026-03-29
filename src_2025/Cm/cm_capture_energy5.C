@@ -515,9 +515,14 @@ void scan_scale_Fuso87(void)
 {
 	const char *expCm87[] = {"cm_14428_14485_8.7.hist.root", "cm_50578_50647_8.7.hist.root", 
 		"cm_127720_127772_8.7.hist.root", "cm_175471_175528_8.7.hist.root"};
-	const char *MCCm87[] = {"cm_MC_8.7_Center_Fuso.hist.root"};
+	const char *MCCm87[] = {
+		"cm_MC_8.7_Center_Fuso.hist.root",
+		"cm_MC_8.7_Center_Fuso_Birks_0_005.hist.root",
+		"cm_MC_8.7_Center_Fuso_Cher_coeff_0_05.hist.root",
+		"cm_MC_8.7_Center_Fuso_paint_0_2.hist.root",
+		"cm_MC_8.7_Center_Fuso_paint_0_3.hist.root"};
 	const char *when[] = {"mar17", "nov18", "jun22", "may25"};
-	const char *MC[] = {"Fuso"};
+	const char *MC[] = {"Fuso", "Fuso_Birks_0_005", "Fuso_Cher_coeff_0_05", "Fuso_paint_0_2", "Fuso_paint_0_3"};
 	int i, j, nExp, nMC;
 	char str[1024];
 	
