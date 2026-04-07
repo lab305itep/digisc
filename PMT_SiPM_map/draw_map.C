@@ -220,10 +220,6 @@ void cmp_all(const char *nMuon, const char *nMap)
 	gStyle->SetOptStat(0);
 	TFile *fMuon = new TFile(nMuon);
 	TFile *fMap = new TFile(nMap);
-	TString nMapHist(nMap);
-	nMapHist.ReplaceAll(".root", "");
-	nMapHist += "-hist.root";
-	TFile *fMapHist = new TFile(nMapHist.Data());
 	if (!fMuon->IsOpen() || !fMap->IsOpen()) return;
 	
 	TCanvas *cv = new TCanvas("CV", "CV", 1000, 1200);
@@ -249,4 +245,54 @@ void cmp_all(const char *nMuon, const char *nMap)
 		cv->SaveAs(pdf.Data());
 	}
 	cv->SaveAs((pdf + "]").Data());
+}
+
+void map4MC(const char *nMap)
+{
+	int i, j, k, l, m;
+	TH2D *hMap;
+	char str[1024];
+	double sum;
+	int cnt;
+	struct {			// for Tree
+		double cellindex;
+		double row;
+		double column;
+		double energy;
+	} SiPM;
+
+	TFile *fMap = new TFile(nMap);
+	if (!fMap->IsOpen()) return;
+	
+	TFile *fOut = new TFile("PMT_strip_map.root", "RECREATE");
+	TTree *tOut = new TTree("StripTree", "StripTree");
+	tOut->Branch("StripBranch", &SiPM, "cellindex/D:row:column:energy");
+	
+	for (i=0; i<2; i++) for (j=0; j<5; j++) for (k=0; k<5; k++) {
+		sprintf(str, "hEAvr_%c_z%dxy%d", (i) ? 'X' : 'Y', j, k);
+		hMap = (TH2D*) fMap->Get(str);
+		if (!hMap) {
+			printf("%s not found\n", str);
+			return;
+		}
+		sum = 0;
+		cnt = 0;
+		for (l=0; l<10; l++) for (m=0; m<5; m++) {
+			sum += hMap->GetBinContent(m+1, l+1);
+			if (hMap->GetBinContent(m+1, l+1) > 0) cnt++;
+		}
+		sum = (cnt) ? sum / cnt : 1.0;
+		
+		for (l=0; l<10; l++) for (m=0; m<5; m++) {
+			SiPM.energy = hMap->GetBinContent(m+1, l+1) / sum;
+			if (SiPM.energy == 0) SiPM.energy = 1.0;
+			SiPM.row = 20*j + 2*l + i;
+			SiPM.column = 5*k + m;
+			SiPM.cellindex = 1250*i + 25*l + 24 - (5*k + m);
+			tOut->Fill();
+		}
+	}
+	tOut->Write();
+	fOut->Close();
+	fMap->Close();
 }
