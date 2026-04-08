@@ -266,7 +266,7 @@ void map4MC(const char *nMap)
 	
 	TFile *fOut = new TFile("PMT_strip_map.root", "RECREATE");
 	TTree *tOut = new TTree("StripTree", "StripTree");
-	tOut->Branch("StripBranch", &SiPM, "cellindex/D:row:column:energy");
+	tOut->Branch("StripBranch", &SiPM, "cellindex/D:row:column:lightcorrection");
 	
 	for (i=0; i<2; i++) for (j=0; j<5; j++) for (k=0; k<5; k++) {
 		sprintf(str, "hEAvr_%c_z%dxy%d", (i) ? 'X' : 'Y', j, k);
@@ -288,7 +288,7 @@ void map4MC(const char *nMap)
 			if (SiPM.energy == 0) SiPM.energy = 1.0;
 			SiPM.row = 20*j + 2*l + i;
 			SiPM.column = 5*k + m;
-			SiPM.cellindex = 1250*i + 25*l + 24 - (5*k + m);
+			SiPM.cellindex = 1250*i + 250*j + 25*l + 24 - (5*k + m);
 			tOut->Fill();
 		}
 	}
