@@ -296,3 +296,187 @@ void map4MC(const char *nMap)
 	fOut->Close();
 	fMap->Close();
 }
+
+void sum_maps(const char *iNames, const char *oName)
+{
+	char str[1024];
+	char strl[4096];
+	const char *ptr;
+	char *pend;
+	int i, j, k, l, m, n;
+	TH1D *h[2][5][5][10][5];	// side, z_PMT, xy_PMT, z_SiPM in PMT, xy_SiPM in PMT
+	TH1D *hAvr[10][5];		// z_SiPM in PMT, xy_SiPM in PMT
+	TH2D *hMapPMTX;
+	TH2D *hMapPMTY;
+	TH2D *hMapSiPM;
+	TH2D *hMapSiPMX;
+	TH2D *hMapSiPMY;
+	TH2D *hEFit[2][5][5];	// Gaus fit values per PMT
+	TH2D *hAvrEFit;		// Average Gaus fit values
+	TH2D *hEAvr[2][5][5];	// Average ratio values per PMT
+	TH2D *hAvrEAvr;		// Average map of average values
+	double mean, sigma, low, high;
+	TFile *fIn;
+	TH1D *h1;
+	TH2D *h2;
+
+	for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) for (m=0; m<10; m++) for (n=0; n<5; n++) {
+		sprintf(str, "hRatio_%c_z%dxy%d_z%dxy%d", (j) ? 'X' : 'Y', k, l, m , n);
+		sprintf(strl, "PMT/SiPM for side %c PMT z%dxy%d SiPM z%dxy%d", (j) ? 'X' : 'Y', k, l, m , n);
+		h[j][k][l][m][n] = new TH1D(str, strl, 116, 0.1, 3);
+	}
+	for (m=0; m<10; m++) for (n=0; n<5; n++) {
+		sprintf(str, "hRatio_Avr_z%dxy%d", m , n);
+		sprintf(strl, "Average PMT/SiPM SiPM z%dxy%d", m , n);
+		hAvr[m][n] = new TH1D(str, strl, 116, 0.1, 3);
+	}
+
+	for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) {
+		sprintf(str, "hEAvr_%c_z%dxy%d", (j) ? 'X' : 'Y', k, l);
+		sprintf(strl, "Average Ratio map for side %c PMT z%dxy%d", (j) ? 'X' : 'Y', k, l);
+		hEAvr[j][k][l] = new TH2D(str, strl, 5, 0, 5, 10, 0, 10);
+		sprintf(str, "hEFit_%c_z%dxy%d", (j) ? 'X' : 'Y', k, l);
+		sprintf(strl, "Fit Ratio map for side %c PMT z%dxy%d", (j) ? 'X' : 'Y', k, l);
+		hEFit[j][k][l] = new TH2D(str, strl, 5, 0, 5, 10, 0, 10);
+	}
+	
+	hMapPMTX = new TH2D("hMapPMTX", "PMT fill map XZ", 5, 0, 5, 5, 0, 5);
+	hMapPMTY = new TH2D("hMapPMTY", "PMT fill map YZ", 5, 0, 5, 5, 0, 5);
+	hMapSiPM = new TH2D("hMapSiPM", "SiPM fill map XYZ", 5, 0, 5, 10, 0, 10);
+	hMapSiPMX = new TH2D("hMapSiPMX", "SiPM fill map XZ", 25, 0, 25, 50, 0, 50);
+	hMapSiPMY = new TH2D("hMapSiPMY", "SiPM fill map YZ", 25, 0, 25, 50, 0, 50);
+	hAvrEFit = new TH2D("hAvrEFit", "Fit ratio map over all PMTs", 5, 0, 5, 10, 0, 10);
+	hAvrEAvr = new TH2D("hAvrEAvr", "Averge ratio map over all PMTs", 5, 0, 5, 10, 0, 10);
+	
+	ptr = iNames;
+	for(;;) {
+		ptr = strchr(ptr, ':');
+		if(!ptr) break;
+		ptr++;
+		strcpy(strl, ptr);
+		pend = strchr(strl, ':');
+		if (pend) *pend = '\0';
+		fIn = new TFile(strl);
+		if (!fIn->IsOpen()) break;
+		printf("%s\n", fIn->GetName());
+		for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) for (m=0; m<10; m++) for (n=0; n<5; n++) {
+			sprintf(str, "hRatio_%c_z%dxy%d_z%dxy%d", (j) ? 'X' : 'Y', k, l, m , n);
+			h1 = (TH1D*) fIn->Get(str);
+			if (h1) h[j][k][l][m][n]->Add(h1);
+		}
+		for (m=0; m<10; m++) for (n=0; n<5; n++) {
+			sprintf(str, "hRatio_Avr_z%dxy%d", m , n);
+			h1 = (TH1D*) fIn->Get(str);
+			if (h1) hAvr[m][n]->Add(h1);
+		}
+
+		for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) {
+			sprintf(str, "hEAvr_%c_z%dxy%d", (j) ? 'X' : 'Y', k, l);
+			h2 = (TH2D*) fIn->Get(str);
+			if (h2) hEAvr[j][k][l]->Add(h2);
+			sprintf(str, "hEFit_%c_z%dxy%d", (j) ? 'X' : 'Y', k, l);
+			h2 = (TH2D*) fIn->Get(str);
+			if (h2) hEFit[j][k][l]->Add(h2);
+		}
+		h2 = (TH2D*) fIn->Get("hMapPMTX");
+		if (h2) hMapPMTX->Add(h2);
+		h2 = (TH2D*) fIn->Get("hMapPMTY");
+		if (h2) hMapPMTY->Add(h2);
+		h2 = (TH2D*) fIn->Get("hMapSiPM");
+		if (h2) hMapSiPM->Add(h2);
+		h2 = (TH2D*) fIn->Get("hMapSiPMX");
+		if (h2) hMapSiPMX->Add(h2);
+		h2 = (TH2D*) fIn->Get("hMapSiPMY");
+		if (h2) hMapSiPMY->Add(h2);
+		h2 = (TH2D*) fIn->Get("hAvrEFit");
+		if (h2) hAvrEFit->Add(h2);
+		h2 = (TH2D*) fIn->Get("hAvrEAvr");
+		if (h2) hAvrEAvr->Add(h2);
+
+		fIn->Close();
+	}
+	
+	for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) for (m=0; m<10; m++) for (n=0; n<5; n++) 
+		if (h[j][k][l][m][n]->GetEntries() > 1000) {
+		mean = h[j][k][l][m][n]->GetMean();
+		sigma = h[j][k][l][m][n]->GetMeanError();
+		hEAvr[j][k][l]->SetBinContent(n+1, m+1, mean);
+		hEAvr[j][k][l]->SetBinError(n+1, m+1, sigma);
+		h[j][k][l][m][n]->Fit("gaus", "Q0", "", 0.2, 1.6);
+		mean = h[j][k][l][m][n]->GetFunction("gaus")->GetParameter(1);
+		sigma = h[j][k][l][m][n]->GetFunction("gaus")->GetParameter(2);
+		low  = mean - sigma;
+		high = mean + sigma;
+		if (low < 0.1) low = 0.1;
+		if (high > 2) high = 2;
+		h[j][k][l][m][n]->Fit("gaus", "Q0", "", low, high);
+		mean = h[j][k][l][m][n]->GetFunction("gaus")->GetParameter(1);
+		sigma = h[j][k][l][m][n]->GetFunction("gaus")->GetParError(1);
+		hEFit[j][k][l]->SetBinContent(n+1, m+1, mean);
+		hEFit[j][k][l]->SetBinError(n+1, m+1, sigma);
+	}
+
+	for (m=0; m<10; m++) for (n=0; n<5; n++) if (hAvr[m][n]->GetEntries() > 1000) {
+		mean = hAvr[m][n]->GetMean();
+		sigma = hAvr[m][n]->GetMeanError();
+		hAvrEAvr->SetBinContent(n+1, m+1, mean);
+		hAvrEAvr->SetBinError(n+1, m+1, sigma);
+		hAvr[m][n]->Fit("gaus", "Q0", "", 0.2, 1.6);
+		mean = hAvr[m][n]->GetFunction("gaus")->GetParameter(1);
+		sigma = hAvr[m][n]->GetFunction("gaus")->GetParameter(2);
+		low  = mean - sigma;
+		high = mean + sigma;
+		if (low < 0.1) low = 0.1;
+		if (high > 2) high = 2;
+		hAvr[m][n]->Fit("gaus", "Q0", "", low, high);
+		mean = hAvr[m][n]->GetFunction("gaus")->GetParameter(1);
+		sigma = hAvr[m][n]->GetFunction("gaus")->GetParError(1);
+		hAvrEFit->SetBinContent(n+1, m+1, mean);
+		hAvrEFit->SetBinError(n+1, m+1, sigma);
+	}
+	
+	TFile *fOut = new TFile(oName, "RECREATE");
+	if (!fOut->IsOpen()) return;
+
+	for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) for (m=0; m<10; m++) for (n=0; n<5; n++) 
+		if (h[j][k][l][m][n]->GetEntries()) h[j][k][l][m][n]->Write();
+	for (m=0; m<10; m++) for (n=0; n<5; n++) 
+		if (hAvr[m][n]->GetEntries()) hAvr[m][n]->Write();
+	for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) hEFit[j][k][l]->Write();
+	for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) hEAvr[j][k][l]->Write();
+	hMapPMTX->Write();
+	hMapPMTY->Write();
+	hMapSiPM->Write();
+	hMapSiPMX->Write();
+	hMapSiPMY->Write();
+	hAvrEAvr->Write();
+	hAvrEFit->Write();
+	
+	fOut->Close();
+
+}
+
+void sum_ibd(void) 
+{
+	sum_maps("ibd_2200_32199.root:ibd_32200_62199.root:ibd_62200_92199.root:ibd_92200_122199.root:"
+		"ibd_122200_152199.root:ibd_152200_182199.root", "ibd_2200_182199.root");
+}
+
+void sum_hits(void)
+{
+	sum_maps("map_2200_12199.root:" "map_12200_22199.root:" "map_22200_32199.root:" "map_32200_42199.root:"
+		"map_42200_52199.root:" "map_52200_62199.root:" "map_62200_72199.root:" "map_72200_82199.root:"
+		"map_82200_92199.root:" "map_92200_102199.root", "map_2200_102199.root");
+}
+
+void sum_muon(void)
+{
+	sum_maps("muon_2200_12199.root:" "muon_12200_22199.root:" "muon_22200_32199.root:" "muon_32200_42199.root:"
+		"muon_42200_52199.root:" "muon_52200_62199.root:" "muon_62200_72199.root:" "muon_72200_82199.root:"
+		"muon_82200_92199.root:" "muon_92200_102199.root", "muon_2200_102199.root");
+}
+
+void cmp_maps(const char *mapA, const char *mapB)
+{
+	
+}
