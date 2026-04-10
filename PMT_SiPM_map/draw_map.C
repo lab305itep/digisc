@@ -476,7 +476,34 @@ void sum_muon(void)
 		"muon_82200_92199.root:" "muon_92200_102199.root", "muon_2200_102199.root");
 }
 
-void cmp_maps(const char *mapA, const char *mapB)
+
+// Makes and draws a histogram of average map differences
+void cmp_maps(const char *mapA, const char *mapB, double scale = 1)
 {
+	TH2D *hA;
+	TH2D *hB;
+	char str[1024];
+	int j, k, l, m, n;
 	
+	TFile *fA = new TFile(mapA);
+	TFile *fB = new TFile(mapB);
+	if (!fA->IsOpen() || !fB->IsOpen()) {
+		printf("Can not open files\n");
+		return;
+	}
+	
+	TH1D *hDiff = new TH1D("hDiff", "Map difference", 100, -0.1, 0.1);
+	
+	for (j=0; j<2; j++) for (k=0; k<5; k++) for(l=0; l<5; l++) {
+		sprintf(str, "hEAvr_%c_z%dxy%d", (j) ? 'X' : 'Y', k, l);
+		hA = (TH2D*) fA->Get(str);
+		hB = (TH2D*) fB->Get(str);
+		if (!hA || !hB) {
+			printf("%s not found\n", str);
+			continue;
+		}
+		for (m=0; m<10; m++) for (n=0; n<5; n++) hDiff->Fill(hA->GetBinContent(n+1, m+1) - scale*hB->GetBinContent(n+1, m+1));
+	}
+	
+	hDiff->Draw();
 }
