@@ -81,7 +81,10 @@ do_gamma()
 }
 
 date
-do_IBDdir Fuso/IBD/235U_fuel_Fuso 6 16 235U
+do_IBDdir Fuso/IBD/235U_fuel_Fuso_Birks_0_005 6 16 235U
+do_IBDdir Fuso/IBD/235U_fuel_Fuso_Cher_coeff_0_05 6 16 235U
+do_IBDdir Fuso/IBD/235U_fuel_Fuso_paint_0_2 6 16 235U
+do_IBDdir Fuso/IBD/235U_fuel_Fuso_paint_0_3 6 16 235U
 date
 
 exit 0

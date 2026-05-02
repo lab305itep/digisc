@@ -1354,21 +1354,22 @@ void scan_scale_Fuso(void)
 		"60Co_jun22_center_root8n7_R30.0.root",
 		"60Co_apr25_center_root8n7_R30.0.root"};
 //	MC patterns:
-	const char *MCNa87[] = {
-		"Fuso/root8n7/22Na/Full_decay_center_Fuso/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/22Na/Full_decay_center_Fuso_Birks_0_005/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/22Na/Full_decay_center_Fuso_Cher_coeff_0_05/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/22Na/Full_decay_center_Fuso_paint_0_2/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/22Na/Full_decay_center_Fuso_paint_0_3/MC_center_S%-5.3f_R30.0.root"};
-	const char *MCCo87[] = {
-		"Fuso/root8n7/60Co/Center_Fuso/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/60Co/Center_Fuso_Birks_0_005/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/60Co/Center_Fuso_Cher_coeff_0_05/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/60Co/Center_Fuso_paint_0_2/MC_center_S%-5.3f_R30.0.root",
-		"Fuso/root8n7/60Co/Center_Fuso_paint_0_3/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCNa87[] = {"Fuso/root8n7/22Na/Full_decay_center_Fuso_PMT_strip_map/MC_center_S%-5.3f_R30.0.root"};
+//		"Fuso/root8n7/22Na/Full_decay_center_Fuso/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/22Na/Full_decay_center_Fuso_Birks_0_005/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/22Na/Full_decay_center_Fuso_Cher_coeff_0_05/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/22Na/Full_decay_center_Fuso_paint_0_2/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/22Na/Full_decay_center_Fuso_paint_0_3/MC_center_S%-5.3f_R30.0.root"};
+	const char *MCCo87[] = {"Fuso/root8n7/60Co/Center_Fuso_PMT_strip_map/MC_center_S%-5.3f_R30.0.root"};
+//		"Fuso/root8n7/60Co/Center_Fuso/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/60Co/Center_Fuso_Birks_0_005/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/60Co/Center_Fuso_Cher_coeff_0_05/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/60Co/Center_Fuso_paint_0_2/MC_center_S%-5.3f_R30.0.root",
+//		"Fuso/root8n7/60Co/Center_Fuso_paint_0_3/MC_center_S%-5.3f_R30.0.root"};
 //	Results:
 	const char *when[] = {"feb17", "nov18", "jun22", "apr25"};
-	const char *MC[] = {"Fuso", "Fuso_Birks_0_005", "Fuso_Cher_coeff_0_05", "Fuso_paint_0_2", "Fuso_paint_0_3"};
+//	const char *MC[] = {"Fuso", "Fuso_Birks_0_005", "Fuso_Cher_coeff_0_05", "Fuso_paint_0_2", "Fuso_paint_0_3"};
+	const char *MC[] = {"Fuso_PMT_strip_map"};
 
 
 	char str[1024];
