@@ -54,7 +54,7 @@ TChain *create_chain(const char *fname, const char *chname)
 //	Make experimental hists from file(s) with a tree of 248Cm fission events
 //  fnameIn - input file name(s)
 //  fnameOut - output file name
-void src_248Cm(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax = 7)
+void src_248Cm(const char *fnameIn, const char *fnameOut, int nMin = 1, int nMax = 6)
 {
 	char strA[1024];
 	char strB[1024];
@@ -169,7 +169,7 @@ void src_248CmMCn(const char *fnameIn, const char *fnameOut)
 //	Make MC hists from file(s) with a tree of 248Cm fission events
 //  fnameIn - input file name(s)
 //  fnameOut - output file name
-void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax = 7)
+void src_248CmMC(const char *fnameIn, const char *fnameOut, int nMin = 1, int nMax = 6)
 {
 	char strA[1024];
 	char strB[1024];
@@ -264,9 +264,9 @@ void scan_248Cm(const char *expname, const char *mcname, const char *resname)
 	double xmin;
 	TLatex txt;
 	
-	TH1D *hScan = new TH1D("hScan248Cm", "#chi^{2} difference between MC and data, ^{248}Cm, SiPM+PMT;Scale;Shift;#chi^{2}", 41, 0.9, 1.1);
-	TH1D *hScanSiPM = new TH1D("hScan248CmSiPM", "#chi^{2} difference between MC and data, ^{248}Cm, SiPM;Scale;Shift;#chi^{2}", 41, 0.9, 1.1);
-	TH1D *hScanPMT = new TH1D("hScan248CmPMT", "#chi^{2} difference between MC and data, ^{248}Cm, PMT;Scale;Shift;#chi^{2}", 41, 0.9, 1.1);
+	TH1D *hScan = new TH1D("hScan248Cm", "#chi^{2} difference between MC and data, ^{248}Cm, SiPM+PMT;Scale;#chi^{2}", 41, 0.9, 1.1);
+	TH1D *hScanSiPM = new TH1D("hScan248CmSiPM", "#chi^{2} difference between MC and data, ^{248}Cm, SiPM;Scale;#chi^{2}", 41, 0.9, 1.1);
+	TH1D *hScanPMT = new TH1D("hScan248CmPMT", "#chi^{2} difference between MC and data, ^{248}Cm, PMT;Scale;#chi^{2}", 41, 0.9, 1.1);
 	
 	TFile *fExp = new TFile(expname);
 	TFile *fMC  = new TFile(mcname);
@@ -638,7 +638,7 @@ TH1D *GetMC(const char *fMC, double Kbirks, double Kcher, int iDet)
 //  fnameIn - input file name(s)
 //  fnameOut - output file name
 //  nMin - nMax - range of delayed events
-void MakeShortTree(const char *fnameIn, const char *fnameOut, int nMin = 2, int nMax = 7)
+void MakeShortTree(const char *fnameIn, const char *fnameOut, int nMin = 1, int nMax = 6)
 {
 	struct EnergyStruct {
 		float NeutronEnergy;
@@ -674,4 +674,221 @@ void MakeShortTree(const char *fnameIn, const char *fnameOut, int nMin = 2, int 
 	}
 	tOut->Write();
 	fOut->Close();
+}
+
+// Variate random smearing
+void scan_smearing(const char *expname, const char *mcname, double scale, const char *resname, int nMin = 1, int nMax = 6)
+{
+	const int kEmin = 40;
+	const int kEmax = 80;
+	struct DanssCmStruct Cm;
+	struct EnergyStruct {
+		double SiPM;
+		double PMT;
+	} *Energy;
+	int N;
+	int Cnt;
+	int i, j;
+	double ESiPM;
+	double EPMT;
+	double Scoef;
+	char str[256];
+	double xmin;
+	double xminSiPM, xminPMT;
+	double Emin, Emax;
+	TLatex txt;
+	TLine ln;
+	
+	TRandom2 rndm(time(NULL));
+	
+	// Book histogramms
+	TH1D *hScan = new TH1D("hScan248Cm", "#chi^{2} difference between MC and data, ^{248}Cm, SiPM+PMT;Smearing, %;#chi^{2}", 20, -0.25, 9.75);
+	TH1D *hScanSiPM = new TH1D("hScan248CmSiPM", "#chi^{2} difference between MC and data, ^{248}Cm, SiPM;Smearing, %;#chi^{2}", 20, -0.25, 9.75);
+	TH1D *hScanPMT = new TH1D("hScan248CmPMT", "#chi^{2} difference between MC and data, ^{248}Cm, PMT;Smearing, %;#chi^{2}", 20, -0.25, 9.75);
+	TH1D *hTmp = new TH1D("hTmp", "SiPM+PMT flash energy;MeV", 120, 0, 12);
+	TH1D *hTmpSiPM = new TH1D("hTmpSiPM", "SiPM flash energy;MeV", 120, 0, 12);
+	TH1D *hTmpPMT = new TH1D("hTmpPMT", "PMT flash energy;MeV", 120, 0, 12);
+	TF1 *fpol2 = new TF1("fpol2", "pol2", -100, 100);
+
+	// Load MC data
+	TFile *fMC = new TFile(mcname);
+	if (!fMC->IsOpen()) return;
+	TTree *tMC = (TTree *) fMC->Get("DanssCm");
+	if (!tMC) {
+		printf("DanssCm tree not found in %s\n", mcname);
+		return;
+	}
+	tMC->SetBranchAddress("Cm", &Cm);
+	N = tMC->GetEntries();
+	Energy = (struct EnergyStruct *) malloc(N * (nMax - nMin + 1) * sizeof(struct EnergyStruct));
+	if (!Energy) {
+		printf("Can not allocate memory for %d events\n", N);
+		return;
+	}
+	Cnt = 0;
+	for (i=0; i<N; i++) {
+		tMC->GetEntry(i);
+		for (j = nMin; j <= nMax && j < N; j++) { 
+			// Cut: "N>j && gtDiff[j]/125<50 && gtDiff[j]/125>2 && PmtCleanEnergy[j]*scale > 0.7"
+			if (Cm.gtDiff[j]/125 <= 2 || Cm.gtDiff[j]/125 >= 50) continue;
+			if (Cm.PmtCleanEnergy[j]*scale <= 0.7) continue;
+			Energy[Cnt].SiPM = Cm.SiPmCleanEnergy[j]*scale;
+			Energy[Cnt].PMT = Cm.PmtCleanEnergy[j]*scale;
+			Cnt++;
+		}
+	}
+	fMC->Close();
+	printf("%d neutrons found in %d fissions\n", Cnt, N);
+	
+	// Get Experimental data
+	TFile *fExp = new TFile(expname);
+	if (!fExp->IsOpen()) return;
+	TH1D *hExp = (TH1D *) fExp->Get("hCm");
+	TH1D *hExpSiPM = (TH1D *) fExp->Get("hCmSiPM");
+	TH1D *hExpPMT = (TH1D *) fExp->Get("hCmPMT");
+	if (!hExp || !hExpSiPM || !hExpPMT) {
+		printf("Not all histograms found in %s.\n", expname);
+		return;
+	}
+	hExp->SetLineColor(kRed);
+	hExp->SetMarkerColor(kRed);
+	hExp->SetMarkerStyle(kFullCircle);
+	hExp->SetMarkerSize(0.03);
+	hExpSiPM->SetLineColor(kRed);
+	hExpSiPM->SetMarkerColor(kRed);
+	hExpSiPM->SetMarkerStyle(kFullCircle);
+	hExpSiPM->SetMarkerSize(0.03);
+	hExpPMT->SetLineColor(kRed);
+	hExpPMT->SetMarkerColor(kRed);
+	hExpPMT->SetMarkerStyle(kFullCircle);
+	hExpPMT->SetMarkerSize(0.03);
+	
+	// Fill with smeared MC
+	for (i=0; i<20; i++) {
+		Scoef = i * 0.005;
+		hTmp->Reset();
+		hTmpSiPM->Reset();
+		hTmpPMT->Reset();
+		for (j=0; j<Cnt; j++) {
+			ESiPM = rndm.Gaus(Energy[j].SiPM, Energy[j].SiPM * Scoef);
+			EPMT = rndm.Gaus(Energy[j].PMT, Energy[j].PMT * Scoef);
+			hTmp->Fill((ESiPM + EPMT) / 2);
+			hTmpSiPM->Fill(ESiPM);
+			hTmpPMT->Fill(EPMT);
+		}
+		hTmp->Scale(hExp->Integral(kEmin, kEmax) / hTmp->Integral(kEmin, kEmax));
+		hTmpSiPM->Scale(hExpSiPM->Integral(kEmin, kEmax) / hTmpSiPM->Integral(kEmin, kEmax));
+		hTmpPMT->Scale(hExpPMT->Integral(kEmin, kEmax) / hTmpPMT->Integral(kEmin, kEmax));
+		hScan->SetBinContent(i+1, chi2Diff(hExp, hTmp, kEmin, kEmax));
+		hScanSiPM->SetBinContent(i+1, chi2Diff(hExpSiPM, hTmpSiPM, kEmin, kEmax));
+		hScanPMT->SetBinContent(i+1, chi2Diff(hExpPMT, hTmpPMT, kEmin, kEmax));
+		printf(">");
+		fflush(stdout);
+	}
+	printf("\n");
+	
+	gStyle->SetOptStat(0);
+	TCanvas *cv = (TCanvas *) gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1400, 1000);
+	cv->Clear();
+	cv->Divide(3, 2);
+//		find minimums
+	cv->cd(4);
+	hScan->Fit(fpol2, "q");
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	if (xmin < 2.5) xmin = 2.5;
+	if (xmin > 7.5) xmin = 7.5;
+	hScan->Fit(fpol2, "", "", xmin - 2.5, xmin + 2.5);
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Smearing=%4.1f %%", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
+
+	cv->cd(5);
+	hScanSiPM->Fit(fpol2, "q");
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	if (xmin < 2.5) xmin = 2.5;
+	if (xmin > 7.5) xmin = 7.5;
+	hScanSiPM->Fit(fpol2, "", "", xmin - 2.5, xmin + 2.5);
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Smearing=%4.1f %%", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
+	xminSiPM = xmin;
+
+	cv->cd(6);
+	hScanPMT->Fit(fpol2, "q");
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	if (xmin < 2.5) xmin = 2.5;
+	if (xmin > 7.5) xmin = 7.5;
+	hScanPMT->Fit(fpol2, "", "", xmin - 2.5, xmin + 2.5);
+	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
+	sprintf(str, "Smearing=%4.1f %%", xmin);
+	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
+	txt.DrawLatexNDC(0.4, 0.72, str);
+	xminPMT = xmin;
+//		Draw best fits
+	hTmp->Reset();
+	hTmpSiPM->Reset();
+	hTmpPMT->Reset();
+	for (j=0; j<Cnt; j++) {
+		ESiPM = rndm.Gaus(Energy[j].SiPM, Energy[j].SiPM * xminSiPM * 0.01);
+		EPMT = rndm.Gaus(Energy[j].PMT, Energy[j].PMT * xminPMT * 0.01);
+		hTmp->Fill((ESiPM + EPMT) / 2);
+		hTmpSiPM->Fill(ESiPM);
+		hTmpPMT->Fill(EPMT);
+	}
+	hTmp->Scale(hExp->Integral(kEmin, kEmax) / hTmp->Integral(kEmin, kEmax));
+	hTmpSiPM->Scale(hExpSiPM->Integral(kEmin, kEmax) / hTmpSiPM->Integral(kEmin, kEmax));
+	hTmpPMT->Scale(hExpPMT->Integral(kEmin, kEmax) / hTmpPMT->Integral(kEmin, kEmax));
+	hTmp->SetLineColor(kBlue);
+	hTmpSiPM->SetLineColor(kBlue);
+	hTmpPMT->SetLineColor(kBlue);
+	ln.SetLineColor(kGreen);
+	Emin = hExp->GetXaxis()->GetBinLowEdge(kEmin);
+	Emax = hExp->GetXaxis()->GetBinUpEdge(kEmax);
+
+	cv->cd(1);
+	hExp->Draw();
+	hTmp->Draw("same,hist");
+	TLegend *lg = new TLegend(0.65, 0.75, 0.9, 0.9);
+	lg->AddEntry(hExp, "Exp", "lp");
+	lg->AddEntry(hTmp, "MC", "l");
+	lg->Draw();
+	ln.DrawLine(Emin, 0, Emin, 0.7 * hExp->GetMaximum());
+	ln.DrawLine(Emax, 0, Emax, 0.7 * hExp->GetMaximum());
+
+	cv->cd(2);
+	hExpSiPM->Draw();
+	hTmpSiPM->Draw("same,hist");
+	lg->Draw();
+	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpSiPM->GetMaximum());
+	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpSiPM->GetMaximum());
+
+	cv->cd(3);
+	hExpPMT->Draw();
+	hTmpPMT->Draw("same,hist");
+	lg->Draw();
+	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpPMT->GetMaximum());
+	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpPMT->GetMaximum());
+	
+	TString oName(resname);
+	oName.ReplaceAll(".root", "");
+	oName.ReplaceAll(".png", "");
+	cv->SaveAs((oName+".png").Data());
+	TFile *fOut = new TFile((oName+".root").Data(), "RECREATE");
+	hExp->Write();
+	hExpSiPM->Write();
+	hExpPMT->Write();
+	hTmp->Write();
+	hTmpSiPM->Write();
+	hTmpPMT->Write();
+	hScan->Write();
+	hScanSiPM->Write();
+	hScanPMT->Write();
+	fOut->Close();
+//	fExp->Close();
 }
