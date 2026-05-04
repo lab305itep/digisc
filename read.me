@@ -26,7 +26,7 @@ Now stat file is ready for manual analysis and adding the reactor power informat
 danss_submit run_pair_mpi run_first run_last mpi 500 "SRC_DIR=/home/clusters/rrcmpi/alekseev/igor/root8n2 TGT_DIR=/home/clusters/rrcmpi/alekseev/igor/pair8n2"
 11. Check that all files are OK using check_pair.sh. Rerun pairbuilder on missed runs.
 12. Copy stat file (step 9) to positions directory and run positions builder:
-    ./stat2pos stat_file.txt pos_file
+    ./stat2pos stat_all_file fiss_fract_file positions_file
 You will get two files: pos_file.txt and pos_file.h
 13. Edit symbolic links in this stat_all.txt and stat_pos.txt in this directory 
 to point to these files. Edit file positions.h to point to the h-file.
