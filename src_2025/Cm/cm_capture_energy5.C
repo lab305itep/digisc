@@ -728,7 +728,7 @@ void scan_smearing(const char *expname, const char *mcname, double scale, const 
 	Cnt = 0;
 	for (i=0; i<N; i++) {
 		tMC->GetEntry(i);
-		for (j = nMin; j <= nMax && j < N; j++) { 
+		for (j = nMin; j <= nMax && j < Cm.N; j++) { 
 			// Cut: "N>j && gtDiff[j]/125<50 && gtDiff[j]/125>2 && PmtCleanEnergy[j]*scale > 0.7"
 			if (Cm.gtDiff[j]/125 <= 2 || Cm.gtDiff[j]/125 >= 50) continue;
 			if (Cm.PmtCleanEnergy[j]*scale <= 0.7) continue;

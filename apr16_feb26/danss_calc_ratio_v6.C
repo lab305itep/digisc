@@ -1,7 +1,7 @@
 //	Global parameters
 #define NEBINS 128
 #define MAXPOSITIONS 1000
-#define N4MONTH  50
+#define N4MONTH  56
 //#include "positions.h"
 struct PositionsStruct {
 	char name[32];
