@@ -188,7 +188,7 @@ TChain *CmClass::create_chain(const char *fname, const char *chname)
 double CmClass::calcE(double E, double kScl, double kRnd, double kSqr)
 {
 	double X = kScl * E;
-	double S = sqrt(kRnd * kRnd * E * E + kSqr * kSqr * E);
+	double S = sqrt(kRnd * kRnd * X * X + kSqr * kSqr * X);
 	return rndm->Gaus(X, S);
 }
 
@@ -295,9 +295,9 @@ void CmClass::ScanScale(int nDiv, double sMin, double sMax)
 	hScan->Fit(fpol2, "", "", xLow, xUp);
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Scale=%5.3f", xmin);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
 
 	cv->cd(5);
 	imin = hScanSiPM->GetMinimumBin();
@@ -308,9 +308,13 @@ void CmClass::ScanScale(int nDiv, double sMin, double sMax)
 	hScanSiPM->Fit(fpol2, "", "", xLow, xUp);
 	xminSiPM = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Scale=%5.3f", xminSiPM);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminSiPM));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
+	sprintf(str, "Smear=%5.3f", kRndmSiPM);
+	txt.DrawLatexNDC(0.4, 0.69, str);
+	sprintf(str, "Stoch=%5.3f", kSqrtSiPM);
+	txt.DrawLatexNDC(0.4, 0.61, str);
 
 	cv->cd(6);
 	imin = hScanPMT->GetMinimumBin();
@@ -321,9 +325,13 @@ void CmClass::ScanScale(int nDiv, double sMin, double sMax)
 	hScanPMT->Fit(fpol2, "", "", xLow, xUp);
 	xminPMT = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Scale=%5.3f", xminPMT);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminPMT));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
+	sprintf(str, "Smear=%5.3f", kRndmPMT);
+	txt.DrawLatexNDC(0.4, 0.69, str);
+	sprintf(str, "Stoch=%5.3f", kSqrtPMT);
+	txt.DrawLatexNDC(0.4, 0.61, str);
 
 //		Draw best fits
 	hTmp->Reset();
@@ -443,10 +451,10 @@ void CmClass::ScanRndm(int nDiv, double sMin, double sMax)
 	xUp = hScan->GetXaxis()->GetBinCenter(imin + 5);
 	hScan->Fit(fpol2, "", "", xLow, xUp);
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
-	sprintf(str, "Smearing=%5.3f", xmin);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "Smear=%5.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
 
 	cv->cd(5);
 	imin = hScanSiPM->GetMinimumBin();
@@ -456,10 +464,14 @@ void CmClass::ScanRndm(int nDiv, double sMin, double sMax)
 	xUp = hScanSiPM->GetXaxis()->GetBinCenter(imin + 5);
 	hScanSiPM->Fit(fpol2, "", "", xLow, xUp);
 	xminSiPM = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
-	sprintf(str, "Smearing=%5.3f", xminSiPM);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "Smear=%5.3f", xminSiPM);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminSiPM));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
+	sprintf(str, "Scale=%5.3f", kScaleSiPM);
+	txt.DrawLatexNDC(0.4, 0.69, str);
+	sprintf(str, "Stoch=%5.3f", kSqrtSiPM);
+	txt.DrawLatexNDC(0.4, 0.61, str);
 
 	cv->cd(6);
 	imin = hScanPMT->GetMinimumBin();
@@ -469,10 +481,14 @@ void CmClass::ScanRndm(int nDiv, double sMin, double sMax)
 	xUp = hScanPMT->GetXaxis()->GetBinCenter(imin + 5);
 	hScanPMT->Fit(fpol2, "", "", xLow, xUp);
 	xminPMT = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
-	sprintf(str, "Smearing=%5.3f", xminPMT);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "Smear=%5.3f", xminPMT);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminPMT));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
+	sprintf(str, "Scale=%5.3f", kScalePMT);
+	txt.DrawLatexNDC(0.4, 0.69, str);
+	sprintf(str, "Stoch=%5.3f", kSqrtPMT);
+	txt.DrawLatexNDC(0.4, 0.61, str);
 
 //		Draw best fits
 	hTmp->Reset();
@@ -592,10 +608,10 @@ void CmClass::ScanSqrt(int nDiv, double sMin, double sMax)
 	xUp = hScan->GetXaxis()->GetBinCenter(imin + 5);
 	hScan->Fit(fpol2, "", "", xLow, xUp);
 	xmin = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
-	sprintf(str, "Stochastic=%5.3f", xmin);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "Stoch=%5.3f", xmin);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xmin));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
 
 	cv->cd(5);
 	imin = hScanSiPM->GetMinimumBin();
@@ -605,10 +621,14 @@ void CmClass::ScanSqrt(int nDiv, double sMin, double sMax)
 	xUp = hScanSiPM->GetXaxis()->GetBinCenter(imin + 5);
 	hScanSiPM->Fit(fpol2, "", "", xLow, xUp);
 	xminSiPM = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
-	sprintf(str, "Stochastic=%5.3f", xminSiPM);
+	sprintf(str, "Stoch=%5.3f", xminSiPM);
 	txt.DrawLatexNDC(0.4, 0.8, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminSiPM));
 	txt.DrawLatexNDC(0.4, 0.72, str);
+	sprintf(str, "Scale=%5.3f", kScaleSiPM);
+	txt.DrawLatexNDC(0.4, 0.69, str);
+	sprintf(str, "Smear=%5.3f", kRndmSiPM);
+	txt.DrawLatexNDC(0.4, 0.61, str);
 
 	cv->cd(6);
 	imin = hScanPMT->GetMinimumBin();
@@ -618,10 +638,14 @@ void CmClass::ScanSqrt(int nDiv, double sMin, double sMax)
 	xUp = hScanPMT->GetXaxis()->GetBinCenter(imin + 5);
 	hScanPMT->Fit(fpol2, "", "", xLow, xUp);
 	xminPMT = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
-	sprintf(str, "Stochastic=%5.3f", xminPMT);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	sprintf(str, "Stoch=%5.3f", xminPMT);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminPMT));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
+	sprintf(str, "Scale=%5.3f", kScaleSiPM);
+	txt.DrawLatexNDC(0.4, 0.69, str);
+	sprintf(str, "Smear=%5.3f", kRndmSiPM);
+	txt.DrawLatexNDC(0.4, 0.61, str);
 
 //		Draw best fits
 	hTmp->Reset();
