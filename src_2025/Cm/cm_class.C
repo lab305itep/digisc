@@ -35,6 +35,7 @@ private:
 	double kScaleSiPM, kScalePMT;	// energy scale
 	double kRndmSiPM, kRndmPMT;	// proportional smearing
 	double kSqrtSiPM, kSqrtPMT;	// sqrt smearing
+	char *Name;
 	
 	double chi2Diff(TH1 *hcm, TH1 *hMc);
 	TChain *create_chain(const char *fname, const char *chname);
@@ -42,30 +43,32 @@ private:
 	double calcE(double E, double kScl, double kRnd, double kSqr);
 	void Erase(const char *name);
 public:
-	CmClass(const char *expname, const char *mcname);
+	CmClass(const char *expname, const char *mcname, const char *name);
 	~CmClass(void);
 	void SetErange(int nMin, int nMax);
 	void SetErange(double rMin, double rMax);
 	inline void SetScale(double kSiPM, double kPMT) { kScaleSiPM = kSiPM; kScalePMT = kPMT; };
 	inline void SetRndm(double kSiPM, double kPMT) { kRndmSiPM = kSiPM; kRndmPMT = kPMT; };
 	inline void SetSqrt(double kSiPM, double kPMT) { kSqrtSiPM = kSiPM; kSqrtPMT = kPMT; };
-	void ScanScale(int nDiv, double sMin, double sMax);
-	void ScanRndm(int nDiv, double sMin, double sMax);
-	void ScanSqrt(int nDiv, double sMin, double sMax);
+	void ScanScale(int nDiv, double sMin, double sMax, int iSet);
+	void ScanRndm(int nDiv, double sMin, double sMax, int iSet);
+	void ScanSqrt(int nDiv, double sMin, double sMax, int iSet);
 };
 
-CmClass::CmClass(const char *expname, const char *mcname)
+CmClass::CmClass(const char *expname, const char *mcname, const char *name)
 {
+	printf("Making class for Run=%s and MC=%s\n", expname, mcname);
 	hExp = hExpSiPM = hExpPMT = NULL;
 	fExp = NULL;
 	tMC = NULL;
+	Name = strdup(name);
 	MCEnergy = NULL;
 	NMC = 0;
 	NMin = 1;
 	NMax = 6;
 	kScaleSiPM = kScalePMT = 1.0;
-	kRndmSiPM = kRndmPMT = 0.0;
-	kSqrtSiPM = kSqrtPMT = 0.0;
+	kRndmSiPM = kRndmPMT = 0.08;
+	kSqrtSiPM = kSqrtPMT = 0.04;
 	rndm = new TRandom2(time(NULL));
 	
 	fExp = new TFile(expname);
@@ -105,6 +108,7 @@ CmClass::~CmClass(void)
 	if (MCEnergy) free(MCEnergy);
 	if (fExp && fExp->IsOpen()) delete fExp;
 	if (tMC) delete tMC;
+	if (Name) free(Name);
 	delete rndm;
 }
 
@@ -220,7 +224,7 @@ void CmClass::SetErange(double rMin, double rMax)
 	Emax = hExp->GetXaxis()->GetBinUpEdge(kEmax);
 }
 
-void CmClass::ScanScale(int nDiv, double sMin, double sMax)
+void CmClass::ScanScale(int nDiv, double sMin, double sMax, int iSet = 0)
 {
 	double xmin;
 	double xminSiPM, xminPMT;
@@ -252,9 +256,12 @@ void CmClass::ScanScale(int nDiv, double sMin, double sMax)
 	nBins = hExp->GetXaxis()->GetNbins();
 	rLow = hExp->GetXaxis()->GetBinLowEdge(1);
 	rUp = hExp->GetXaxis()->GetBinUpEdge(nBins);
-	TH1D *hTmp = new TH1D("hTmp", "SiPM+PMT MC flash energy;MeV", nBins, rLow, rUp);
-	TH1D *hTmpSiPM = new TH1D("hTmpSiPM", "SiPM MC flash energy;MeV", nBins, rLow, rUp);
-	TH1D *hTmpPMT = new TH1D("hTmpPMT", "PMT MC flash energy;MeV", nBins, rLow, rUp);
+	sprintf(str, "SiPM+PMT %s;MeV", Name);
+	TH1D *hTmp = new TH1D("hTmp", str, nBins, rLow, rUp);
+	sprintf(str, "SiPM %s;MeV", Name);
+	TH1D *hTmpSiPM = new TH1D("hTmpSiPM", str, nBins, rLow, rUp);
+	sprintf(str, "PMT %s;MeV", Name);
+	TH1D *hTmpPMT = new TH1D("hTmpPMT", str, nBins, rLow, rUp);
 	TF1 *fpol2 = new TF1("fpol2", "pol2", sMin, sMax);
 	// Fill with smeared MC
 	for (i=0; i<nDiv; i++) {
@@ -353,8 +360,8 @@ void CmClass::ScanScale(int nDiv, double sMin, double sMax)
 	ln.SetLineColor(kGreen);
 
 	cv->cd(1);
-	hExp->Draw();
-	hTmp->Draw("same,hist");
+	hTmp->Draw("hist");
+	hExp->Draw("same");
 	TLegend *lg = new TLegend(0.65, 0.75, 0.9, 0.9);
 	lg->AddEntry(hExp, "Exp", "lp");
 	lg->AddEntry(hTmp, "MC", "l");
@@ -363,21 +370,23 @@ void CmClass::ScanScale(int nDiv, double sMin, double sMax)
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExp->GetMaximum());
 
 	cv->cd(2);
-	hExpSiPM->Draw();
-	hTmpSiPM->Draw("same,hist");
+	hTmpSiPM->Draw("hist");
+	hExpSiPM->Draw("same");
 	lg->Draw();
 	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpSiPM->GetMaximum());
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpSiPM->GetMaximum());
 
 	cv->cd(3);
-	hExpPMT->Draw();
-	hTmpPMT->Draw("same,hist");
+	hTmpPMT->Draw("hist");
+	hExpPMT->Draw("same");
 	lg->Draw();
 	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpPMT->GetMaximum());
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpPMT->GetMaximum());
+
+	if (iSet) SetScale(xminSiPM, xminPMT);
 }
 
-void CmClass::ScanRndm(int nDiv, double sMin, double sMax)
+void CmClass::ScanRndm(int nDiv, double sMin, double sMax, int iSet = 0)
 {
 	double xmin;
 	double xminSiPM, xminPMT;
@@ -409,9 +418,12 @@ void CmClass::ScanRndm(int nDiv, double sMin, double sMax)
 	nBins = hExp->GetXaxis()->GetNbins();
 	rLow = hExp->GetXaxis()->GetBinLowEdge(1);
 	rUp = hExp->GetXaxis()->GetBinUpEdge(nBins);
-	TH1D *hTmp = new TH1D("hTmp", "SiPM+PMT MC flash energy;MeV", nBins, rLow, rUp);
-	TH1D *hTmpSiPM = new TH1D("hTmpSiPM", "SiPM MC flash energy;MeV", nBins, rLow, rUp);
-	TH1D *hTmpPMT = new TH1D("hTmpPMT", "PMT MC flash energy;MeV", nBins, rLow, rUp);
+	sprintf(str, "SiPM+PMT %s;MeV", Name);
+	TH1D *hTmp = new TH1D("hTmp", str, nBins, rLow, rUp);
+	sprintf(str, "SiPM %s;MeV", Name);
+	TH1D *hTmpSiPM = new TH1D("hTmpSiPM", str, nBins, rLow, rUp);
+	sprintf(str, "PMT %s;MeV", Name);
+	TH1D *hTmpPMT = new TH1D("hTmpPMT", str, nBins, rLow, rUp);
 	TF1 *fpol2 = new TF1("fpol2", "pol2", sMin, sMax);
 	// Fill with smeared MC
 	for (i=0; i<nDiv; i++) {
@@ -510,8 +522,8 @@ void CmClass::ScanRndm(int nDiv, double sMin, double sMax)
 	ln.SetLineColor(kGreen);
 
 	cv->cd(1);
-	hExp->Draw();
-	hTmp->Draw("same,hist");
+	hTmp->Draw("hist");
+	hExp->Draw("same");
 	TLegend *lg = new TLegend(0.65, 0.75, 0.9, 0.9);
 	lg->AddEntry(hExp, "Exp", "lp");
 	lg->AddEntry(hTmp, "MC", "l");
@@ -520,21 +532,23 @@ void CmClass::ScanRndm(int nDiv, double sMin, double sMax)
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExp->GetMaximum());
 
 	cv->cd(2);
-	hExpSiPM->Draw();
-	hTmpSiPM->Draw("same,hist");
+	hTmpSiPM->Draw("hist");
+	hExpSiPM->Draw("same");
 	lg->Draw();
 	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpSiPM->GetMaximum());
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpSiPM->GetMaximum());
 
 	cv->cd(3);
-	hExpPMT->Draw();
-	hTmpPMT->Draw("same,hist");
+	hTmpPMT->Draw("hist");
+	hExpPMT->Draw("same");
 	lg->Draw();
 	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpPMT->GetMaximum());
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpPMT->GetMaximum());
+
+	if (iSet) SetRndm(xminSiPM, xminPMT);
 }
 
-void CmClass::ScanSqrt(int nDiv, double sMin, double sMax)
+void CmClass::ScanSqrt(int nDiv, double sMin, double sMax, int iSet = 0)
 {
 	double xmin;
 	double xminSiPM, xminPMT;
@@ -566,9 +580,12 @@ void CmClass::ScanSqrt(int nDiv, double sMin, double sMax)
 	nBins = hExp->GetXaxis()->GetNbins();
 	rLow = hExp->GetXaxis()->GetBinLowEdge(1);
 	rUp = hExp->GetXaxis()->GetBinUpEdge(nBins);
-	TH1D *hTmp = new TH1D("hTmp", "SiPM+PMT MC flash energy;MeV", nBins, rLow, rUp);
-	TH1D *hTmpSiPM = new TH1D("hTmpSiPM", "SiPM MC flash energy;MeV", nBins, rLow, rUp);
-	TH1D *hTmpPMT = new TH1D("hTmpPMT", "PMT MC flash energy;MeV", nBins, rLow, rUp);
+	sprintf(str, "SiPM+PMT %s;MeV", Name);
+	TH1D *hTmp = new TH1D("hTmp", str, nBins, rLow, rUp);
+	sprintf(str, "SiPM %s;MeV", Name);
+	TH1D *hTmpSiPM = new TH1D("hTmpSiPM", str, nBins, rLow, rUp);
+	sprintf(str, "PMT %s;MeV", Name);
+	TH1D *hTmpPMT = new TH1D("hTmpPMT", str, nBins, rLow, rUp);
 	TF1 *fpol2 = new TF1("fpol2", "pol2", sMin, sMax);
 	// Fill with smeared MC
 	for (i=0; i<nDiv; i++) {
@@ -667,8 +684,8 @@ void CmClass::ScanSqrt(int nDiv, double sMin, double sMax)
 	ln.SetLineColor(kGreen);
 
 	cv->cd(1);
-	hExp->Draw();
-	hTmp->Draw("same,hist");
+	hTmp->Draw("hist");
+	hExp->Draw("same");
 	TLegend *lg = new TLegend(0.65, 0.75, 0.9, 0.9);
 	lg->AddEntry(hExp, "Exp", "lp");
 	lg->AddEntry(hTmp, "MC", "l");
@@ -677,23 +694,85 @@ void CmClass::ScanSqrt(int nDiv, double sMin, double sMax)
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExp->GetMaximum());
 
 	cv->cd(2);
-	hExpSiPM->Draw();
-	hTmpSiPM->Draw("same,hist");
+	hTmpSiPM->Draw("hist");
+	hExpSiPM->Draw("same");
 	lg->Draw();
 	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpSiPM->GetMaximum());
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpSiPM->GetMaximum());
 
 	cv->cd(3);
-	hExpPMT->Draw();
-	hTmpPMT->Draw("same,hist");
+	hTmpPMT->Draw("hist");
+	hExpPMT->Draw("same");
 	lg->Draw();
 	ln.DrawLine(Emin, 0, Emin, 0.7 * hExpPMT->GetMaximum());
 	ln.DrawLine(Emax, 0, Emax, 0.7 * hExpPMT->GetMaximum());
+
+	if (iSet) SetSqrt(xminSiPM, xminPMT);
 }
 
 //============================================================//
-CmClass *CmMain(void)
+CmClass *makeCm(int iRun, int iMC)
 {
-	CmClass *cm = new CmClass("cm_127720_127772_8.7.hist1-6.root", "cm_MC_8.7_Center_Fuso_PMT_strip_map.root");
+	char str[256];
+	const char *MC[] = {
+		"cm_MC_8.7_Center_Fuso.root",
+		"cm_MC_8.7_Center_Fuso_Birks_0_005.root",
+		"cm_MC_8.7_Center_Fuso_Cher_coeff_0_05.root",
+		"cm_MC_8.7_Center_Fuso_paint_0_2.root",
+		"cm_MC_8.7_Center_Fuso_paint_0_3.root",
+		"cm_MC_8.7_Center_Fuso_PMT_strip_map.root"
+	};
+	const char *MCshort[] = {
+		"Fuso",
+		"Fuso_Birks=0.005",
+		"Fuso_Cher_0.05",
+		"Fuso_paint=0_2",
+		"Fuso_paint=0.3",
+		"Fuso_PMT_strip_map"
+	};
+	const char *Run[] = {
+		"cm_14428_14485_8.7.hist.root",
+		"cm_50578_50647_8.7.hist.root",
+		"cm_127720_127772_8.7.hist.root",
+		"cm_175471_175528_8.7.hist.root"
+	};
+	const char *RunShort[] = {
+		"mar17", "nov18", "jun22", "may25"
+	};
+	sprintf(str, "%s %s", RunShort[iRun], MCshort[iMC]);
+	CmClass *cm = new CmClass(Run[iRun], MC[iMC], str);
 	return cm;
+}
+
+
+void cm_class(const char *pdfname)
+{
+	int i, j;
+	CmClass *cm;
+	
+	gStyle->SetOptStat(0);
+	TCanvas *cv = (TCanvas *) gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1400, 1000);
+	TString pdf(pdfname);
+	cv->SaveAs((pdf+"[").Data());
+	for (i=0; i<6; i++) for (j=0; j<4; j++) {
+		cm = makeCm(j, i);
+		if (!cm) {
+			printf("Fatal error !\n");
+			goto fin;
+		}
+		cm->SetErange(5.5, 9.0);
+		cm->SetSqrt(0.04, 0.04);
+		if (i<5) {
+			cm->SetRndm(0.08, 0.07);
+		} else {
+			cm->SetRndm(0.08, 0.05);
+		}
+		cm->ScanScale(20, 0.87, 1.07, 1);
+		cm->ScanRndm(15, 0.04, 0.115);
+		cv->SaveAs(pdf.Data());
+		delete cm;
+	}
+fin:
+	cv->SaveAs((pdf+"]").Data());
 }
