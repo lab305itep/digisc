@@ -120,14 +120,17 @@ NaCoClass::NaCoClass(const char *expname, const char *mcname, const char *name)
 	hExp->SetMarkerColor(kRed);
 	hExp->SetMarkerStyle(kFullCircle);
 	hExp->SetMarkerSize(0.03);
+	hExp->SetStats(0);
 	hExpSiPM->SetLineColor(kRed);
 	hExpSiPM->SetMarkerColor(kRed);
 	hExpSiPM->SetMarkerStyle(kFullCircle);
 	hExpSiPM->SetMarkerSize(0.03);
+	hExpSiPM->SetStats(0);
 	hExpPMT->SetLineColor(kRed);
 	hExpPMT->SetMarkerColor(kRed);
 	hExpPMT->SetMarkerStyle(kFullCircle);
 	hExpPMT->SetMarkerSize(0.03);
+	hExpPMT->SetStats(0);
 
 	tMC = create_chain(mcname, "DanssEvent");
 	if (!tMC) {
@@ -685,9 +688,9 @@ void NaCoClass::ScanSqrt(int nDiv, double sMin, double sMax, int iSet = 0)
 	hScanSiPM->Fit(fpol2, "", "", xLow, xUp);
 	xminSiPM = -fpol2->GetParameter(1) / (2 * fpol2->GetParameter(2));
 	sprintf(str, "Stoch=%5.3f", xminSiPM);
-	txt.DrawLatexNDC(0.4, 0.8, str);
+	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminSiPM));
-	txt.DrawLatexNDC(0.4, 0.72, str);
+	txt.DrawLatexNDC(0.4, 0.77, str);
 	sprintf(str, "Scale=%5.3f", kScaleSiPM);
 	txt.DrawLatexNDC(0.4, 0.69, str);
 	sprintf(str, "Smear=%5.3f", kRndmSiPM);
@@ -705,9 +708,9 @@ void NaCoClass::ScanSqrt(int nDiv, double sMin, double sMax, int iSet = 0)
 	txt.DrawLatexNDC(0.4, 0.85, str);
 	sprintf(str, "#Chi^{2}_{min}=%6.1f", fpol2->Eval(xminPMT));
 	txt.DrawLatexNDC(0.4, 0.77, str);
-	sprintf(str, "Scale=%5.3f", kScaleSiPM);
+	sprintf(str, "Scale=%5.3f", kScalePMT);
 	txt.DrawLatexNDC(0.4, 0.69, str);
-	sprintf(str, "Smear=%5.3f", kRndmSiPM);
+	sprintf(str, "Smear=%5.3f", kRndmPMT);
 	txt.DrawLatexNDC(0.4, 0.61, str);
 
 //		Draw best fits
@@ -757,7 +760,7 @@ void NaCoClass::ScanSqrt(int nDiv, double sMin, double sMax, int iSet = 0)
 }
 
 //============================================================//
-NaCoClass *makeNaCo(int iRun, int iMC)
+NaCoClass *makeNa(int iRun, int iMC)
 {
 	char str[256];
 	char mclong[2048];
@@ -773,26 +776,60 @@ NaCoClass *makeNaCo(int iRun, int iMC)
 	};
 	const char *MCshort[] = {
 		"Fuso",
-		"Fuso_Birks=0.005",
+		"Fuso_Birks_0.005",
 		"Fuso_Cher_0.05",
-		"Fuso_paint=0_2",
-		"Fuso_paint=0.3",
+		"Fuso_paint_0_2",
+		"Fuso_paint_0.3",
 		"Fuso_PMT_strip_map"
 	};
 	const char *Run[] = {
 		"22Na_feb17_center_root8n7_R30.0.root",
 		"22Na_nov18_center_root8n7_R30.0.root",
-		"22Na_jun22_center_root8n7_R30.0.root",
+		"22Na_jun22_center_root8n7_R30.0.root"
+	};
+	const char *RunShort[] = {
+		"feb17", "nov18", "jun22"
+	};
+	sprintf(mclong, "%s/%s/%s", mcdir, MC[iMC], mcfname);
+	sprintf(str, "^{22}Na %s %s", RunShort[iRun], MCshort[iMC]);
+	NaCoClass *src = new NaCoClass(Run[iRun], mclong, str);
+	return src;
+}
+
+//============================================================//
+NaCoClass *makeCo(int iRun, int iMC)
+{
+	char str[256];
+	char mclong[2048];
+	const char *mcdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/60Co";
+	const char *mcfname = "mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root";
+	const char *MC[] = {
+		"Center_Fuso",
+		"Center_Fuso_Birks_0_005",
+		"Center_Fuso_Cher_coeff_0_05",
+		"Center_Fuso_paint_0_2",
+		"Center_Fuso_paint_0_3",
+		"Center_Fuso_PMT_strip_map"
+	};
+	const char *MCshort[] = {
+		"Fuso",
+		"Fuso_Birks_0.005",
+		"Fuso_Cher_0.05",
+		"Fuso_paint_0_2",
+		"Fuso_paint_0.3",
+		"Fuso_PMT_strip_map"
+	};
+	const char *Run[] = {
 		"60Co_feb17_center_root8n7_R30.0.root",
 		"60Co_nov18_center_root8n7_R30.0.root",
 		"60Co_jun22_center_root8n7_R30.0.root",
 		"60Co_apr25_center_root8n7_R30.0.root"
 	};
 	const char *RunShort[] = {
-		"mar17", "nov18", "jun22", "apr25"
+		"feb17Co", "nov18Co", "jun22Co", "apr25Co"
 	};
 	sprintf(mclong, "%s/%s/%s", mcdir, MC[iMC], mcfname);
-	sprintf(str, "%s %s", RunShort[iRun], MCshort[iMC]);
+	sprintf(str, "^{60}Co %s %s", RunShort[iRun], MCshort[iMC]);
 	NaCoClass *src = new NaCoClass(Run[iRun], mclong, str);
 	return src;
 }
@@ -807,22 +844,43 @@ void naco_class(const char *pdfname)
 	if (!cv) cv = new TCanvas("CV", "CV", 1400, 1000);
 	TString pdf(pdfname);
 	cv->SaveAs((pdf+"[").Data());
-	for (i=0; i<6; i++) for (j=0; j<4; j++) {
-		src = makeNaCo(j, i);
+	// Na
+	for (i=0; i<6; i++) for (j=0; j<3; j++) {
+		src = makeNa(j, i);
 		if (!src) {
 			printf("Fatal error !\n");
 			goto fin;
 		}
-		src->SetErange(5.5, 9.0);
-		src->SetSqrt(0.04, 0.04);
+		src->SetErange(0.8, 2.9);
+		src->SetSqrt(0.07, 0.05);
 		if (i<5) {
-			src->SetRndm(0.08, 0.07);
+			src->SetRndm(0.1, 0.05);
 		} else {
-			src->SetRndm(0.08, 0.05);
+			src->SetRndm(0.1, 0.02);
 		}
-		src->ScanScale(20, 0.87, 1.07, 1);
+		src->ScanScale(20, 0.85, 1.05, 1);
 		cv->SaveAs(pdf.Data());
-		src->ScanRndm(15, 0.04, 0.115);
+		src->ScanRndm(20, 0.02, 0.12);
+		cv->SaveAs(pdf.Data());
+		delete src;
+	}
+	// Co
+	for (i=0; i<6; i++) for (j=0; j<4; j++) {
+		src = makeCo(j, i);
+		if (!src) {
+			printf("Fatal error !\n");
+			goto fin;
+		}
+		src->SetErange(0.8, 3.1);
+		src->SetSqrt(0.05, 0.05);
+		if (i<5) {
+			src->SetRndm(0.115, 0.069);
+		} else {
+			src->SetRndm(0.115, 0.01);
+		}
+		src->ScanScale(20, 0.85, 1.05, 1);
+		cv->SaveAs(pdf.Data());
+		src->ScanRndm(30, 0.0, 0.15);
 		cv->SaveAs(pdf.Data());
 		delete src;
 	}
