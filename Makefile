@@ -6,7 +6,7 @@ ROOTLIB = $(shell root-config --libs)
 ROOTINC = $(shell root-config --cflags)
 DIGILIB = -lReadDigiData
 
-All: digi_evtbuilder6_v3 pairbuilder8 muonpair pmt2sipm background_calc xyz deadtime run_dead_mpi\
+All: digi_evtbuilder7 pairbuilder8 muonpair pmt2sipm background_calc xyz deadtime run_dead_mpi\
     run_digi_mpi run_pair_mpi run_stat_mpi run_spectr_mpi  run_bgnd_mpi run_pmt2sipm_mpi run_muon_mpi rootcheck deadchannels \
     hittree run_hits_mpi cmbuilder spectr6 background_MC
 
@@ -14,6 +14,9 @@ digi_evtbuilder6_v2: digi_evtbuilder6.cpp
 	g++ -DDIGI_V2 -O3 -o $@ $^ ${ROOTINC} -I${DIGI_V2} ${CLIB} ${ROOTLIB} -L${DIGI_V2} ${DIGILIB} -lMinuit
 
 digi_evtbuilder6_v3: digi_evtbuilder6.cpp
+	g++ -DDIGI_V3 -O3 -o $@ $^ ${ROOTINC} -I${DIGI_V3} ${CLIB} ${ROOTLIB} -L${DIGI_V3} ${DIGILIB}
+
+digi_evtbuilder7: digi_evtbuilder7.cpp ReadDigiDataUserX.cpp
 	g++ -DDIGI_V3 -O3 -o $@ $^ ${ROOTINC} -I${DIGI_V3} ${CLIB} ${ROOTLIB} -L${DIGI_V3} ${DIGILIB}
 
 run_digi_mpi: run_digi_mpi.c
