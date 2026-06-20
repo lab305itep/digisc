@@ -834,7 +834,54 @@ NaCoClass *makeCo(int iRun, int iMC)
 	return src;
 }
 
-void naco_class(const char *pdfname)
+//============================================================//
+NaCoClass *makeNaNoise(int iRun)
+{
+	char str[256];
+	char mclong[2048];
+	const char *mcdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/FusoWithNoise/22Na";
+	const char *mcfname = "mc_22Na_indLY_transcode_rawProc_pedSim_Center1.root";
+	const char *MC = "Full_decay_center_Fuso";
+	const char *MCshort = "FusoWithNoise";
+	const char *Run[] = {
+		"22Na_feb17_center_root8n7_R30.0.root",
+		"22Na_nov18_center_root8n7_R30.0.root",
+		"22Na_jun22_center_root8n7_R30.0.root"
+	};
+	const char *RunShort[] = {
+		"feb17", "nov18", "jun22"
+	};
+	sprintf(mclong, "%s/%s/%s", mcdir, MC, mcfname);
+	sprintf(str, "^{22}Na %s %s", RunShort[iRun], MCshort);
+	NaCoClass *src = new NaCoClass(Run[iRun], mclong, str);
+	return src;
+}
+
+//============================================================//
+NaCoClass *makeCoNoise(int iRun)
+{
+	char str[256];
+	char mclong[2048];
+	const char *mcdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/FusoWithNoise/60Co";
+	const char *mcfname = "mc_60Co_indLY_transcode_rawProc_pedSim_Center1.root";
+	const char *MC = "Center_Fuso";
+	const char *MCshort = "FusoWithNoise";
+	const char *Run[] = {
+		"60Co_feb17_center_root8n7_R30.0.root",
+		"60Co_nov18_center_root8n7_R30.0.root",
+		"60Co_jun22_center_root8n7_R30.0.root",
+		"60Co_apr25_center_root8n7_R30.0.root"
+	};
+	const char *RunShort[] = {
+		"feb17Co", "nov18Co", "jun22Co", "apr25Co"
+	};
+	sprintf(mclong, "%s/%s/%s", mcdir, MC, mcfname);
+	sprintf(str, "^{60}Co %s %s", RunShort[iRun], MCshort);
+	NaCoClass *src = new NaCoClass(Run[iRun], mclong, str);
+	return src;
+}
+
+void naco_class_v0(const char *pdfname)
 {
 	int i, j;
 	NaCoClass *src;
@@ -867,6 +914,60 @@ void naco_class(const char *pdfname)
 	// Co
 	for (i=0; i<6; i++) for (j=0; j<4; j++) {
 		src = makeCo(j, i);
+		if (!src) {
+			printf("Fatal error !\n");
+			goto fin;
+		}
+		src->SetErange(0.8, 3.1);
+		src->SetSqrt(0.05, 0.05);
+		if (i<5) {
+			src->SetRndm(0.115, 0.069);
+		} else {
+			src->SetRndm(0.115, 0.01);
+		}
+		src->ScanScale(20, 0.85, 1.05, 1);
+		cv->SaveAs(pdf.Data());
+		src->ScanRndm(30, 0.0, 0.15);
+		cv->SaveAs(pdf.Data());
+		delete src;
+	}
+fin:
+	cv->SaveAs((pdf+"]").Data());
+}
+
+void naco_class(const char *pdfname)
+{
+	int i, j;
+	NaCoClass *src;
+	
+	gStyle->SetOptStat(0);
+	TCanvas *cv = (TCanvas *) gROOT->FindObject("CV");
+	if (!cv) cv = new TCanvas("CV", "CV", 1400, 1000);
+	TString pdf(pdfname);
+	cv->SaveAs((pdf+"[").Data());
+	// Na
+	for (j=0; j<3; j++) {
+		src = makeNaNoise(j);
+		if (!src) {
+			printf("Fatal error !\n");
+			goto fin;
+		}
+		src->SetErange(0.8, 2.9);
+		src->SetSqrt(0.07, 0.05);
+		if (i<5) {
+			src->SetRndm(0.1, 0.05);
+		} else {
+			src->SetRndm(0.1, 0.02);
+		}
+		src->ScanScale(20, 0.85, 1.05, 1);
+		cv->SaveAs(pdf.Data());
+		src->ScanRndm(20, 0.02, 0.12);
+		cv->SaveAs(pdf.Data());
+		delete src;
+	}
+	// Co
+	for (j=0; j<4; j++) {
+		src = makeCoNoise(j);
 		if (!src) {
 			printf("Fatal error !\n");
 			goto fin;

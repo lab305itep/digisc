@@ -732,6 +732,7 @@ void draw_mc2exp(const char *fname)
  * Chikuma:  pheSiPM = 20.78; phePMT = 14.63
  * Fuso(v1): pheSiPM = 21.21; phePMT = 14.74
  * Fuso:     pheSiPM = 21.21; phePMT = 14.80
+ * Hyuga     pheSiPM = 21.59; phePMT = 15.13
  */
 void calib4sasha(const char *fname, double pheSiPM0, double phePMT)
 {

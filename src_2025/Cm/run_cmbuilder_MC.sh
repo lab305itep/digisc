@@ -22,7 +22,7 @@ CMBUILDER=/home/itep/alekseev/igor/cmbuilder
 #	${CMBUILDER} ${f}.list ${f}.root
 #done
 
-# ${CMBUILDER} cm_MC_8.7_Center_Fuso_PMT_strip_map.list cm_MC_8.7_Center_Fuso_PMT_strip_map.root
+${CMBUILDER} cm_MC_8.7_Center_Fuso-noise.list cm_MC_8.7_Center_Fuso-noise.root
 
 root -l -b -q cm_runMC.C
 

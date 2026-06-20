@@ -501,35 +501,37 @@ void Chikuma_All_MC(void)
 
 void Fuso_All_MC(void)
 {
-	const char *MCvar[] = {"DB_spectrum_Fuso", 
-		"DB_spectrum_Fuso_Birks_0_005", 
-		"DB_spectrum_Fuso_Cher_coeff_0_05", 
-		"DB_spectrum_Fuso_paint_0_2", 
-		"DB_spectrum_Fuso_paint_0_3",
-		"DB_spectrum_Fuso_PMT_strip_map"};
-	const char *MCG4 = "G4_spectrum_Fuso"; 
-	const char *MCdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/12B";
+//	const char *MCvar[] = {"DB_spectrum_Fuso", 
+//		"DB_spectrum_Fuso_Birks_0_005", 
+//		"DB_spectrum_Fuso_Cher_coeff_0_05", 
+//		"DB_spectrum_Fuso_paint_0_2", 
+//		"DB_spectrum_Fuso_paint_0_3",
+//		"DB_spectrum_Fuso_PMT_strip_map"};
+	const char *MCvar[] = {"DB_spectrum_Fuso"};
+//	const char *MCG4 = "G4_spectrum_Fuso"; 
+//	const char *MCdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/Fuso/12B";
+	const char *MCdir = "/home/clusters/rrcmpi/alekseev/igor/root8n7/MC/FusoWithNoise/12B";
 	char namein[4096];
 	char nameout[4096];
 	int i;
 	
-//	for (i=0; i < sizeof(MCvar)/sizeof(MCvar[0]); i++) {
-//		sprintf(namein,
-//			"%s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root %s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root",
-//			MCdir, MCvar[i], MCdir, MCvar[i]);
-//		sprintf(nameout, "MC12B_8.7-%s.hist.root", MCvar[i]);
-//		src_12BMC(namein, nameout);
-//	}
+	for (i=0; i < sizeof(MCvar)/sizeof(MCvar[0]); i++) {
+		sprintf(namein,
+			"%s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root %s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root",
+			MCdir, MCvar[i], MCdir, MCvar[i]);
+		sprintf(nameout, "MC12B_8.7-%s-noise.hist.root", MCvar[i]);
+		src_12BMC(namein, nameout);
+	}
 //	sprintf(namein,
 //		"%s/%s/mc_12B-G4_indLY_transcode_rawProc_pedSim_G4spectrum1.root %s/%s/mc_12B-G4_indLY_transcode_rawProc_pedSim_G4spectrum2.root",
 //		MCdir, MCG4, MCdir, MCG4);
 //	sprintf(nameout, "MC12B_8.7-%s.hist.root", MCG4);
 //	src_12BMC(namein, nameout);
-	sprintf(namein,
-		"%s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root %s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root",
-		MCdir, MCvar[5], MCdir, MCvar[5]);
-	sprintf(nameout, "MC12B_8.7-%s.hist.root", MCvar[5]);
-	src_12BMC(namein, nameout);
+//	sprintf(namein,
+//		"%s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum1.root %s/%s/mc_12B-DB_indLY_transcode_rawProc_pedSim_DBspectrum2.root",
+//		MCdir, MCvar[5], MCdir, MCvar[5]);
+//	sprintf(nameout, "MC12B_8.7-%s.hist.root", MCvar[5]);
+//	src_12BMC(namein, nameout);
 }
 
 /*

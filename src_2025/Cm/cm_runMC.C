@@ -13,7 +13,8 @@
 
 //	const char *mcname[] = {"cm_MC_8.7_Center_Fuso_Birks_0_005", "cm_MC_8.7_Center_Fuso_Cher_coeff_0_05", 
 //		"cm_MC_8.7_Center_Fuso_paint_0_2", "cm_MC_8.7_Center_Fuso_paint_0_3"};
-	const char *mcname[] = {"cm_MC_8.7_Center_Fuso_PMT_strip_map", "cm_MC_8.7_Center_Fuso_Cher_coeff_0_05"};
+//	const char *mcname[] = {"cm_MC_8.7_Center_Fuso_PMT_strip_map", "cm_MC_8.7_Center_Fuso_Cher_coeff_0_05"};
+	const char *mcname[] = {"cm_MC_8.7_Center_Fuso-noise"};
 
 	int i;
 	char str[1024];
